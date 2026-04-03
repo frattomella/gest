@@ -134,7 +134,8 @@
 }
 
 .editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-block.alignwide,
-.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-block.alignfull {
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-block.alignfull,
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-block.gpo-breakout-block {
   left: auto;
   transform: none;
   width: 100%;

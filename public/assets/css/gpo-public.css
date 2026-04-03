@@ -835,25 +835,61 @@
   container-type: inline-size;
 }
 
-.gpo-block.alignwide {
+.gpo-block.alignwide,
+.gpo-block.gpo-breakout-block {
   --gpo-wide-width: min(calc(100vw - max(32px, 5vw)), var(--gpo-content-max-width));
-  position: relative;
-  left: 50%;
-  transform: translateX(-50%);
+  position: static;
+  left: auto;
+  transform: none;
   width: var(--gpo-wide-width);
   max-width: var(--gpo-wide-width);
-  margin-left: 0;
-  margin-right: 0;
+  margin-left: calc(50% - (var(--gpo-wide-width) / 2));
+  margin-right: calc(50% - (var(--gpo-wide-width) / 2));
 }
 
 .gpo-block.alignfull {
-  position: relative;
-  left: 50%;
-  transform: translateX(-50%);
+  position: static;
+  left: auto;
+  transform: none;
   width: 100vw;
   max-width: 100vw;
-  margin-left: 0;
-  margin-right: 0;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+}
+
+body .is-layout-constrained > .gpo-block.alignwide,
+body .is-layout-constrained > .gpo-block.gpo-breakout-block,
+body .is-layout-flow > .gpo-block.alignwide,
+body .is-layout-flow > .gpo-block.gpo-breakout-block,
+body .entry-content > .gpo-block.alignwide,
+body .entry-content > .gpo-block.gpo-breakout-block,
+body .wp-block-post-content > .gpo-block.alignwide,
+body .wp-block-post-content > .gpo-block.gpo-breakout-block,
+body .post-content > .gpo-block.alignwide,
+body .post-content > .gpo-block.gpo-breakout-block,
+body .wp-block-group__inner-container > .gpo-block.gpo-breakout-block,
+body .wp-block-group__inner-container > .gpo-block.alignwide {
+  position: static !important;
+  left: auto !important;
+  transform: none !important;
+  width: var(--gpo-wide-width) !important;
+  max-width: none !important;
+  margin-left: calc(50% - (var(--gpo-wide-width) / 2)) !important;
+  margin-right: calc(50% - (var(--gpo-wide-width) / 2)) !important;
+}
+
+body .is-layout-constrained > .gpo-block.alignfull,
+body .is-layout-flow > .gpo-block.alignfull,
+body .entry-content > .gpo-block.alignfull,
+body .wp-block-post-content > .gpo-block.alignfull,
+body .post-content > .gpo-block.alignfull {
+  position: static !important;
+  left: auto !important;
+  transform: none !important;
+  width: 100vw !important;
+  max-width: none !important;
+  margin-left: calc(50% - 50vw) !important;
+  margin-right: calc(50% - 50vw) !important;
 }
 
 .gpo-block.alignwide > .gpo-catalog-shell,
@@ -862,7 +898,14 @@
 .gpo-block.alignwide > .gpo-brand-carousel-shell,
 .gpo-block.alignwide > .gpo-vehicle-search-shell,
 .gpo-block.alignwide > .gpo-single-wrap,
-.gpo-block.alignwide > .gpo-template-shell {
+.gpo-block.alignwide > .gpo-template-shell,
+.gpo-block.gpo-breakout-block > .gpo-catalog-shell,
+.gpo-block.gpo-breakout-block > .gpo-carousel-shell,
+.gpo-block.gpo-breakout-block > .gpo-featured-single,
+.gpo-block.gpo-breakout-block > .gpo-brand-carousel-shell,
+.gpo-block.gpo-breakout-block > .gpo-vehicle-search-shell,
+.gpo-block.gpo-breakout-block > .gpo-single-wrap,
+.gpo-block.gpo-breakout-block > .gpo-template-shell {
   max-width: min(96vw, var(--gpo-content-max-width));
 }
 

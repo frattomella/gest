@@ -11,12 +11,12 @@ class GPO_Blocks {
     }
 
     public static function register_blocks() {
-        wp_register_script('gpo-blocks', GPO_PLUGIN_URL . 'blocks/gpo-blocks.js', ['wp-blocks', 'wp-element', 'wp-components', 'wp-block-editor', 'wp-server-side-render', 'wp-data'], GPO_VERSION, true);
+        wp_register_script('gpo-blocks', GPO_PLUGIN_URL . 'blocks/gpo-blocks.js', ['wp-blocks', 'wp-element', 'wp-components', 'wp-block-editor', 'wp-server-side-render', 'wp-data'], gpo_asset_version('blocks/gpo-blocks.js'), true);
 
         if (!wp_style_is('gpo-public', 'registered')) {
-            wp_register_style('gpo-public', GPO_PLUGIN_URL . 'public/assets/css/gpo-public.css', [], GPO_VERSION);
+            wp_register_style('gpo-public', GPO_PLUGIN_URL . 'public/assets/css/gpo-public.css', [], gpo_asset_version('public/assets/css/gpo-public.css'));
         }
-        wp_register_style('gpo-editor', GPO_PLUGIN_URL . 'blocks/gpo-editor.css', ['wp-edit-blocks', 'gpo-public'], GPO_VERSION);
+        wp_register_style('gpo-editor', GPO_PLUGIN_URL . 'blocks/gpo-editor.css', ['wp-edit-blocks', 'gpo-public'], gpo_asset_version('blocks/gpo-editor.css'));
 
         self::register_catalog_blocks();
         self::register_brand_search_blocks();
@@ -36,7 +36,7 @@ class GPO_Blocks {
 
     public static function enqueue_shared_block_assets() {
         if (!wp_style_is('gpo-public', 'registered')) {
-            wp_register_style('gpo-public', GPO_PLUGIN_URL . 'public/assets/css/gpo-public.css', [], GPO_VERSION);
+            wp_register_style('gpo-public', GPO_PLUGIN_URL . 'public/assets/css/gpo-public.css', [], gpo_asset_version('public/assets/css/gpo-public.css'));
         }
 
         $defaults = method_exists('GPO_Admin', 'default_settings') ? GPO_Admin::default_settings() : [];
@@ -460,23 +460,41 @@ class GPO_Blocks {
         return $style;
     }
 
-    protected static function preferred_align_class($class, $attributes = []) {
-        if (!empty($attributes['align'])) {
-            return '';
-        }
-
-        $wide_blocks = [
+    protected static function breakout_blocks() {
+        return [
             'gpo-block-catalog',
             'gpo-block-featured-carousel',
             'gpo-block-featured-vehicle',
             'gpo-block-brand-carousel',
             'gpo-block-vehicle-search',
         ];
+    }
 
-        foreach ($wide_blocks as $wide_block) {
+    protected static function is_breakout_block($class) {
+        foreach (self::breakout_blocks() as $wide_block) {
             if (strpos((string) $class, $wide_block) !== false) {
-                return 'alignwide';
+                return true;
             }
+        }
+
+        return false;
+    }
+
+    protected static function preferred_align_class($class, $attributes = []) {
+        if (!empty($attributes['align'])) {
+            return '';
+        }
+
+        if (self::is_breakout_block($class)) {
+            return 'alignwide';
+        }
+
+        return '';
+    }
+
+    protected static function preferred_layout_class($class) {
+        if (self::is_breakout_block($class)) {
+            return 'gpo-breakout-block';
         }
 
         return '';
@@ -484,7 +502,8 @@ class GPO_Blocks {
 
     protected static function render_dynamic_block($class, $attributes, $content) {
         $align_class = self::preferred_align_class($class, $attributes);
-        $class_names = trim($class . ' ' . $align_class);
+        $layout_class = self::preferred_layout_class($class);
+        $class_names = trim($class . ' ' . $layout_class . ' ' . $align_class);
         return '<div ' . self::wrapper_attrs($class_names, $attributes) . '>' . $content . '</div>';
     }
 

@@ -20,10 +20,10 @@ class GPO_Frontend {
     }
 
     public static function assets() {
-        wp_register_style('gpo-public', GPO_PLUGIN_URL . 'public/assets/css/gpo-public.css', [], GPO_VERSION);
-        wp_register_script('gpo-carousel', GPO_PLUGIN_URL . 'public/assets/js/gpo-carousel.js', [], GPO_VERSION, true);
-        wp_register_script('gpo-live-search', GPO_PLUGIN_URL . 'public/assets/js/gpo-live-search.js', [], GPO_VERSION, true);
-        wp_register_script('gpo-vehicle-gallery', GPO_PLUGIN_URL . 'public/assets/js/gpo-vehicle-gallery.js', [], GPO_VERSION, true);
+        wp_register_style('gpo-public', GPO_PLUGIN_URL . 'public/assets/css/gpo-public.css', [], gpo_asset_version('public/assets/css/gpo-public.css'));
+        wp_register_script('gpo-carousel', GPO_PLUGIN_URL . 'public/assets/js/gpo-carousel.js', [], gpo_asset_version('public/assets/js/gpo-carousel.js'), true);
+        wp_register_script('gpo-live-search', GPO_PLUGIN_URL . 'public/assets/js/gpo-live-search.js', [], gpo_asset_version('public/assets/js/gpo-live-search.js'), true);
+        wp_register_script('gpo-vehicle-gallery', GPO_PLUGIN_URL . 'public/assets/js/gpo-vehicle-gallery.js', [], gpo_asset_version('public/assets/js/gpo-vehicle-gallery.js'), true);
 
         $settings = self::display_settings();
         $style = $settings['style'];
