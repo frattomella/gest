@@ -16,6 +16,8 @@ class GPO_Frontend {
         add_shortcode('gestpark_vehicle_search', [__CLASS__, 'vehicle_search_shortcode']);
         add_action('wp_ajax_gpo_live_search', [__CLASS__, 'ajax_live_search']);
         add_action('wp_ajax_nopriv_gpo_live_search', [__CLASS__, 'ajax_live_search']);
+        add_action('admin_post_gpo_vehicle_lead', [__CLASS__, 'handle_vehicle_lead_submission']);
+        add_action('admin_post_nopriv_gpo_vehicle_lead', [__CLASS__, 'handle_vehicle_lead_submission']);
         add_filter('template_include', [__CLASS__, 'single_template']);
     }
 
@@ -68,6 +70,196 @@ class GPO_Frontend {
         }
 
         return $settings;
+    }
+
+    protected static function lead_email() {
+        $settings = self::display_settings();
+        $email = sanitize_email((string) ($settings['style']['lead_email'] ?? ''));
+        if ($email) {
+            return $email;
+        }
+
+        return sanitize_email((string) get_option('admin_email'));
+    }
+
+    protected static function lead_success_message() {
+        $settings = self::display_settings();
+        $message = trim((string) ($settings['style']['lead_success_message'] ?? ''));
+        if ($message !== '') {
+            return $message;
+        }
+
+        return 'Richiesta inviata correttamente. Ti ricontatteremo al più presto.';
+    }
+
+    protected static function current_request_url() {
+        if (!empty($_SERVER['REQUEST_URI'])) {
+            return home_url(wp_unslash((string) $_SERVER['REQUEST_URI']));
+        }
+
+        return home_url('/');
+    }
+
+    public static function lead_notice_markup() {
+        $status = isset($_GET['gpo_lead']) ? sanitize_key(wp_unslash($_GET['gpo_lead'])) : '';
+        if ($status === '') {
+            return '';
+        }
+
+        $message = isset($_GET['gpo_lead_message']) ? sanitize_text_field(wp_unslash($_GET['gpo_lead_message'])) : '';
+        if ($message === '') {
+            $message = $status === 'success'
+                ? self::lead_success_message()
+                : 'Non è stato possibile inviare la richiesta. Controlla i campi e riprova.';
+        }
+
+        $class = $status === 'success' ? 'is-success' : 'is-error';
+        return '<div class="gpo-lead-notice ' . esc_attr($class) . '" role="status"><p>' . esc_html($message) . '</p></div>';
+    }
+
+    protected static function preferred_menu_location() {
+        $locations = (array) get_nav_menu_locations();
+        if (empty($locations)) {
+            return '';
+        }
+
+        foreach (['primary', 'main', 'header', 'menu-1'] as $candidate) {
+            if (!empty($locations[$candidate])) {
+                return $candidate;
+            }
+        }
+
+        $keys = array_keys($locations);
+        return (string) ($keys[0] ?? '');
+    }
+
+    public static function site_navigation_markup() {
+        $menu_location = self::preferred_menu_location();
+        $menu_markup = '';
+
+        if ($menu_location && has_nav_menu($menu_location)) {
+            $menu_markup = wp_nav_menu([
+                'theme_location' => $menu_location,
+                'container' => false,
+                'menu_class' => 'gpo-site-nav__menu',
+                'echo' => false,
+                'fallback_cb' => false,
+            ]);
+        }
+
+        $logo = function_exists('get_custom_logo') ? get_custom_logo() : '';
+        $brand = $logo ?: '<span class="gpo-site-nav__brand-text">' . esc_html(get_bloginfo('name')) . '</span>';
+        $catalog_url = get_post_type_archive_link('gpo_vehicle') ?: home_url('/');
+
+        ob_start();
+        echo '<div class="gpo-site-nav-shell">';
+        echo '<div class="gpo-site-nav">';
+        echo '<a class="gpo-site-nav__brand" href="' . esc_url(home_url('/')) . '">' . $brand . '</a>';
+        if ($menu_markup) {
+            echo '<nav class="gpo-site-nav__menu-wrap" aria-label="Navigazione sito">' . $menu_markup . '</nav>';
+        } else {
+            echo '<nav class="gpo-site-nav__menu-wrap" aria-label="Navigazione sito"><ul class="gpo-site-nav__menu"><li><a href="' . esc_url(home_url('/')) . '">Home</a></li><li><a href="' . esc_url($catalog_url) . '">Veicoli</a></li></ul></nav>';
+        }
+        echo '<a class="gpo-site-nav__cta" href="' . esc_url($catalog_url) . '">Torna al catalogo</a>';
+        echo '</div>';
+        echo '</div>';
+        return ob_get_clean();
+    }
+
+    public static function lead_form_markup($post_id, $args = []) {
+        $post_id = absint($post_id);
+        $post_title = $post_id ? get_the_title($post_id) : '';
+        $defaults = [
+            'title' => 'Richiedi informazioni',
+            'text' => 'Compila il modulo per ricevere disponibilità, proposta commerciale e ulteriori dettagli su questo veicolo.',
+            'button_label' => 'Invia richiesta',
+            'wrapper_class' => 'gpo-side-card',
+        ];
+        $args = wp_parse_args($args, $defaults);
+
+        $redirect_url = $post_id ? get_permalink($post_id) : self::current_request_url();
+        if (!$redirect_url) {
+            $redirect_url = self::current_request_url();
+        }
+
+        ob_start();
+        echo '<aside class="' . esc_attr($args['wrapper_class']) . '" id="richiesta-info">';
+        echo '<h3>' . esc_html($args['title']) . '</h3>';
+        echo '<p>' . esc_html($args['text']) . '</p>';
+        echo self::lead_notice_markup();
+        echo '<form class="gpo-lead-form" action="' . esc_url(admin_url('admin-post.php')) . '" method="post">';
+        echo '<input type="hidden" name="action" value="gpo_vehicle_lead" />';
+        echo '<input type="hidden" name="post_id" value="' . esc_attr((string) $post_id) . '" />';
+        echo '<input type="hidden" name="redirect_to" value="' . esc_url($redirect_url) . '" />';
+        wp_nonce_field('gpo_vehicle_lead_' . $post_id, 'gpo_vehicle_lead_nonce');
+        echo '<div class="gpo-lead-grid">';
+        echo '<label><span>Nome</span><input type="text" name="gpo_lead[first_name]" required autocomplete="given-name" /></label>';
+        echo '<label><span>Cognome</span><input type="text" name="gpo_lead[last_name]" required autocomplete="family-name" /></label>';
+        echo '<label><span>Email</span><input type="email" name="gpo_lead[email]" required autocomplete="email" /></label>';
+        echo '<label><span>Cellulare</span><input type="tel" name="gpo_lead[phone]" required autocomplete="tel" /></label>';
+        echo '</div>';
+        echo '<label class="gpo-lead-message"><span>Richiesta</span><textarea name="gpo_lead[message]" rows="5" required placeholder="Vorrei ricevere maggiori informazioni su ' . esc_attr($post_title ?: 'questo veicolo') . '."></textarea></label>';
+        echo '<label class="gpo-lead-honeypot" aria-hidden="true"><span>Lascia vuoto</span><input type="text" name="gpo_lead[company]" tabindex="-1" autocomplete="off" /></label>';
+        echo '<button class="gpo-button gpo-lead-submit" type="submit">' . esc_html($args['button_label']) . '</button>';
+        echo '</form>';
+        echo '</aside>';
+        return ob_get_clean();
+    }
+
+    public static function handle_vehicle_lead_submission() {
+        $post_id = absint($_POST['post_id'] ?? 0);
+        $redirect = !empty($_POST['redirect_to']) ? esc_url_raw(wp_unslash((string) $_POST['redirect_to'])) : '';
+        if (!$redirect) {
+            $redirect = $post_id ? get_permalink($post_id) : home_url('/');
+        }
+
+        $nonce = isset($_POST['gpo_vehicle_lead_nonce']) ? sanitize_text_field(wp_unslash($_POST['gpo_vehicle_lead_nonce'])) : '';
+        if (!$post_id || !wp_verify_nonce($nonce, 'gpo_vehicle_lead_' . $post_id)) {
+            wp_safe_redirect(add_query_arg([
+                'gpo_lead' => 'error',
+                'gpo_lead_message' => 'Sessione non valida. Ricarica la pagina e riprova.',
+            ], $redirect));
+            exit;
+        }
+
+        $lead = isset($_POST['gpo_lead']) && is_array($_POST['gpo_lead']) ? wp_unslash($_POST['gpo_lead']) : [];
+        $first_name = sanitize_text_field((string) ($lead['first_name'] ?? ''));
+        $last_name = sanitize_text_field((string) ($lead['last_name'] ?? ''));
+        $email = sanitize_email((string) ($lead['email'] ?? ''));
+        $phone = sanitize_text_field((string) ($lead['phone'] ?? ''));
+        $message = sanitize_textarea_field((string) ($lead['message'] ?? ''));
+        $honeypot = trim((string) ($lead['company'] ?? ''));
+
+        if ($honeypot !== '' || $first_name === '' || $last_name === '' || !$email || $phone === '' || $message === '') {
+            wp_safe_redirect(add_query_arg([
+                'gpo_lead' => 'error',
+                'gpo_lead_message' => 'Compila correttamente tutti i campi del modulo.',
+            ], $redirect));
+            exit;
+        }
+
+        $recipient = self::lead_email();
+        $vehicle_title = $post_id ? get_the_title($post_id) : 'Veicolo';
+        $vehicle_url = $post_id ? get_permalink($post_id) : '';
+        $subject = sprintf('Nuova richiesta veicolo: %s', wp_specialchars_decode((string) $vehicle_title, ENT_QUOTES));
+        $body = "Nuova richiesta dal sito web\n\n";
+        $body .= "Veicolo: " . $vehicle_title . "\n";
+        if ($vehicle_url) {
+            $body .= "URL veicolo: " . $vehicle_url . "\n";
+        }
+        $body .= "Nome: " . trim($first_name . ' ' . $last_name) . "\n";
+        $body .= "Email: " . $email . "\n";
+        $body .= "Cellulare: " . $phone . "\n\n";
+        $body .= "Richiesta:\n" . $message . "\n";
+
+        $headers = ['Content-Type: text/plain; charset=UTF-8', 'Reply-To: ' . trim($first_name . ' ' . $last_name) . ' <' . $email . '>'];
+        $sent = wp_mail($recipient, $subject, $body, $headers);
+
+        wp_safe_redirect(add_query_arg([
+            'gpo_lead' => $sent ? 'success' : 'error',
+            'gpo_lead_message' => $sent ? self::lead_success_message() : 'Invio email non riuscito. Controlla la configurazione del destinatario nel plugin.',
+        ], $redirect));
+        exit;
     }
 
     public static function vehicle_grid_shortcode($atts) {
@@ -196,7 +388,7 @@ class GPO_Frontend {
         ob_start();
         echo '<div class="gpo-carousel-shell" style="' . esc_attr(self::wrapper_style($atts)) . '">';
         echo '<div class="gpo-section-head"><div><span class="gpo-kicker">Vetrina</span><h2>Veicoli selezionati</h2></div><div class="gpo-carousel-nav"><button class="gpo-carousel-prev" type="button" aria-label="Precedente">‹</button><button class="gpo-carousel-next" type="button" aria-label="Successivo">›</button></div></div>';
-        echo '<div class="gpo-carousel" data-gpo-carousel="1" data-autoplay="' . esc_attr($atts['autoplay']) . '" data-interval="' . absint($atts['interval']) . '"><div class="gpo-carousel-track">';
+        echo '<div class="gpo-carousel" data-gpo-carousel="1" data-autoplay="' . esc_attr($atts['autoplay']) . '" data-interval="' . absint($atts['interval']) . '" data-loop="yes"><div class="gpo-carousel-track">';
         if (!empty($ids)) {
             foreach ($ids as $post_id) {
                 echo '<div class="gpo-carousel-slide">';
@@ -1227,6 +1419,19 @@ class GPO_Frontend {
         return self::brand_logo_data_uri_local($brand);
     }
 
+    protected static function brand_logo_has_local_asset($brand) {
+        $entry = self::brand_entry_local($brand);
+        $key = $entry['key'];
+
+        foreach (['svg', 'png', 'webp', 'jpg', 'jpeg'] as $extension) {
+            if (file_exists(GPO_PLUGIN_DIR . 'public/assets/images/brands/' . $key . '.' . $extension)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     protected static function brand_meta_query($brand_key) {
         $entry = self::brand_entry_local($brand_key);
         $values = array_values(array_unique(array_filter(array_merge(
@@ -1279,6 +1484,7 @@ class GPO_Frontend {
                     'name' => $entry['name'],
                     'count' => 0,
                     'logo' => self::brand_logo_url_local($entry['name']),
+                    'has_local_logo' => self::brand_logo_has_local_asset($entry['name']),
                 ];
             }
 
@@ -1419,8 +1625,8 @@ class GPO_Frontend {
 
         ob_start();
         echo '<div class="gpo-brand-carousel-shell" style="' . esc_attr($style) . '">';
-        echo '<div class="gpo-brand-carousel" data-autoplay="' . esc_attr($atts['autoplay']) . '" data-interval="' . absint($atts['interval']) . '">';
-        echo '<button type="button" class="gpo-brand-nav prev" aria-label="Marchio precedente"><span aria-hidden="true">&#10094;</span></button>';
+        echo '<div class="gpo-brand-carousel" data-autoplay="' . esc_attr($atts['autoplay']) . '" data-interval="' . absint($atts['interval']) . '" data-speed="' . absint($atts['speed']) . '" data-loop="yes">';
+        echo '<button type="button" class="gpo-brand-nav prev" aria-label="Marchio precedente">' . self::icon_markup('chevron-left') . '</button>';
         echo '<div class="gpo-brand-viewport"><div class="gpo-brand-track">';
         foreach ($brands as $brand) {
             $url = add_query_arg([
@@ -1429,13 +1635,13 @@ class GPO_Frontend {
             ], $target_url);
             echo '<a class="gpo-brand-item" href="' . esc_url($url) . '" aria-label="' . esc_attr($brand['name'] . ', ' . $brand['count'] . ' veicoli') . '">';
             echo '<span class="gpo-brand-item__visual"><img src="' . esc_url($brand['logo']) . '" alt="' . esc_attr($brand['name']) . '" loading="lazy" /></span>';
-            echo '<span class="gpo-brand-item__meta">';
-            echo '<strong class="gpo-brand-name">' . esc_html($brand['name']) . '</strong>';
-            echo '<span class="gpo-brand-count">' . esc_html(number_format_i18n($brand['count'])) . ' ' . esc_html($brand['count'] === 1 ? 'veicolo' : 'veicoli') . '</span>';
-            echo '</span></a>';
+            if (empty($brand['has_local_logo'])) {
+                echo '<span class="gpo-brand-item__meta"><strong class="gpo-brand-name">' . esc_html($brand['name']) . '</strong></span>';
+            }
+            echo '</a>';
         }
         echo '</div></div>';
-        echo '<button type="button" class="gpo-brand-nav next" aria-label="Marchio successivo"><span aria-hidden="true">&#10095;</span></button>';
+        echo '<button type="button" class="gpo-brand-nav next" aria-label="Marchio successivo">' . self::icon_markup('chevron-right') . '</button>';
         echo '</div></div>';
         return ob_get_clean();
     }
@@ -1466,9 +1672,9 @@ class GPO_Frontend {
         ob_start();
         echo '<div class="gpo-vehicle-search-shell" style="' . esc_attr($style) . '">';
         echo '<form class="gpo-vehicle-search" data-target-url="' . esc_url($target_url) . '" data-catalog-ref="' . esc_attr($atts['catalog_ref']) . '" action="' . esc_url($target_url) . '" method="get" autocomplete="off">';
-        echo '<span class="gpo-search-icon" aria-hidden="true"><span class="gpo-search-icon-badge">' . self::icon_markup('search') . '</span></span>';
+        echo '<span class="gpo-search-icon" aria-hidden="true">' . self::icon_markup('search') . '</span>';
         echo '<input type="search" name="gpo_search" class="gpo-search-input" placeholder="' . esc_attr($atts['placeholder']) . '" />';
-        echo '<button type="button" class="gpo-search-clear" hidden aria-label="Cancella ricerca"><span class="gpo-search-clear-badge">' . self::icon_markup('clear') . '</span></button>';
+        echo '<button type="button" class="gpo-search-clear" hidden aria-label="Cancella ricerca">' . self::icon_markup('clear') . '</button>';
         echo '<input type="hidden" name="gpo_catalog_ref" value="' . esc_attr($atts['catalog_ref']) . '" />';
         echo '<div class="gpo-search-results" hidden aria-live="polite"></div>';
         echo '</form></div>';

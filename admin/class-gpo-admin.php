@@ -62,6 +62,8 @@ class GPO_Admin {
                 'section_gap' => '24',
                 'filter_columns' => '5',
                 'fallback_vehicle_image' => '',
+                'lead_email' => get_option('admin_email'),
+                'lead_success_message' => 'Richiesta inviata correttamente. Ti ricontatteremo al più presto.',
                 'filter_fields' => [
                     'search' => '1',
                     'brand' => '1',
@@ -114,7 +116,6 @@ class GPO_Admin {
         add_submenu_page('gestpark-online', 'Vetrina', 'Vetrina', 'manage_options', 'gpo-showcase', [__CLASS__, 'showcase_page']);
         add_submenu_page('gestpark-online', 'Aspetto', 'Aspetto', 'manage_options', 'gpo-style', [__CLASS__, 'style_page']);
         add_submenu_page('gestpark-online', 'Aggiornamenti GitHub', 'Aggiornamenti', 'manage_options', 'gpo-updates', [__CLASS__, 'updates_page']);
-        add_submenu_page('gestpark-online', 'Template veicolo', 'Template veicolo', 'edit_posts', 'edit.php?post_type=gpo_template');
         add_submenu_page('gestpark-online', 'Log e diagnostica', 'Log e diagnostica', 'manage_options', 'gpo-logs', [__CLASS__, 'logs_page']);
         add_submenu_page('gestpark-online', 'Guida rapida', 'Guida rapida', 'manage_options', 'gpo-guide', [__CLASS__, 'guide_page']);
     }
@@ -215,6 +216,13 @@ class GPO_Admin {
             }
             if (isset($input['style']['fallback_vehicle_image'])) {
                 $output['style']['fallback_vehicle_image'] = esc_url_raw($input['style']['fallback_vehicle_image']);
+            }
+            if (isset($input['style']['lead_email'])) {
+                $email = sanitize_email((string) $input['style']['lead_email']);
+                $output['style']['lead_email'] = $email ?: get_option('admin_email');
+            }
+            if (isset($input['style']['lead_success_message'])) {
+                $output['style']['lead_success_message'] = sanitize_text_field((string) $input['style']['lead_success_message']);
             }
 
             $output['style']['card_elements'] = [];
@@ -710,6 +718,8 @@ class GPO_Admin {
         echo '</td></tr>';
         self::input_row('Gap card catalogo', 'gpo_settings[style][card_gap]', $settings['style']['card_gap'], 'Valore in px, senza unità. Esempio: 24');
         self::input_row('Padding interno card', 'gpo_settings[style][card_padding]', $settings['style']['card_padding'], 'Valore in px, senza unità. Esempio: 22');
+        self::input_row('Email richieste veicolo', 'gpo_settings[style][lead_email]', $settings['style']['lead_email'] ?? get_option('admin_email'), 'Le richieste inviate dalla scheda veicolo saranno recapitate a questo indirizzo.');
+        self::input_row('Messaggio conferma invio', 'gpo_settings[style][lead_success_message]', $settings['style']['lead_success_message'] ?? 'Richiesta inviata correttamente. Ti ricontatteremo al più presto.', 'Messaggio mostrato al cliente dopo l invio del modulo.');
         self::input_row('Larghezza massima contenuto', 'gpo_settings[style][content_max_width]', $settings['style']['content_max_width'], 'Valore in px. Controlla il contenitore generale in modo responsive.');
         self::input_row('Margine verticale sezioni', 'gpo_settings[style][outer_margin_y]', $settings['style']['outer_margin_y'], 'Valore in px. Spazio sopra e sotto ai moduli.');
         self::input_row('Padding laterale contenitore', 'gpo_settings[style][outer_padding_x]', $settings['style']['outer_padding_x'], 'Valore in px. Spazio laterale adattabile a ogni risoluzione.');

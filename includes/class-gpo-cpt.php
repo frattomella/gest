@@ -41,7 +41,7 @@ class GPO_CPT {
             ],
             'public' => false,
             'show_ui' => true,
-            'show_in_menu' => false,
+            'show_in_menu' => true,
             'show_in_rest' => true,
             'supports' => ['title', 'editor', 'revisions'],
             'map_meta_cap' => true,

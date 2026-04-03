@@ -166,11 +166,13 @@ class GPO_Blocks {
                 $card_layout = isset($attributes['cardLayout']) ? sanitize_key($attributes['cardLayout']) : 'default';
                 $outer_padding_x = isset($attributes['outerPaddingX']) ? absint($attributes['outerPaddingX']) : 18;
                 $section_gap = isset($attributes['sectionGap']) ? absint($attributes['sectionGap']) : 24;
-                return self::render_dynamic_block('gpo-block-featured-carousel', $attributes, do_shortcode('[gestpark_featured_carousel show="' . esc_attr($show) . '" card_layout="' . esc_attr($card_layout) . '" outer_padding_x="' . $outer_padding_x . '" section_gap="' . $section_gap . '" primary_color="' . esc_attr($attributes['primaryColor'] ?? '') . '" accent_color="' . esc_attr($attributes['accentColor'] ?? '') . '" bg_color="' . esc_attr($attributes['bgColor'] ?? '') . '" text_color="' . esc_attr($attributes['textColor'] ?? '') . '" button_color="' . esc_attr($attributes['buttonColor'] ?? '') . '" button_text_color="' . esc_attr($attributes['buttonTextColor'] ?? '') . '" primary_button_label="' . esc_attr($attributes['primaryButtonLabel'] ?? 'Scheda veicolo') . '" secondary_button_label="' . esc_attr($attributes['secondaryButtonLabel'] ?? 'Richiedi info') . '"]'));
+                return self::render_dynamic_block('gpo-block-featured-carousel', $attributes, do_shortcode('[gestpark_featured_carousel show="' . esc_attr($show) . '" card_layout="' . esc_attr($card_layout) . '" autoplay="' . (!empty($attributes['autoplay']) ? 'yes' : 'no') . '" interval="' . absint($attributes['interval'] ?? 5000) . '" outer_padding_x="' . $outer_padding_x . '" section_gap="' . $section_gap . '" primary_color="' . esc_attr($attributes['primaryColor'] ?? '') . '" accent_color="' . esc_attr($attributes['accentColor'] ?? '') . '" bg_color="' . esc_attr($attributes['bgColor'] ?? '') . '" text_color="' . esc_attr($attributes['textColor'] ?? '') . '" button_color="' . esc_attr($attributes['buttonColor'] ?? '') . '" button_text_color="' . esc_attr($attributes['buttonTextColor'] ?? '') . '" primary_button_label="' . esc_attr($attributes['primaryButtonLabel'] ?? 'Scheda veicolo') . '" secondary_button_label="' . esc_attr($attributes['secondaryButtonLabel'] ?? 'Richiedi info') . '"]'));
             },
             'attributes' => [
                 'show' => ['type' => 'string', 'default' => ''],
                 'cardLayout' => ['type' => 'string', 'default' => 'default'],
+                'autoplay' => ['type' => 'boolean', 'default' => true],
+                'interval' => ['type' => 'number', 'default' => 5000],
                 'primaryColor' => ['type' => 'string', 'default' => ''],
                 'accentColor' => ['type' => 'string', 'default' => ''],
                 'bgColor' => ['type' => 'string', 'default' => ''],
@@ -395,8 +397,7 @@ class GPO_Blocks {
             'attributes' => [
                 'title' => ['type' => 'string', 'default' => 'Richiedi informazioni'],
                 'text' => ['type' => 'string', 'default' => 'Contatta il concessionario per disponibilita, prova su strada e proposta commerciale personalizzata su questo veicolo.'],
-                'buttonLabel' => ['type' => 'string', 'default' => 'Contatta il concessionario'],
-                'buttonUrl' => ['type' => 'string', 'default' => 'mailto:'],
+                'buttonLabel' => ['type' => 'string', 'default' => 'Invia richiesta'],
                 'primaryColor' => ['type' => 'string', 'default' => ''],
                 'accentColor' => ['type' => 'string', 'default' => ''],
                 'bgColor' => ['type' => 'string', 'default' => ''],
@@ -616,11 +617,18 @@ class GPO_Blocks {
     }
 
     public static function render_vehicle_contact($attributes) {
+        $post_id = self::current_vehicle_id();
         $title = !empty($attributes['title']) ? $attributes['title'] : 'Richiedi informazioni';
         $text = !empty($attributes['text']) ? $attributes['text'] : 'Contatta il concessionario per disponibilita, prova su strada e proposta commerciale personalizzata su questo veicolo.';
-        $button_label = !empty($attributes['buttonLabel']) ? $attributes['buttonLabel'] : 'Contatta il concessionario';
-        $button_url = !empty($attributes['buttonUrl']) ? esc_url($attributes['buttonUrl']) : 'mailto:';
-        return '<aside ' . self::wrapper_attrs('gpo-single-block gpo-side-card', $attributes) . ' id="richiesta-info"><h3>' . esc_html($title) . '</h3><p>' . esc_html($text) . '</p><a class="gpo-button" href="' . $button_url . '">' . esc_html($button_label) . '</a></aside>';
+        $button_label = !empty($attributes['buttonLabel']) ? $attributes['buttonLabel'] : 'Invia richiesta';
+        $content = GPO_Frontend::lead_form_markup($post_id, [
+            'title' => $title,
+            'text' => $text,
+            'button_label' => $button_label,
+            'wrapper_class' => 'gpo-side-card',
+        ]);
+
+        return '<div ' . self::wrapper_attrs('gpo-single-block', $attributes) . '>' . $content . '</div>';
     }
 
     public static function render_vehicle_carousel($attributes) {

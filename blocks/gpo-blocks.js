@@ -258,8 +258,17 @@
     title: 'GestPark Carosello vetrina',
     icon: 'images-alt2',
     category: 'widgets',
-    attributes: { show:{type:'string',default:'image,badge,brand,title,price,chips,primary_button,secondary_button'}, cardLayout:{type:'string',default:'default'}, outerPaddingX:{type:'number',default:18}, sectionGap:{type:'number',default:24}, primaryColor:{type:'string',default:''}, accentColor:{type:'string',default:''}, bgColor:{type:'string',default:''}, textColor:{type:'string',default:''}, buttonColor:{type:'string',default:''}, buttonTextColor:{type:'string',default:''}, primaryButtonLabel:{type:'string',default:'Scheda veicolo'}, secondaryButtonLabel:{type:'string',default:'Richiedi info'} },
-    edit: function (props) { return previewEdit(props, 'GestPark Carosello vetrina', 'Anteprima reale del carosello dei veicoli in vetrina.', catalogInspector(props, false)); },
+    attributes: { show:{type:'string',default:'image,badge,brand,title,price,chips,primary_button,secondary_button'}, cardLayout:{type:'string',default:'default'}, autoplay:{type:'boolean',default:true}, interval:{type:'number',default:5000}, outerPaddingX:{type:'number',default:18}, sectionGap:{type:'number',default:24}, primaryColor:{type:'string',default:''}, accentColor:{type:'string',default:''}, bgColor:{type:'string',default:''}, textColor:{type:'string',default:''}, buttonColor:{type:'string',default:''}, buttonTextColor:{type:'string',default:''}, primaryButtonLabel:{type:'string',default:'Scheda veicolo'}, secondaryButtonLabel:{type:'string',default:'Richiedi info'} },
+    edit: function (props) {
+      var controls = catalogInspector(props, false);
+      controls.unshift(
+        el(PanelBody, { title:'Impostazioni carosello', initialOpen:true }, [
+          el(ToggleControl, { label:'Scorrimento automatico', checked:props.attributes.autoplay, onChange:function(v){ props.setAttributes({ autoplay:v }); } }),
+          el(RangeControl, { label:'Intervallo autoplay', value:props.attributes.interval, min:1500, max:10000, step:100, onChange:function(v){ props.setAttributes({ interval:v || 1500 }); } })
+        ])
+      );
+      return previewEdit(props, 'GestPark Carosello vetrina', 'Anteprima reale del carosello dei veicoli in vetrina.', controls);
+    },
     save: function () { return null; }
   });
 
@@ -341,13 +350,12 @@
     title: 'GestPark Box contatto',
     icon: 'email-alt',
     category: 'widgets',
-    attributes: { title:{type:'string',default:'Richiedi informazioni'}, text:{type:'string',default:'Aggiungi qui il tuo testo commerciale, il numero di telefono o uno shortcode del form.'}, buttonLabel:{type:'string',default:'Contatta il concessionario'}, buttonUrl:{type:'string',default:'mailto:'}, primaryColor:{type:'string',default:''}, accentColor:{type:'string',default:''}, bgColor:{type:'string',default:''}, textColor:{type:'string',default:''}, buttonColor:{type:'string',default:''}, buttonTextColor:{type:'string',default:''} },
+    attributes: { title:{type:'string',default:'Richiedi informazioni'}, text:{type:'string',default:'Compila il modulo per ricevere disponibilita, prova su strada e proposta commerciale su questo veicolo.'}, buttonLabel:{type:'string',default:'Invia richiesta'}, primaryColor:{type:'string',default:''}, accentColor:{type:'string',default:''}, bgColor:{type:'string',default:''}, textColor:{type:'string',default:''}, buttonColor:{type:'string',default:''}, buttonTextColor:{type:'string',default:''} },
     edit: function (props) {
-      return previewEdit(props, 'GestPark Box contatto', 'Anteprima reale della call to action della scheda veicolo.', panel('Impostazioni box contatto', [
+      return previewEdit(props, 'GestPark Box contatto', 'Anteprima reale del modulo richieste collegato all\'email impostata nel plugin.', panel('Impostazioni box contatto', [
         el(TextControl, { label:'Titolo', value:props.attributes.title, onChange:function(v){props.setAttributes({title:v});} }),
         el(TextControl, { label:'Testo', value:props.attributes.text, onChange:function(v){props.setAttributes({text:v});} }),
-        el(TextControl, { label:'Etichetta pulsante', value:props.attributes.buttonLabel, onChange:function(v){props.setAttributes({buttonLabel:v});} }),
-        el(TextControl, { label:'URL pulsante', value:props.attributes.buttonUrl, onChange:function(v){props.setAttributes({buttonUrl:v});} })
+        el(TextControl, { label:'Etichetta pulsante', value:props.attributes.buttonLabel, onChange:function(v){props.setAttributes({buttonLabel:v});} })
       ].concat(styleControls(props))));
     },
     save: function(){ return null; }

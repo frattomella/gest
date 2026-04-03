@@ -88,41 +88,101 @@
     var next = qs('.gpo-brand-nav.next', shell);
     var carousel = qs('.gpo-brand-carousel', shell);
     var track = qs('.gpo-brand-track', shell);
-    var items = qsa('.gpo-brand-item', shell);
+    var items = qsa('.gpo-brand-item', track);
     if (!carousel) return;
     var interval = parseInt(carousel.getAttribute('data-interval') || '4500', 10);
     var autoplay = carousel.getAttribute('data-autoplay') === 'yes';
+    var speed = parseInt(carousel.getAttribute('data-speed') || '450', 10);
+    var loop = carousel.getAttribute('data-loop') === 'yes';
     var autoTimer = null;
-    var scrollTarget = track || viewport;
-    var frame = viewport || scrollTarget;
-    if (!scrollTarget || !frame || items.length <= 1) return;
-    function step(){
-      if (items.length) {
-        return Math.max(items[0].offsetWidth + 16, 220);
-      }
-      return Math.max(220, Math.round(frame.clientWidth * 0.7));
+    var setWidth = 0;
+    if (!track || !viewport || items.length <= 1) return;
+
+    function cloneItem(item) {
+      var clone = item.cloneNode(true);
+      clone.classList.add('is-clone');
+      clone.setAttribute('aria-hidden', 'true');
+      clone.tabIndex = -1;
+      return clone;
     }
+
+    function buildLoopTrack() {
+      var before = document.createDocumentFragment();
+      var after = document.createDocumentFragment();
+
+      if (!loop || items.length <= 1 || track.dataset.loopReady === '1') {
+        return;
+      }
+
+      items.forEach(function(item){
+        before.appendChild(cloneItem(item));
+        after.appendChild(cloneItem(item));
+      });
+
+      track.insertBefore(before, track.firstChild);
+      track.appendChild(after);
+      track.dataset.loopReady = '1';
+    }
+
+    function gapSize() {
+      var styles = window.getComputedStyle(track);
+      return parseFloat(styles.columnGap || styles.gap || '0');
+    }
+
+    function step() {
+      var visibleItems = qsa('.gpo-brand-item', track);
+      var sample = visibleItems[Math.floor(visibleItems.length / 2)] || visibleItems[0];
+      if (!sample) {
+        return Math.max(220, Math.round(viewport.clientWidth * 0.8));
+      }
+
+      return sample.getBoundingClientRect().width + gapSize();
+    }
+
+    function computeSetWidth() {
+      setWidth = step() * items.length;
+      if (loop && setWidth > 0 && !viewport.dataset.centered) {
+        viewport.scrollLeft = setWidth;
+        viewport.dataset.centered = '1';
+      }
+    }
+
+    function normalizeLoopPosition() {
+      if (!loop || setWidth <= 0) {
+        return;
+      }
+
+      if (viewport.scrollLeft <= setWidth * 0.25) {
+        viewport.scrollLeft += setWidth;
+      } else if (viewport.scrollLeft >= setWidth * 1.75) {
+        viewport.scrollLeft -= setWidth;
+      }
+    }
+
     function go(dir){
-      var nextLeft = scrollTarget.scrollLeft + (dir * step());
-      var maxScroll = Math.max(0, scrollTarget.scrollWidth - scrollTarget.clientWidth);
-      if (dir > 0 && scrollTarget.scrollLeft >= maxScroll - 8) {
-        scrollTarget.scrollTo({ left: 0, behavior: 'smooth' });
-        return;
-      }
-      if (dir < 0 && scrollTarget.scrollLeft <= 8) {
-        scrollTarget.scrollTo({ left: maxScroll, behavior: 'smooth' });
-        return;
-      }
-      scrollTarget.scrollTo({ left: Math.max(0, Math.min(nextLeft, maxScroll)), behavior: 'smooth' });
+      viewport.scrollBy({ left: dir * step(), behavior: 'smooth' });
+      window.setTimeout(normalizeLoopPosition, Math.max(220, speed + 80));
     }
-    if (prev) prev.addEventListener('click', function(){ go(-1); });
-    if (next) next.addEventListener('click', function(){ go(1); });
-    function stop(){ if (autoTimer) clearInterval(autoTimer); }
+
+    if (prev) prev.addEventListener('click', function(){ go(-1); stop(); start(); });
+    if (next) next.addEventListener('click', function(){ go(1); stop(); start(); });
+
+    function stop(){ if (autoTimer) clearInterval(autoTimer); autoTimer = null; }
     function start(){ stop(); if (autoplay) autoTimer = setInterval(function(){ go(1); }, interval); }
+
     shell.addEventListener('mouseenter', stop);
     shell.addEventListener('mouseleave', start);
     shell.addEventListener('focusin', stop);
     shell.addEventListener('focusout', start);
+
+    viewport.addEventListener('scroll', normalizeLoopPosition, { passive: true });
+    window.addEventListener('resize', function(){
+      viewport.dataset.centered = '';
+      computeSetWidth();
+    });
+
+    buildLoopTrack();
+    computeSetWidth();
     start();
   }
 

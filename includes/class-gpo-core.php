@@ -62,10 +62,53 @@ class GPO_Core {
                 $settings['style']['single_template_id'] = absint($existing[0]);
                 update_option('gpo_settings', $settings);
             }
+            self::maybe_refresh_default_vehicle_template(absint($existing[0]));
             return;
         }
 
-        $content = '<!-- wp:group {"align":"wide","layout":{"type":"constrained"}} --><div class="wp-block-group alignwide">'
+        $content = self::default_vehicle_template_content();
+
+        $template_id = wp_insert_post([
+            'post_type' => 'gpo_template',
+            'post_status' => 'publish',
+            'post_title' => 'Scheda veicolo predefinita',
+            'post_content' => $content,
+        ]);
+
+        if ($template_id && !is_wp_error($template_id)) {
+            $settings = wp_parse_args(get_option('gpo_settings', []), GPO_Admin::default_settings());
+            $settings['style']['single_template_id'] = absint($template_id);
+            update_option('gpo_settings', $settings);
+        }
+    }
+
+    protected static function default_vehicle_template_content() {
+        return '<!-- wp:group {"align":"wide","layout":{"type":"constrained"}} --><div class="wp-block-group alignwide">'
+            . '<!-- wp:columns {"align":"wide"} --><div class="wp-block-columns alignwide">'
+            . '<!-- wp:column {"width":"63%"} --><div class="wp-block-column" style="flex-basis:63%">'
+            . '<!-- wp:gestpark/vehicle-gallery /-->'
+            . '</div><!-- /wp:column -->'
+            . '<!-- wp:column {"width":"37%"} --><div class="wp-block-column" style="flex-basis:37%">'
+            . '<!-- wp:gestpark/vehicle-hero {"showImage":false,"showMeta":false,"showButton":false} /-->'
+            . '<!-- wp:gestpark/vehicle-contact /-->'
+            . '</div><!-- /wp:column -->'
+            . '</div><!-- /wp:columns -->'
+            . '<!-- wp:columns {"align":"wide"} --><div class="wp-block-columns alignwide">'
+            . '<!-- wp:column {"width":"66.66%"} --><div class="wp-block-column" style="flex-basis:66.66%">'
+            . '<!-- wp:gestpark/vehicle-description /-->'
+            . '<!-- wp:gestpark/vehicle-accessories /-->'
+            . '<!-- wp:gestpark/vehicle-notes /-->'
+            . '</div><!-- /wp:column -->'
+            . '<!-- wp:column {"width":"33.33%"} --><div class="wp-block-column" style="flex-basis:33.33%">'
+            . '<!-- wp:gestpark/vehicle-specs /-->'
+            . '</div><!-- /wp:column -->'
+            . '</div><!-- /wp:columns -->'
+            . '<!-- wp:gestpark/vehicle-carousel {"source":"related_brand","limit":6} /-->'
+            . '</div><!-- /wp:group -->';
+    }
+
+    protected static function legacy_default_vehicle_template_content() {
+        return '<!-- wp:group {"align":"wide","layout":{"type":"constrained"}} --><div class="wp-block-group alignwide">'
             . '<!-- wp:gestpark/vehicle-hero /-->'
             . '<!-- wp:columns {"align":"wide"} --><div class="wp-block-columns alignwide">'
             . '<!-- wp:column {"width":"66.66%"} --><div class="wp-block-column" style="flex-basis:66.66%">'
@@ -80,19 +123,31 @@ class GPO_Core {
             . '</div><!-- /wp:columns -->'
             . '<!-- wp:gestpark/vehicle-carousel {"source":"related_brand","limit":6} /-->'
             . '</div><!-- /wp:group -->';
+    }
 
-        $template_id = wp_insert_post([
-            'post_type' => 'gpo_template',
-            'post_status' => 'publish',
-            'post_title' => 'Scheda veicolo predefinita',
-            'post_content' => $content,
-        ]);
-
-        if ($template_id && !is_wp_error($template_id)) {
-            $settings = wp_parse_args(get_option('gpo_settings', []), GPO_Admin::default_settings());
-            $settings['style']['single_template_id'] = absint($template_id);
-            update_option('gpo_settings', $settings);
+    protected static function maybe_refresh_default_vehicle_template($template_id) {
+        if (!$template_id || get_option('gpo_vehicle_template_refresh_20260403')) {
+            return;
         }
+
+        $template = get_post($template_id);
+        if (!$template || $template->post_type !== 'gpo_template') {
+            return;
+        }
+
+        $current = trim((string) $template->post_content);
+        $legacy = trim(self::legacy_default_vehicle_template_content());
+
+        if ($current !== $legacy) {
+            update_option('gpo_vehicle_template_refresh_20260403', 'skipped', false);
+            return;
+        }
+
+        wp_update_post([
+            'ID' => $template_id,
+            'post_content' => self::default_vehicle_template_content(),
+        ]);
+        update_option('gpo_vehicle_template_refresh_20260403', current_time('mysql'), false);
     }
 
     public static function deactivate() {

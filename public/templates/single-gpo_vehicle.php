@@ -7,6 +7,9 @@ get_header();
 $post_id = get_the_ID();
 $settings = GPO_Frontend::display_settings();
 $template_id = GPO_Frontend::current_single_template_id();
+if (apply_filters('gpo_render_single_vehicle_nav', true)) {
+    echo GPO_Frontend::site_navigation_markup();
+}
 
 if ($template_id && get_post($template_id) && get_post_field('post_content', $template_id)) {
     GPO_Frontend::set_template_vehicle_context($post_id);
@@ -118,11 +121,14 @@ $show = function ($key) use ($visible) {
 
         <aside class="gpo-side-stack">
             <?php if ($show('contact_box')) : ?>
-            <div class="gpo-side-card" id="richiesta-info">
-                <h3>Richiedi informazioni</h3>
-                <p>Contatta il concessionario per disponibilita, prova su strada, valutazione permuta e proposta commerciale personalizzata su questo veicolo.</p>
-                <a class="gpo-button" href="mailto:">Contatta il concessionario</a>
-            </div>
+            <?php
+            echo GPO_Frontend::lead_form_markup($post_id, [
+                'title' => 'Richiedi informazioni',
+                'text' => 'Compila il modulo per ricevere disponibilita, valutazione permuta e proposta commerciale personalizzata su questo veicolo.',
+                'button_label' => 'Invia richiesta',
+                'wrapper_class' => 'gpo-side-card',
+            ]);
+            ?>
             <?php endif; ?>
             <?php if ($show('strengths')) : ?>
             <div class="gpo-side-card">
