@@ -1,32 +1,42 @@
-document.addEventListener('DOMContentLoaded', function () {
+(function () {
   function initCarousel(carousel) {
     if (!carousel || carousel.dataset.bound === '1') {
       return;
     }
-
-    carousel.dataset.bound = '1';
 
     var shell = carousel.closest('.gpo-carousel-shell') || carousel.parentElement;
     var track = carousel.querySelector('.gpo-carousel-track');
     var prev = (shell && shell.querySelector('.gpo-carousel-prev')) || carousel.querySelector('.gpo-carousel-prev');
     var next = (shell && shell.querySelector('.gpo-carousel-next')) || carousel.querySelector('.gpo-carousel-next');
     var dotsWrap = carousel.querySelector('.gpo-carousel-dots');
-    var slides = Array.prototype.slice.call(carousel.querySelectorAll('.gpo-carousel-slide'));
     var autoplay = carousel.dataset.autoplay === 'yes';
     var interval = parseInt(carousel.dataset.interval || '5000', 10);
-    var loop = carousel.dataset.loop === 'yes' && slides.length > 1;
     var currentIndex = 0;
     var timer = null;
     var startX = 0;
     var pointerId = null;
     var scrollFrame = null;
 
-    if (!track || !slides.length) {
+    if (!track) {
       return;
     }
 
+    carousel.dataset.bound = '1';
+
+    function getSlides() {
+      return Array.prototype.slice.call(track.querySelectorAll('.gpo-carousel-slide'));
+    }
+
+    function slideCount() {
+      return getSlides().length;
+    }
+
+    function canLoop() {
+      return carousel.dataset.loop === 'yes' && slideCount() > 1;
+    }
+
     function slidePositions() {
-      return slides.map(function (slide) {
+      return getSlides().map(function (slide) {
         return slide.offsetLeft;
       });
     }
@@ -53,9 +63,24 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
       }
 
-      dotsWrap.querySelectorAll('.gpo-carousel-dot').forEach(function (dot, index) {
+      Array.prototype.slice.call(dotsWrap.querySelectorAll('.gpo-carousel-dot')).forEach(function (dot, index) {
         dot.classList.toggle('is-active', index === currentIndex);
+        dot.setAttribute('aria-current', index === currentIndex ? 'true' : 'false');
       });
+    }
+
+    function updateControls() {
+      var multiple = slideCount() > 1;
+
+      if (prev) {
+        prev.disabled = !multiple;
+      }
+      if (next) {
+        next.disabled = !multiple;
+      }
+      if (dotsWrap) {
+        dotsWrap.hidden = !multiple;
+      }
     }
 
     function syncIndex() {
@@ -64,13 +89,14 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function goTo(index, behavior) {
-      var positions = slidePositions();
+      var slides = getSlides();
+      var target;
 
-      if (!positions.length) {
+      if (!slides.length) {
         return;
       }
 
-      if (loop) {
+      if (canLoop()) {
         if (index < 0) {
           index = slides.length - 1;
         } else if (index >= slides.length) {
@@ -81,10 +107,21 @@ document.addEventListener('DOMContentLoaded', function () {
       }
 
       currentIndex = index;
-      track.scrollTo({
-        left: positions[currentIndex] || 0,
-        behavior: behavior || 'smooth'
-      });
+      target = slides[currentIndex];
+
+      if (target && typeof target.scrollIntoView === 'function') {
+        target.scrollIntoView({
+          behavior: behavior || 'smooth',
+          block: 'nearest',
+          inline: 'start'
+        });
+      } else {
+        track.scrollTo({
+          left: slidePositions()[currentIndex] || 0,
+          behavior: behavior || 'smooth'
+        });
+      }
+
       updateDots();
     }
 
@@ -97,16 +134,20 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function buildDots() {
-      if (!dotsWrap || slides.length <= 1) {
+      var slides = getSlides();
+
+      if (!dotsWrap) {
         return;
       }
 
       dotsWrap.innerHTML = '';
+
       slides.forEach(function (_, index) {
         var dot = document.createElement('button');
         dot.type = 'button';
         dot.className = 'gpo-carousel-dot' + (index === currentIndex ? ' is-active' : '');
         dot.setAttribute('aria-label', 'Vai alla slide ' + (index + 1));
+        dot.setAttribute('aria-current', index === currentIndex ? 'true' : 'false');
         dot.addEventListener('click', function () {
           goTo(index, 'smooth');
           restart();
@@ -124,7 +165,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function start() {
       stop();
-      if (!autoplay || slides.length <= 1) {
+
+      if (!autoplay || slideCount() <= 1) {
         return;
       }
 
@@ -134,15 +176,6 @@ document.addEventListener('DOMContentLoaded', function () {
     function restart() {
       stop();
       start();
-    }
-
-    if (slides.length <= 1) {
-      if (prev) {
-        prev.disabled = true;
-      }
-      if (next) {
-        next.disabled = true;
-      }
     }
 
     if (prev) {
@@ -188,6 +221,11 @@ document.addEventListener('DOMContentLoaded', function () {
       restart();
     });
 
+    track.addEventListener('pointercancel', function () {
+      pointerId = null;
+      restart();
+    });
+
     track.addEventListener('scroll', function () {
       if (scrollFrame) {
         window.cancelAnimationFrame(scrollFrame);
@@ -206,14 +244,18 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     buildDots();
+    updateControls();
     goTo(0, 'auto');
     start();
   }
 
-  document.querySelectorAll('[data-gpo-carousel="1"]').forEach(initCarousel);
+  function initSort() {
+    var sort = document.getElementById('gpo-sort');
+    if (!sort || sort.dataset.bound === '1') {
+      return;
+    }
 
-  var sort = document.getElementById('gpo-sort');
-  if (sort) {
+    sort.dataset.bound = '1';
     sort.addEventListener('change', function () {
       var form = document.getElementById('gpo-filter-form');
       if (form) {
@@ -221,4 +263,21 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     });
   }
-});
+
+  function boot() {
+    Array.prototype.slice.call(document.querySelectorAll('[data-gpo-carousel="1"]')).forEach(initCarousel);
+    initSort();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+
+  if (window.wp && window.wp.domReady) {
+    window.wp.domReady(function () {
+      window.setTimeout(boot, 80);
+    });
+  }
+})();

@@ -2137,3 +2137,273 @@ body.gpo-lightbox-open {
     min-height: 300px;
   }
 }
+
+/* April 2026 interaction and single-template fixes */
+
+.gpo-carousel-prev::before,
+.gpo-carousel-next::before {
+  content: none !important;
+}
+
+.gpo-carousel-prev svg,
+.gpo-carousel-next svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.gpo-carousel-prev,
+.gpo-carousel-next,
+.gpo-brand-nav,
+.gpo-carousel-dot {
+  cursor: pointer;
+}
+
+.gpo-carousel-track {
+  scroll-padding-inline: 2px;
+}
+
+.gpo-carousel-dot {
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.gpo-brand-carousel {
+  align-items: stretch;
+}
+
+.gpo-brand-viewport {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  scroll-behavior: smooth;
+  overscroll-behavior-x: contain;
+}
+
+.gpo-brand-viewport::-webkit-scrollbar {
+  display: none;
+}
+
+.gpo-brand-track {
+  width: max-content;
+  min-width: 100%;
+  overflow: visible;
+  padding-inline: 4px;
+}
+
+.gpo-search-icon {
+  left: 22px;
+  pointer-events: none;
+}
+
+.gpo-search-input {
+  padding-left: 76px !important;
+  padding-right: 58px !important;
+}
+
+.gpo-search-clear {
+  right: 12px;
+  color: #94a3b8 !important;
+}
+
+.gpo-search-clear svg {
+  width: 18px;
+  height: 18px;
+}
+
+.gpo-search-input::-webkit-search-cancel-button,
+.gpo-search-input::-webkit-search-decoration,
+.gpo-search-input::-webkit-search-results-button,
+.gpo-search-input::-webkit-search-results-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+
+.gpo-search-input::-ms-clear,
+.gpo-search-input::-ms-reveal {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.single-gpo_vehicle .gpo-single-wrap,
+.single-gpo_vehicle .gpo-template-shell {
+  max-width: min(98vw, 1560px);
+  padding-left: clamp(10px, 1.4vw, 24px);
+  padding-right: clamp(10px, 1.4vw, 24px);
+  gap: clamp(24px, 2vw, 34px);
+}
+
+.single-gpo_vehicle .gpo-single-hero,
+.single-gpo_vehicle .gpo-template-shell .gpo-template-hero {
+  grid-template-columns: minmax(0, 1.34fr) minmax(360px, 0.66fr);
+  gap: clamp(22px, 2vw, 34px);
+  align-items: start;
+}
+
+.single-gpo_vehicle .gpo-single-gallery-panel,
+.single-gpo_vehicle .gpo-template-shell .gpo-single-gallery-panel {
+  padding: clamp(16px, 1.4vw, 24px);
+}
+
+.single-gpo_vehicle .gpo-single-main img,
+.single-gpo_vehicle .gpo-single-main--fallback .gpo-fallback-image,
+.single-gpo_vehicle .gpo-template-shell .gpo-single-main img,
+.single-gpo_vehicle .gpo-template-shell .gpo-single-main--fallback .gpo-fallback-image {
+  aspect-ratio: 19 / 8;
+  min-height: clamp(380px, 43vw, 760px);
+  object-fit: cover;
+  object-position: center;
+  border-radius: 22px;
+}
+
+.single-gpo_vehicle .gpo-single-thumbs,
+.single-gpo_vehicle .gpo-template-shell .gpo-single-thumbs {
+  grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
+  gap: 12px;
+  padding: 14px 4px 0;
+}
+
+.single-gpo_vehicle .gpo-single-thumbs img,
+.single-gpo_vehicle .gpo-template-shell .gpo-single-thumbs img {
+  height: 90px;
+}
+
+.single-gpo_vehicle .gpo-single-summary,
+.single-gpo_vehicle .gpo-template-shell .gpo-template-hero__content,
+.single-gpo_vehicle .gpo-content-block,
+.single-gpo_vehicle .gpo-side-card {
+  padding: clamp(22px, 1.8vw, 30px);
+}
+
+.single-gpo_vehicle .gpo-single-summary,
+.single-gpo_vehicle .gpo-template-shell .gpo-template-hero__content {
+  gap: 20px;
+}
+
+.single-gpo_vehicle .gpo-single-summary h1,
+.single-gpo_vehicle .gpo-template-shell .gpo-template-hero__content h1 {
+  font-size: clamp(1.65rem, 1.05rem + 1.7vw, 2.75rem);
+  line-height: 1.02;
+}
+
+.single-gpo_vehicle .gpo-single-price-row {
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.single-gpo_vehicle .gpo-content-grid {
+  grid-template-columns: minmax(0, 1.28fr) minmax(300px, 0.72fr);
+  gap: clamp(22px, 2vw, 34px);
+}
+
+.single-gpo_vehicle .gpo-main-stack,
+.single-gpo_vehicle .gpo-side-stack {
+  gap: clamp(18px, 1.8vw, 26px);
+}
+
+.gpo-inline-lead-card {
+  margin-top: 6px;
+  padding: 20px;
+  border: 1px solid rgba(203, 213, 225, 0.88);
+  border-radius: 22px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: none;
+}
+
+.gpo-inline-lead-card h3 {
+  margin: 0 0 8px;
+  font-size: 1.08rem;
+}
+
+.gpo-inline-lead-card > p {
+  margin: 0 0 16px;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.gpo-inline-lead-card .gpo-lead-form {
+  gap: 14px;
+}
+
+.gpo-content-disclosure {
+  border: 0;
+}
+
+.gpo-content-disclosure__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.gpo-content-disclosure__summary::-webkit-details-marker {
+  display: none;
+}
+
+.gpo-content-disclosure__title {
+  font-family: var(--gpo-title-font);
+  font-size: clamp(1.35rem, 1.1rem + .8vw, 2rem);
+  font-weight: 800;
+}
+
+.gpo-content-disclosure__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #f8fafc;
+  border: 1px solid var(--gpo-border);
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.gpo-content-disclosure__meta::after {
+  content: "+";
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--gpo-primary);
+}
+
+.gpo-content-disclosure[open] .gpo-content-disclosure__meta::after {
+  content: "-";
+}
+
+.gpo-content-disclosure__body {
+  padding-top: 18px;
+}
+
+@media (max-width: 1180px) {
+  .single-gpo_vehicle .gpo-single-hero,
+  .single-gpo_vehicle .gpo-template-shell .gpo-template-hero,
+  .single-gpo_vehicle .gpo-content-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .single-gpo_vehicle .gpo-single-wrap,
+  .single-gpo_vehicle .gpo-template-shell {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .single-gpo_vehicle .gpo-single-main img,
+  .single-gpo_vehicle .gpo-single-main--fallback .gpo-fallback-image,
+  .single-gpo_vehicle .gpo-template-shell .gpo-single-main img,
+  .single-gpo_vehicle .gpo-template-shell .gpo-single-main--fallback .gpo-fallback-image {
+    aspect-ratio: 16 / 10;
+    min-height: 280px;
+  }
+
+  .gpo-content-disclosure__summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

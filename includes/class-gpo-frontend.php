@@ -384,10 +384,9 @@ class GPO_Frontend {
 
         $collection = self::featured_vehicle_collection(absint($atts['limit']));
         $ids = $collection['ids'];
-        $is_fallback = ($collection['source'] ?? 'featured') !== 'featured';
         ob_start();
         echo '<div class="gpo-carousel-shell" style="' . esc_attr(self::wrapper_style($atts)) . '">';
-        echo '<div class="gpo-section-head"><div><span class="gpo-kicker">Vetrina</span><h2>Veicoli selezionati</h2></div><div class="gpo-carousel-nav"><button class="gpo-carousel-prev" type="button" aria-label="Precedente">‹</button><button class="gpo-carousel-next" type="button" aria-label="Successivo">›</button></div></div>';
+        echo '<div class="gpo-section-head"><div><span class="gpo-kicker">Vetrina</span><h2>Veicoli selezionati</h2></div><div class="gpo-carousel-nav"><button class="gpo-carousel-prev" type="button" aria-label="Precedente">' . self::icon_markup('chevron-left') . '</button><button class="gpo-carousel-next" type="button" aria-label="Successivo">' . self::icon_markup('chevron-right') . '</button></div></div>';
         echo '<div class="gpo-carousel" data-gpo-carousel="1" data-autoplay="' . esc_attr($atts['autoplay']) . '" data-interval="' . absint($atts['interval']) . '" data-loop="yes"><div class="gpo-carousel-track">';
         if (!empty($ids)) {
             foreach ($ids as $post_id) {
@@ -1633,7 +1632,7 @@ class GPO_Frontend {
                 'gpo_brand_key' => $brand['key'],
                 'gpo_catalog_ref' => sanitize_text_field($atts['catalog_ref']),
             ], $target_url);
-            echo '<a class="gpo-brand-item" href="' . esc_url($url) . '" aria-label="' . esc_attr($brand['name'] . ', ' . $brand['count'] . ' veicoli') . '">';
+            echo '<a class="gpo-brand-item" href="' . esc_url($url) . '" aria-label="' . esc_attr($brand['name']) . '">';
             echo '<span class="gpo-brand-item__visual"><img src="' . esc_url($brand['logo']) . '" alt="' . esc_attr($brand['name']) . '" loading="lazy" /></span>';
             if (empty($brand['has_local_logo'])) {
                 echo '<span class="gpo-brand-item__meta"><strong class="gpo-brand-name">' . esc_html($brand['name']) . '</strong></span>';
@@ -1673,7 +1672,7 @@ class GPO_Frontend {
         echo '<div class="gpo-vehicle-search-shell" style="' . esc_attr($style) . '">';
         echo '<form class="gpo-vehicle-search" data-target-url="' . esc_url($target_url) . '" data-catalog-ref="' . esc_attr($atts['catalog_ref']) . '" action="' . esc_url($target_url) . '" method="get" autocomplete="off">';
         echo '<span class="gpo-search-icon" aria-hidden="true">' . self::icon_markup('search') . '</span>';
-        echo '<input type="search" name="gpo_search" class="gpo-search-input" placeholder="' . esc_attr($atts['placeholder']) . '" />';
+        echo '<input type="text" name="gpo_search" class="gpo-search-input" placeholder="' . esc_attr($atts['placeholder']) . '" />';
         echo '<button type="button" class="gpo-search-clear" hidden aria-label="Cancella ricerca">' . self::icon_markup('clear') . '</button>';
         echo '<input type="hidden" name="gpo_catalog_ref" value="' . esc_attr($atts['catalog_ref']) . '" />';
         echo '<div class="gpo-search-results" hidden aria-live="polite"></div>';

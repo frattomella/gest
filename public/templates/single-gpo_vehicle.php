@@ -7,9 +7,6 @@ get_header();
 $post_id = get_the_ID();
 $settings = GPO_Frontend::display_settings();
 $template_id = GPO_Frontend::current_single_template_id();
-if (apply_filters('gpo_render_single_vehicle_nav', true)) {
-    echo GPO_Frontend::site_navigation_markup();
-}
 
 if ($template_id && get_post($template_id) && get_post_field('post_content', $template_id)) {
     GPO_Frontend::set_template_vehicle_context($post_id);
@@ -92,7 +89,16 @@ $show = function ($key) use ($visible) {
                 <?php endforeach; ?>
             </div>
 
-            <a class="gpo-button" href="#richiesta-info">Richiedi informazioni</a>
+            <?php if ($show('contact_box')) : ?>
+                <?php
+                echo GPO_Frontend::lead_form_markup($post_id, [
+                    'title' => 'Richiedi informazioni',
+                    'text' => 'Compila il modulo per ricevere disponibilita, valutazione permuta e proposta commerciale personalizzata su questo veicolo.',
+                    'button_label' => 'Invia richiesta',
+                    'wrapper_class' => 'gpo-inline-lead-card',
+                ]);
+                ?>
+            <?php endif; ?>
         </div>
         <?php endif; ?>
     </section>
@@ -115,28 +121,28 @@ $show = function ($key) use ($visible) {
             <?php endif; ?>
 
             <?php if ($show('accessories') && !empty($accessories)) : ?>
-                <div class="gpo-content-block gpo-content-block--accessories"><h2>Accessori</h2><ul class="gpo-icon-list"><?php foreach ($accessories as $item) { echo '<li>' . esc_html($item) . '</li>'; } ?></ul></div>
+                <div class="gpo-content-block gpo-content-block--accessories">
+                    <details class="gpo-content-disclosure">
+                        <summary class="gpo-content-disclosure__summary">
+                            <span class="gpo-content-disclosure__title">Accessori</span>
+                            <span class="gpo-content-disclosure__meta"><?php echo esc_html((string) count($accessories)); ?> accessori</span>
+                        </summary>
+                        <div class="gpo-content-disclosure__body">
+                            <ul class="gpo-icon-list"><?php foreach ($accessories as $item) { echo '<li>' . esc_html($item) . '</li>'; } ?></ul>
+                        </div>
+                    </details>
+                </div>
             <?php endif; ?>
         </div>
 
         <aside class="gpo-side-stack">
-            <?php if ($show('contact_box')) : ?>
-            <?php
-            echo GPO_Frontend::lead_form_markup($post_id, [
-                'title' => 'Richiedi informazioni',
-                'text' => 'Compila il modulo per ricevere disponibilita, valutazione permuta e proposta commerciale personalizzata su questo veicolo.',
-                'button_label' => 'Invia richiesta',
-                'wrapper_class' => 'gpo-side-card',
-            ]);
-            ?>
-            <?php endif; ?>
             <?php if ($show('strengths')) : ?>
             <div class="gpo-side-card">
                 <h3>Punti di forza</h3>
                 <ul class="gpo-icon-list">
                     <li>Scheda completa e personalizzabile</li>
                     <li>Dati importabili da API e modificabili localmente</li>
-                    <li>Compatibile con WordPress editor ed Elementor</li>
+                    <li>Compatibile con editor WordPress e tema del sito</li>
                 </ul>
             </div>
             <?php endif; ?>

@@ -285,14 +285,15 @@
     title: 'GestPark Hero veicolo',
     icon: 'cover-image',
     category: 'widgets',
-    attributes: { showImage:{type:'boolean',default:true}, showMeta:{type:'boolean',default:true}, showChips:{type:'boolean',default:true}, showButton:{type:'boolean',default:true}, buttonLabel:{type:'string',default:'Richiedi informazioni'}, primaryColor:{type:'string',default:''}, accentColor:{type:'string',default:''}, bgColor:{type:'string',default:''}, textColor:{type:'string',default:''}, buttonColor:{type:'string',default:''}, buttonTextColor:{type:'string',default:''} },
+    attributes: { showImage:{type:'boolean',default:true}, showMeta:{type:'boolean',default:true}, showChips:{type:'boolean',default:true}, showButton:{type:'boolean',default:true}, showLeadForm:{type:'boolean',default:false}, buttonLabel:{type:'string',default:'Richiedi informazioni'}, primaryColor:{type:'string',default:''}, accentColor:{type:'string',default:''}, bgColor:{type:'string',default:''}, textColor:{type:'string',default:''}, buttonColor:{type:'string',default:''}, buttonTextColor:{type:'string',default:''} },
     edit: function (props) {
       return previewEdit(props, 'GestPark Hero veicolo', 'Blocco principale della scheda veicolo con immagine, prezzo e riepilogo.', panel('Impostazioni hero', [
         el(ToggleControl, { label:'Mostra immagine', checked:props.attributes.showImage, onChange:function(v){props.setAttributes({showImage:v});} }),
         el(ToggleControl, { label:'Mostra specifiche rapide', checked:props.attributes.showMeta, onChange:function(v){props.setAttributes({showMeta:v});} }),
         el(ToggleControl, { label:'Mostra chip rapidi', checked:props.attributes.showChips, onChange:function(v){props.setAttributes({showChips:v});} }),
-        el(ToggleControl, { label:'Mostra pulsante', checked:props.attributes.showButton, onChange:function(v){props.setAttributes({showButton:v});} }),
-        el(TextControl, { label:'Testo pulsante', value:props.attributes.buttonLabel, onChange:function(v){props.setAttributes({buttonLabel:v});} })
+        el(ToggleControl, { label:'Mostra modulo richieste nella card', checked:props.attributes.showLeadForm, onChange:function(v){props.setAttributes({showLeadForm:v});} }),
+        !props.attributes.showLeadForm ? el(ToggleControl, { label:'Mostra pulsante', checked:props.attributes.showButton, onChange:function(v){props.setAttributes({showButton:v});} }) : null,
+        !props.attributes.showLeadForm ? el(TextControl, { label:'Testo pulsante', value:props.attributes.buttonLabel, onChange:function(v){props.setAttributes({buttonLabel:v});} }) : null
       ].concat(styleControls(props))));
     },
     save: function(){ return null; }
@@ -336,10 +337,11 @@
       title: 'GestPark ' + labels[name],
       icon: 'excerpt-view',
       category: 'widgets',
-      attributes: { title:{type:'string',default:labels[name]}, primaryColor:{type:'string',default:''}, accentColor:{type:'string',default:''}, bgColor:{type:'string',default:''}, textColor:{type:'string',default:''} },
+      attributes: { title:{type:'string',default:labels[name]}, collapsedByDefault:{type:'boolean',default:name === 'vehicle-accessories'}, primaryColor:{type:'string',default:''}, accentColor:{type:'string',default:''}, bgColor:{type:'string',default:''}, textColor:{type:'string',default:''} },
       edit: function (props) {
         return previewEdit(props, 'GestPark ' + labels[name], 'Anteprima reale della sezione dinamica del veicolo corrente.', panel('Impostazioni sezione', [
-          el(TextControl, { label:'Titolo sezione', value:props.attributes.title, onChange:function(v){props.setAttributes({title:v});} })
+          el(TextControl, { label:'Titolo sezione', value:props.attributes.title, onChange:function(v){props.setAttributes({title:v});} }),
+          name === 'vehicle-accessories' ? el(ToggleControl, { label:'Chiudi di default', checked:props.attributes.collapsedByDefault, onChange:function(v){props.setAttributes({collapsedByDefault:v});} }) : null
         ].concat(styleControls(props))));
       },
       save: function(){ return null; }

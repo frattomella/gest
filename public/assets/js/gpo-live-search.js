@@ -190,6 +190,10 @@
     qsa('.gpo-vehicle-search').forEach(initSearch);
     qsa('.gpo-brand-carousel-shell').forEach(initBrandCarousel);
   }
-  document.addEventListener('DOMContentLoaded', boot);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
   if (window.wp && window.wp.domReady) { window.wp.domReady(function(){ setTimeout(boot, 80); }); }
 })();

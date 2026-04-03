@@ -319,6 +319,7 @@ class GPO_Blocks {
                 'showMeta' => ['type' => 'boolean', 'default' => true],
                 'showChips' => ['type' => 'boolean', 'default' => true],
                 'showButton' => ['type' => 'boolean', 'default' => true],
+                'showLeadForm' => ['type' => 'boolean', 'default' => false],
                 'buttonLabel' => ['type' => 'string', 'default' => 'Richiedi informazioni'],
                 'primaryColor' => ['type' => 'string', 'default' => ''],
                 'accentColor' => ['type' => 'string', 'default' => ''],
@@ -383,6 +384,7 @@ class GPO_Blocks {
             'render_callback' => [__CLASS__, 'render_vehicle_accessories'],
             'attributes' => [
                 'title' => ['type' => 'string', 'default' => 'Accessori'],
+                'collapsedByDefault' => ['type' => 'boolean', 'default' => true],
                 'primaryColor' => ['type' => 'string', 'default' => ''],
                 'accentColor' => ['type' => 'string', 'default' => ''],
                 'bgColor' => ['type' => 'string', 'default' => ''],
@@ -548,7 +550,16 @@ class GPO_Blocks {
                     <?php if (!empty($attributes['showMeta'])) : ?>
                         <?php echo GPO_Frontend::specs_grid_markup($post_id, ['condition','year','fuel','mileage','body_type','transmission','engine_size'], 'grid'); ?>
                     <?php endif; ?>
-                    <?php if (!empty($attributes['showButton'])) : ?>
+                    <?php if (!empty($attributes['showLeadForm'])) : ?>
+                        <?php
+                        echo GPO_Frontend::lead_form_markup($post_id, [
+                            'title' => 'Richiedi informazioni',
+                            'text' => 'Compila il modulo per ricevere disponibilita, prova su strada e proposta commerciale su questo veicolo.',
+                            'button_label' => 'Invia richiesta',
+                            'wrapper_class' => 'gpo-inline-lead-card',
+                        ]);
+                        ?>
+                    <?php elseif (!empty($attributes['showButton'])) : ?>
                         <div class="gpo-card-actions"><a class="gpo-button" href="#richiesta-info"><?php echo esc_html($attributes['buttonLabel'] ?? 'Richiedi informazioni'); ?></a></div>
                     <?php endif; ?>
                 </div>
@@ -613,7 +624,9 @@ class GPO_Blocks {
         if (empty($items)) {
             return '';
         }
-        return '<section ' . self::wrapper_attrs('gpo-single-block gpo-content-block gpo-content-block--accessories', $attributes) . '><h2>' . esc_html($title) . '</h2>' . GPO_Frontend::icon_list_markup($items) . '</section>';
+        $open = empty($attributes['collapsedByDefault']) ? ' open' : '';
+        $count = count($items);
+        return '<section ' . self::wrapper_attrs('gpo-single-block gpo-content-block gpo-content-block--accessories', $attributes) . '><details class="gpo-content-disclosure"' . $open . '><summary class="gpo-content-disclosure__summary"><span class="gpo-content-disclosure__title">' . esc_html($title) . '</span><span class="gpo-content-disclosure__meta">' . esc_html((string) $count) . ' accessori</span></summary><div class="gpo-content-disclosure__body">' . GPO_Frontend::icon_list_markup($items) . '</div></details></section>';
     }
 
     public static function render_vehicle_contact($attributes) {
