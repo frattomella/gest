@@ -96,6 +96,7 @@
     var loop = carousel.getAttribute('data-loop') === 'yes';
     var autoTimer = null;
     var setWidth = 0;
+    var scrollAnimation = null;
     if (!track || !viewport || items.length <= 1) return;
 
     function cloneItem(item) {
@@ -129,6 +130,26 @@
       return parseFloat(styles.columnGap || styles.gap || '0');
     }
 
+    function desiredCardSize() {
+      return parseFloat(window.getComputedStyle(shell).getPropertyValue('--gpo-brand-card-size')) || 168;
+    }
+
+    function applySizing() {
+      var gap = gapSize();
+      var desired = desiredCardSize();
+      var target = desired;
+
+      if (window.matchMedia('(max-width: 640px)').matches) {
+        target = Math.min(desired, Math.max(140, viewport.clientWidth - 12));
+      } else if (window.matchMedia('(max-width: 980px)').matches) {
+        target = Math.min(desired, Math.max(132, (viewport.clientWidth - gap) / 2));
+      } else {
+        target = Math.min(desired, Math.max(128, (viewport.clientWidth - (gap * 2)) / 3));
+      }
+
+      track.style.setProperty('--gpo-brand-card-effective-size', Math.floor(target) + 'px');
+    }
+
     function step() {
       var visibleItems = qsa('.gpo-brand-item', track);
       var sample = visibleItems[Math.floor(visibleItems.length / 2)] || visibleItems[0];
@@ -140,6 +161,7 @@
     }
 
     function computeSetWidth() {
+      applySizing();
       setWidth = step() * items.length;
       if (loop && setWidth > 0 && !viewport.dataset.centered) {
         viewport.scrollLeft = setWidth;
@@ -159,9 +181,43 @@
       }
     }
 
+    function easeInOutQuad(value) {
+      return value < 0.5 ? 2 * value * value : 1 - Math.pow(-2 * value + 2, 2) / 2;
+    }
+
+    function animateScroll(distance) {
+      var start = viewport.scrollLeft;
+      var target = start + distance;
+      var startedAt = null;
+
+      if (scrollAnimation) {
+        window.cancelAnimationFrame(scrollAnimation);
+        scrollAnimation = null;
+      }
+
+      function frame(timestamp) {
+        var progress;
+
+        if (!startedAt) {
+          startedAt = timestamp;
+        }
+
+        progress = Math.min(1, (timestamp - startedAt) / Math.max(300, speed));
+        viewport.scrollLeft = start + (distance * easeInOutQuad(progress));
+
+        if (progress < 1) {
+          scrollAnimation = window.requestAnimationFrame(frame);
+        } else {
+          scrollAnimation = null;
+          normalizeLoopPosition();
+        }
+      }
+
+      scrollAnimation = window.requestAnimationFrame(frame);
+    }
+
     function go(dir){
-      viewport.scrollBy({ left: dir * step(), behavior: 'smooth' });
-      window.setTimeout(normalizeLoopPosition, Math.max(220, speed + 80));
+      animateScroll(dir * step());
     }
 
     if (prev) prev.addEventListener('click', function(){ go(-1); stop(); start(); });

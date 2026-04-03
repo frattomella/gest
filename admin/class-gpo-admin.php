@@ -558,6 +558,7 @@ class GPO_Admin {
         if (GPO_API_Client::uses_gestpark($settings['api'])) {
             echo '<div class="notice notice-info inline"><p>Con GestPark automatico o manuale la mappatura base e gia integrata nel plugin. Modifica questi campi solo se stai usando il fallback JSON legacy.</p></div>';
         }
+        echo '<p class="description">Le informazioni visibili nelle card e nei cataloghi si gestiscono dai blocchi Gutenberg, non da questa dashboard.</p>';
         echo '<form method="post" action="options.php">';
         settings_fields('gpo_api_group');
         echo '<table class="form-table"><tbody>';
@@ -635,45 +636,6 @@ class GPO_Admin {
 
     public static function style_page() {
         $settings = self::get_settings();
-        $card_elements = [
-            'image' => 'Immagine',
-            'badge' => 'Badge',
-            'brand' => 'Marca e modello',
-            'title' => 'Titolo',
-            'price' => 'Prezzo',
-            'chips' => 'Chip rapidi',
-            'year' => 'Anno',
-            'mileage' => 'Chilometraggio',
-            'body_type' => 'Carrozzeria',
-            'transmission' => 'Cambio',
-            'engine_size' => 'Cilindrata',
-            'specs' => 'Specifiche sintetiche',
-            'primary_button' => 'Pulsante principale',
-            'secondary_button' => 'Link secondario',
-        ];
-        $single_sections = [
-            'gallery' => 'Galleria',
-            'summary' => 'Riepilogo',
-            'description' => 'Descrizione',
-            'notes' => 'Note',
-            'specs' => 'Specifiche',
-            'accessories' => 'Accessori',
-            'contact_box' => 'Box contatto',
-            'strengths' => 'Punti di forza',
-        ];
-        $filter_fields = [
-            'search' => 'Ricerca libera',
-            'brand' => 'Marca',
-            'condition' => 'Condizione',
-            'fuel' => 'Alimentazione',
-            'body_type' => 'Carrozzeria',
-            'transmission' => 'Cambio',
-            'year' => 'Anno',
-            'min_price' => 'Prezzo minimo',
-            'max_price' => 'Prezzo massimo',
-            'max_mileage' => 'KM massimo',
-            'sort' => 'Ordinamento',
-        ];
         $templates = get_posts(['post_type' => 'gpo_template', 'post_status' => ['publish', 'draft'], 'posts_per_page' => -1]);
         $selected_template_id = absint($settings['style']['single_template_id'] ?? 0);
         $template_preview_url = class_exists('GPO_Frontend') ? GPO_Frontend::template_preview_vehicle_link($selected_template_id) : '';
@@ -691,7 +653,6 @@ class GPO_Admin {
         self::input_row('Raggio bordi', 'gpo_settings[style][radius]', $settings['style']['radius']);
         self::input_row('Font titoli', 'gpo_settings[style][title_font]', $settings['style']['title_font'], 'Inserisci un font CSS, ad esempio Inter, Arial, sans-serif');
         self::input_row('Font testi', 'gpo_settings[style][body_font]', $settings['style']['body_font'], 'Inserisci un font CSS, ad esempio Inter, Arial, sans-serif');
-        self::select_row('Layout globale card', 'gpo_settings[style][card_layout]', $settings['style']['card_layout'], ['default' => 'Default', 'compact' => 'Compact', 'minimal' => 'Minimal']);
         self::select_row('Layout fallback scheda veicolo', 'gpo_settings[style][single_layout]', $settings['style']['single_layout'], ['classic' => 'Classic', 'reversed' => 'Reversed', 'stacked' => 'Stacked']);
         echo '<tr><th scope="row"><label>Template veicolo da editor</label></th><td><select name="gpo_settings[style][single_template_id]">';
         echo '<option value="0">Usa il template fallback del plugin</option>';
@@ -726,24 +687,6 @@ class GPO_Admin {
         self::input_row('Spazio verticale tra moduli', 'gpo_settings[style][section_gap]', $settings['style']['section_gap'], 'Valore in px. Distanza tra gruppi, sezioni e blocchi.');
         self::input_row('Colonne pannello filtri', 'gpo_settings[style][filter_columns]', $settings['style']['filter_columns'], 'Numero massimo di colonne su desktop per il pannello filtri.');
         echo '</tbody></table>';
-
-        echo '<h2>Elementi visibili nelle card</h2><div class="gpo-checkbox-grid">';
-        foreach ($card_elements as $key => $label) {
-            echo '<label class="gpo-checkbox-card"><input type="checkbox" name="gpo_settings[style][card_elements][' . esc_attr($key) . ']" value="1" ' . checked($settings['style']['card_elements'][$key] ?? '0', '1', false) . ' /> <span>' . esc_html($label) . '</span></label>';
-        }
-        echo '</div>';
-
-        echo '<h2>Sezioni visibili nella scheda veicolo fallback</h2><div class="gpo-checkbox-grid">';
-        foreach ($single_sections as $key => $label) {
-            echo '<label class="gpo-checkbox-card"><input type="checkbox" name="gpo_settings[style][single_sections][' . esc_attr($key) . ']" value="1" ' . checked($settings['style']['single_sections'][$key] ?? '0', '1', false) . ' /> <span>' . esc_html($label) . '</span></label>';
-        }
-        echo '</div>';
-
-        echo '<h2>Campi visibili nel pannello filtri</h2><div class="gpo-checkbox-grid">';
-        foreach ($filter_fields as $key => $label) {
-            echo '<label class="gpo-checkbox-card"><input type="checkbox" name="gpo_settings[style][filter_fields][' . esc_attr($key) . ']" value="1" ' . checked($settings['style']['filter_fields'][$key] ?? '0', '1', false) . ' /> <span>' . esc_html($label) . '</span></label>';
-        }
-        echo '</div>';
 
         submit_button('Salva aspetto');
         echo '</form>';

@@ -55,10 +55,34 @@
       return first.getBoundingClientRect().width + parseFloat(styles.columnGap || styles.gap || '0');
     }
 
+    function configuredVisiblePerPage() {
+      var shellStyles = shell ? window.getComputedStyle(shell) : null;
+      var carouselStyles = window.getComputedStyle(carousel);
+      var raw = parseInt(
+        (shellStyles && shellStyles.getPropertyValue('--gpo-carousel-items-per-page')) ||
+        carouselStyles.getPropertyValue('--gpo-carousel-items-per-page') ||
+        track.style.getPropertyValue('--gpo-carousel-items-per-page') ||
+        '0',
+        10
+      );
+
+      return Math.max(1, Math.min(4, raw || 0));
+    }
+
     function visiblePerPage() {
+      var configured = configuredVisiblePerPage();
       var step = slideStep();
       var visible = step > 0 ? Math.floor((track.clientWidth + 2) / step) : 1;
-      return Math.max(1, Math.min(3, visible || 1));
+
+      if (window.matchMedia('(max-width: 720px)').matches) {
+        return 1;
+      }
+
+      if (window.matchMedia('(max-width: 1180px)').matches) {
+        return Math.min(configured || 2, 2);
+      }
+
+      return configured || Math.max(1, Math.min(4, visible || 1));
     }
 
     function pageCount() {

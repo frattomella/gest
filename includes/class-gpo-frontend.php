@@ -72,6 +72,41 @@ class GPO_Frontend {
         return $settings;
     }
 
+    protected static function default_card_elements() {
+        return [
+            'image',
+            'badge',
+            'brand',
+            'title',
+            'price',
+            'chips',
+            'year',
+            'mileage',
+            'body_type',
+            'transmission',
+            'engine_size',
+            'specs',
+            'primary_button',
+            'secondary_button',
+        ];
+    }
+
+    protected static function default_filter_fields() {
+        return [
+            'search',
+            'brand',
+            'condition',
+            'fuel',
+            'body_type',
+            'transmission',
+            'year',
+            'min_price',
+            'max_price',
+            'max_mileage',
+            'sort',
+        ];
+    }
+
     protected static function lead_email() {
         $settings = self::display_settings();
         $email = sanitize_email((string) ($settings['style']['lead_email'] ?? ''));
@@ -164,6 +199,21 @@ class GPO_Frontend {
         echo '</div>';
         echo '</div>';
         return ob_get_clean();
+    }
+
+    public static function back_button_markup($post_id = 0) {
+        $post_id = absint($post_id);
+        $fallback = $post_id ? get_post_type_archive_link('gpo_vehicle') : '';
+        if (!$fallback) {
+            $fallback = home_url('/');
+        }
+
+        $referer = wp_get_referer();
+        if (!$referer) {
+            $referer = $fallback;
+        }
+
+        return '<a class="gpo-back-link" href="' . esc_url($referer) . '" onclick="if(window.history.length > 1){ window.history.back(); return false; }"><span aria-hidden="true">' . self::icon_markup('chevron-left') . '</span><span>Torna indietro</span></a>';
     }
 
     public static function lead_form_markup($post_id, $args = []) {
@@ -264,7 +314,6 @@ class GPO_Frontend {
 
     public static function vehicle_grid_shortcode($atts) {
         wp_enqueue_style('gpo-public');
-        $settings = self::display_settings();
         $atts = shortcode_atts([
             'featured' => 'no',
             'limit' => 12,
@@ -273,13 +322,13 @@ class GPO_Frontend {
             'orderby' => 'date',
             'order' => 'DESC',
             'show' => '',
-            'card_layout' => $settings['style']['card_layout'] ?? 'default',
-            'card_gap' => $settings['style']['card_gap'] ?? '24',
-            'card_padding' => $settings['style']['card_padding'] ?? '22',
-            'content_max_width' => $settings['style']['content_max_width'] ?? '1280',
-            'outer_margin_y' => $settings['style']['outer_margin_y'] ?? '32',
-            'outer_padding_x' => $settings['style']['outer_padding_x'] ?? '18',
-            'section_gap' => $settings['style']['section_gap'] ?? '24',
+            'card_layout' => 'default',
+            'card_gap' => self::display_settings()['style']['card_gap'] ?? '24',
+            'card_padding' => self::display_settings()['style']['card_padding'] ?? '22',
+            'content_max_width' => self::display_settings()['style']['content_max_width'] ?? '1280',
+            'outer_margin_y' => self::display_settings()['style']['outer_margin_y'] ?? '32',
+            'outer_padding_x' => self::display_settings()['style']['outer_padding_x'] ?? '18',
+            'section_gap' => self::display_settings()['style']['section_gap'] ?? '24',
             'filter_fields' => '',
             'primary_color' => '',
             'accent_color' => '',
@@ -317,17 +366,16 @@ class GPO_Frontend {
 
     public static function featured_vehicle_shortcode($atts) {
         wp_enqueue_style('gpo-public');
-        $settings = self::display_settings();
         $atts = shortcode_atts([
             'layout' => 'hero',
             'show' => '',
-            'card_layout' => $settings['style']['card_layout'] ?? 'default',
-            'card_gap' => $settings['style']['card_gap'] ?? '24',
-            'card_padding' => $settings['style']['card_padding'] ?? '22',
-            'content_max_width' => $settings['style']['content_max_width'] ?? '1280',
-            'outer_margin_y' => $settings['style']['outer_margin_y'] ?? '32',
-            'outer_padding_x' => $settings['style']['outer_padding_x'] ?? '18',
-            'section_gap' => $settings['style']['section_gap'] ?? '24',
+            'card_layout' => 'default',
+            'card_gap' => self::display_settings()['style']['card_gap'] ?? '24',
+            'card_padding' => self::display_settings()['style']['card_padding'] ?? '22',
+            'content_max_width' => self::display_settings()['style']['content_max_width'] ?? '1280',
+            'outer_margin_y' => self::display_settings()['style']['outer_margin_y'] ?? '32',
+            'outer_padding_x' => self::display_settings()['style']['outer_padding_x'] ?? '18',
+            'section_gap' => self::display_settings()['style']['section_gap'] ?? '24',
             'primary_color' => '',
             'accent_color' => '',
             'bg_color' => '',
@@ -358,19 +406,19 @@ class GPO_Frontend {
     public static function featured_carousel_shortcode($atts) {
         wp_enqueue_style('gpo-public');
         wp_enqueue_script('gpo-carousel');
-        $settings = self::display_settings();
         $atts = shortcode_atts([
             'limit' => 12,
             'autoplay' => 'yes',
             'interval' => 5000,
             'show' => '',
-            'card_layout' => $settings['style']['card_layout'] ?? 'default',
-            'card_gap' => $settings['style']['card_gap'] ?? '24',
-            'card_padding' => $settings['style']['card_padding'] ?? '22',
-            'content_max_width' => $settings['style']['content_max_width'] ?? '1280',
-            'outer_margin_y' => $settings['style']['outer_margin_y'] ?? '32',
-            'outer_padding_x' => $settings['style']['outer_padding_x'] ?? '18',
-            'section_gap' => $settings['style']['section_gap'] ?? '24',
+            'card_layout' => 'default',
+            'items_per_page' => 3,
+            'card_gap' => self::display_settings()['style']['card_gap'] ?? '24',
+            'card_padding' => self::display_settings()['style']['card_padding'] ?? '22',
+            'content_max_width' => self::display_settings()['style']['content_max_width'] ?? '1280',
+            'outer_margin_y' => self::display_settings()['style']['outer_margin_y'] ?? '32',
+            'outer_padding_x' => self::display_settings()['style']['outer_padding_x'] ?? '18',
+            'section_gap' => self::display_settings()['style']['section_gap'] ?? '24',
             'primary_color' => '',
             'accent_color' => '',
             'bg_color' => '',
@@ -381,11 +429,12 @@ class GPO_Frontend {
             'secondary_button_label' => 'Richiedi info',
         ], $atts, 'gestpark_featured_carousel');
         $display = self::resolve_card_display($atts);
+        $items_per_page = max(1, min(4, absint($atts['items_per_page'] ?? 3)));
 
         $collection = self::featured_vehicle_collection(absint($atts['limit']));
         $ids = $collection['ids'];
         ob_start();
-        echo '<div class="gpo-carousel-shell" style="' . esc_attr(self::wrapper_style($atts)) . '">';
+        echo '<div class="gpo-carousel-shell" style="' . esc_attr(self::wrapper_style($atts) . '--gpo-carousel-items-per-page:' . $items_per_page . ';') . '">';
         echo '<div class="gpo-section-head"><div><span class="gpo-kicker">Vetrina</span><h2>Veicoli selezionati</h2></div><div class="gpo-carousel-nav"><button class="gpo-carousel-prev" type="button" aria-label="Precedente">' . self::icon_markup('chevron-left') . '</button><button class="gpo-carousel-next" type="button" aria-label="Successivo">' . self::icon_markup('chevron-right') . '</button></div></div>';
         echo '<div class="gpo-carousel" data-gpo-carousel="1" data-autoplay="' . esc_attr($atts['autoplay']) . '" data-interval="' . absint($atts['interval']) . '" data-loop="yes"><div class="gpo-carousel-track">';
         if (!empty($ids)) {
@@ -407,20 +456,19 @@ class GPO_Frontend {
     }
 
     public static function vehicle_catalog_shortcode($atts) {
-        $settings = self::display_settings();
         $atts = shortcode_atts([
             'limit' => 12,
             'columns' => 3,
             'orderby' => 'date',
             'order' => 'DESC',
             'show' => '',
-            'card_layout' => $settings['style']['card_layout'] ?? 'default',
-            'card_gap' => $settings['style']['card_gap'] ?? '24',
-            'card_padding' => $settings['style']['card_padding'] ?? '22',
-            'content_max_width' => $settings['style']['content_max_width'] ?? '1280',
-            'outer_margin_y' => $settings['style']['outer_margin_y'] ?? '32',
-            'outer_padding_x' => $settings['style']['outer_padding_x'] ?? '18',
-            'section_gap' => $settings['style']['section_gap'] ?? '24',
+            'card_layout' => 'default',
+            'card_gap' => self::display_settings()['style']['card_gap'] ?? '24',
+            'card_padding' => self::display_settings()['style']['card_padding'] ?? '22',
+            'content_max_width' => self::display_settings()['style']['content_max_width'] ?? '1280',
+            'outer_margin_y' => self::display_settings()['style']['outer_margin_y'] ?? '32',
+            'outer_padding_x' => self::display_settings()['style']['outer_padding_x'] ?? '18',
+            'section_gap' => self::display_settings()['style']['section_gap'] ?? '24',
             'filter_fields' => '',
             'primary_color' => '',
             'accent_color' => '',
@@ -466,18 +514,12 @@ class GPO_Frontend {
     }
 
     protected static function resolve_card_display($atts = []) {
-        $settings = self::display_settings();
-        $visible = [];
-        foreach (($settings['style']['card_elements'] ?? []) as $key => $value) {
-            if ((string) $value === '1') {
-                $visible[] = $key;
-            }
-        }
+        $visible = self::default_card_elements();
         if (!empty($atts['show'])) {
             $visible = self::parse_show_string($atts['show']);
         }
         return [
-            'layout' => sanitize_key($atts['card_layout'] ?? ($settings['style']['card_layout'] ?? 'default')),
+            'layout' => sanitize_key($atts['card_layout'] ?? 'default'),
             'visible' => $visible,
             'hero' => !empty($atts['hero']),
             'primary_button_label' => sanitize_text_field($atts['primary_button_label'] ?? 'Scheda veicolo'),
@@ -487,12 +529,15 @@ class GPO_Frontend {
 
     public static function single_display() {
         $settings = self::display_settings();
-        $sections = [];
-        foreach (($settings['style']['single_sections'] ?? []) as $key => $value) {
-            if ((string) $value === '1') {
-                $sections[] = $key;
-            }
-        }
+        $sections = [
+            'gallery',
+            'summary',
+            'description',
+            'notes',
+            'specs',
+            'accessories',
+            'contact_box',
+        ];
         return [
             'layout' => sanitize_key($settings['style']['single_layout'] ?? 'classic'),
             'visible' => $sections,
@@ -696,14 +741,7 @@ class GPO_Frontend {
         if (!empty($override_fields)) {
             return self::parse_show_string($override_fields);
         }
-        $settings = self::display_settings();
-        $visible = [];
-        foreach (($settings['style']['filter_fields'] ?? []) as $key => $value) {
-            if ((string) $value === '1') {
-                $visible[] = $key;
-            }
-        }
-        return $visible;
+        return self::default_filter_fields();
     }
 
     protected static function render_filter_select($label, $name, $values) {
@@ -1129,14 +1167,12 @@ class GPO_Frontend {
             echo '<button type="button" class="gpo-single-stage__nav prev" aria-label="Foto precedente">' . self::icon_markup('chevron-left') . '</button>';
             echo '<button type="button" class="gpo-single-main" aria-label="Apri galleria immagini">';
             echo '<span class="gpo-single-main__media"><img class="gpo-single-main__image" src="' . esc_url($current['large']) . '" alt="' . esc_attr($current['alt']) . '" loading="eager" /></span>';
-            echo '<span class="gpo-single-main__zoom"><span class="gpo-single-main__zoom-icon">' . self::icon_markup('zoom') . '</span><span>Clicca per ingrandire</span></span>';
             echo '</button>';
             echo '<button type="button" class="gpo-single-stage__nav next" aria-label="Foto successiva">' . self::icon_markup('chevron-right') . '</button>';
             echo '</div>';
 
             echo '<div class="gpo-single-gallery-bar">';
             echo '<div class="gpo-single-gallery-count"><strong>1 / ' . esc_html((string) $count) . '</strong><small>' . esc_html($current['caption']) . '</small></div>';
-            echo '<button type="button" class="gpo-single-gallery-expand">' . self::icon_markup('zoom') . '<span>Apri fullscreen</span></button>';
             echo '</div>';
 
             echo '<div class="gpo-single-thumbs" role="list">';
@@ -1601,9 +1637,10 @@ class GPO_Frontend {
             'page_id' => 0,
             'catalog_ref' => 'default',
             'logo_size' => 96,
+            'card_size' => 168,
             'autoplay' => 'yes',
-            'interval' => 4500,
-            'speed' => 450,
+            'interval' => 6500,
+            'speed' => 900,
             'primary_color' => '',
             'accent_color' => '',
             'bg_color' => '',
@@ -1620,7 +1657,7 @@ class GPO_Frontend {
             'accent_color' => $atts['accent_color'],
             'bg_color' => $atts['bg_color'],
             'text_color' => $atts['text_color'],
-        ]) . '--gpo-brand-logo-size:' . max(72, absint($atts['logo_size'])) . 'px;--gpo-brand-speed:' . max(150, absint($atts['speed'])) . 'ms;';
+        ]) . '--gpo-brand-logo-size:' . max(72, absint($atts['logo_size'])) . 'px;--gpo-brand-card-size:' . max(120, absint($atts['card_size'])) . 'px;--gpo-brand-speed:' . max(300, absint($atts['speed'])) . 'ms;';
 
         ob_start();
         echo '<div class="gpo-brand-carousel-shell" style="' . esc_attr($style) . '">';
@@ -1659,7 +1696,7 @@ class GPO_Frontend {
             'catalog_ref' => 'default',
             'placeholder' => 'Cerca veicolo',
             'width' => 100,
-            'radius' => 24,
+            'radius' => 999,
             'primary_color' => '',
             'accent_color' => '',
             'bg_color' => '',
@@ -1673,7 +1710,7 @@ class GPO_Frontend {
             'bg_color' => $atts['bg_color'],
             'text_color' => $atts['text_color'],
             'button_color' => $atts['button_color'],
-        ]) . '--gpo-search-width:' . max(20, min(100, absint($atts['width']))) . '%;--gpo-search-radius:' . max(18, absint($atts['radius'])) . 'px;';
+        ]) . '--gpo-search-width:' . max(20, min(100, absint($atts['width']))) . '%;--gpo-search-radius:' . max(36, absint($atts['radius'])) . 'px;';
         ob_start();
         echo '<div class="gpo-vehicle-search-shell" style="' . esc_attr($style) . '">';
         echo '<form class="gpo-vehicle-search" data-target-url="' . esc_url($target_url) . '" data-catalog-ref="' . esc_attr($atts['catalog_ref']) . '" action="' . esc_url($target_url) . '" method="get" autocomplete="off">';

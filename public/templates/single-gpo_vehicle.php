@@ -11,6 +11,7 @@ $template_id = GPO_Frontend::current_single_template_id();
 if ($template_id && get_post($template_id) && get_post_field('post_content', $template_id)) {
     GPO_Frontend::set_template_vehicle_context($post_id);
     echo '<div class="gpo-template-shell">';
+    echo GPO_Frontend::back_button_markup($post_id);
     echo apply_filters('the_content', get_post_field('post_content', $template_id));
     echo '</div>';
     GPO_Frontend::clear_template_vehicle_context();
@@ -47,6 +48,7 @@ $show = function ($key) use ($visible) {
 };
 ?>
 <div class="gpo-single-wrap gpo-single-layout-<?php echo esc_attr($layout); ?>">
+    <?php echo GPO_Frontend::back_button_markup($post_id); ?>
     <section class="gpo-single-hero">
         <?php if ($show('gallery')) : ?>
             <?php echo GPO_Frontend::gallery_markup($post_id, true); ?>
