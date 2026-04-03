@@ -1,0 +1,144 @@
+.editor-styles-wrapper .gpo-block-preview,
+.block-editor-block-list__layout .gpo-block-preview {
+  margin: 0;
+}
+.editor-styles-wrapper .gpo-block-preview > .components-placeholder {
+  display: none;
+}
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] {
+  max-width: none;
+}
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-template-shell,
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-catalog-shell,
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-carousel-shell,
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-featured-single,
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-single-wrap {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-template-shell {
+  gap: 24px;
+}
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-block-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #eaf3ff;
+  color: #113a7d;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  margin-bottom: 10px;
+}
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-editor-frame {
+  width: 100%;
+  box-sizing: border-box;
+}
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-card,
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-content-block,
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-side-card,
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-template-hero__content,
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-single-gallery-panel,
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-single-summary {
+  box-sizing: border-box;
+}
+
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] {
+  margin-top: 0 !important;
+  margin-bottom: 18px !important;
+}
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-editor-frame {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 0;
+}
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-block-label {
+  margin: 0 0 8px;
+}
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] p {
+  margin-bottom: 10px;
+}
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-template-shell,
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-single-wrap {
+  gap: 20px;
+}
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-template-shell .wp-block-columns {
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-editor-frame,
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-editor-frame * {
+  -webkit-user-drag: none;
+  user-select: none;
+}
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-editor-frame .components-disabled {
+  display: block;
+}
+.editor-styles-wrapper .block-editor-block-list__block[data-type^="gestpark/"] {
+  max-width: 100% !important;
+}
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-template-shell > *,
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-single-wrap > * {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-card,
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-content-block,
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-side-card,
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-single-gallery-panel,
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-single-summary {
+  min-width: 0 !important;
+}
+
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-editor-frame {
+  position: relative;
+  overflow: visible;
+}
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-card-actions,
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-filter-actions,
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-results-head { gap: 12px; }
+
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-editor-frame {
+  max-width: min(100%, 1440px);
+  margin: 0 auto;
+  padding: 0 clamp(4px, 1vw, 14px);
+}
+
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-template-shell,
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-catalog-shell,
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-carousel-shell,
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-featured-single,
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-single-wrap,
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-brand-carousel-shell,
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-vehicle-search-shell {
+  max-width: min(100%, var(--gpo-content-max-width));
+  width: 100%;
+  margin: var(--gpo-shell-margin-y) auto 0;
+  padding-left: clamp(12px, 2.2vw, var(--gpo-shell-padding-x));
+  padding-right: clamp(12px, 2.2vw, var(--gpo-shell-padding-x));
+  box-sizing: border-box;
+}
+
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"].alignwide .gpo-editor-frame {
+  max-width: min(100%, var(--gpo-content-max-width));
+}
+
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"].alignfull .gpo-editor-frame {
+  max-width: 100%;
+}
+
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-block.alignwide,
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-block.alignfull {
+  left: auto;
+  transform: none;
+  width: 100%;
+  max-width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+}

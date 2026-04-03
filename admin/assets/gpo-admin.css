@@ -1,0 +1,108 @@
+.gpo-admin-wrap{--gpo-admin-blue:#2e4aa2;--gpo-admin-cyan:#55a6dc;--gpo-admin-green:#39aa38;--gpo-admin-green-soft:#76bf52}
+.gpo-admin-hero{display:grid;grid-template-columns:320px 1fr;gap:24px;padding:28px;border-radius:24px;background:linear-gradient(135deg,var(--gpo-admin-blue),var(--gpo-admin-cyan) 45%,var(--gpo-admin-green));color:#fff;box-shadow:0 20px 50px rgba(24,39,75,.18);margin:18px 0 24px}
+.gpo-admin-hero__logos{display:grid;align-content:center;gap:18px;padding:16px;border-radius:18px;background:rgba(255,255,255,.1);backdrop-filter:blur(4px)}
+.gpo-admin-logo-main{max-width:230px;width:100%;height:auto;background:#fff;border-radius:18px;padding:14px}
+.gpo-admin-powered{display:grid;gap:8px;font-weight:700}.gpo-admin-logo-company{max-width:220px;width:100%;height:auto;background:#fff;border-radius:14px;padding:10px}
+.gpo-admin-hero__content h1{color:#fff;font-size:34px;margin:0 0 10px}.gpo-admin-hero__content p{font-size:15px;max-width:820px}.gpo-admin-hero__actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}.gpo-admin-hero__actions .button{border-radius:12px;padding:6px 16px}.gpo-admin-hero__actions .button-primary{background:#fff;color:#18306c;border-color:#fff}.gpo-admin-hero__actions .button-secondary{background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.3)}
+.gpo-admin-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-bottom:22px}.gpo-admin-metric,.gpo-admin-panel{background:#fff;border:1px solid #dbe4f1;border-radius:18px;padding:20px;box-shadow:0 10px 30px rgba(15,23,42,.05)}.gpo-admin-metric__title{margin:0 0 10px;color:#61708d;font-weight:700}.gpo-admin-metric__value{margin:0;font-size:30px;font-weight:800;color:#20335f}.gpo-admin-metric__desc{margin:10px 0 0;color:#61708d}
+.gpo-admin-panels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.gpo-admin-panel h2{margin-top:0}
+.gpo-checkbox-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:12px 0 24px}.gpo-checkbox-card{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #dbe4f1;border-radius:14px;padding:12px 14px}
+@media (max-width:1100px){.gpo-admin-hero{grid-template-columns:1fr}.gpo-admin-metrics,.gpo-admin-panels,.gpo-checkbox-grid{grid-template-columns:1fr}}
+.gpo-admin-wrap{
+    --gpo-ink:#0f172a;
+    --gpo-surface:#ffffff;
+    --gpo-surface-soft:#f5f8ff;
+    --gpo-border:#d7def0;
+    --gpo-border-strong:#c3cee6;
+    --gpo-muted:#5f6f92;
+    --gpo-accent:#2563eb;
+    --gpo-accent-strong:#173787;
+    --gpo-highlight:#0f9d85;
+    --gpo-shadow:0 26px 60px rgba(15,23,42,.08);
+    color:var(--gpo-ink);
+}
+.gpo-admin-wrap .notice.inline{margin:0 0 18px;border-radius:16px;padding:12px 16px}
+.gpo-admin-shell{display:grid;gap:22px;padding:18px 0 26px}
+.gpo-admin-nav{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:18px 22px;border:1px solid var(--gpo-border);border-radius:24px;background:linear-gradient(135deg,#0f172a,#162c63 58%,#1a7f72);box-shadow:var(--gpo-shadow)}
+.gpo-admin-nav__brand{display:flex;align-items:center;gap:14px;min-width:0}
+.gpo-admin-nav__logo{width:144px;height:auto;padding:10px 12px;border-radius:18px;background:rgba(255,255,255,.96)}
+.gpo-admin-nav__caption{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.72)}
+.gpo-admin-nav__links{display:flex;flex-wrap:wrap;gap:8px}
+.gpo-admin-nav__link{display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.08);color:#fff;text-decoration:none;font-weight:600}
+.gpo-admin-nav__link:hover,.gpo-admin-nav__link:focus{color:#fff;background:rgba(255,255,255,.16)}
+.gpo-admin-nav__link.is-active{background:#fff;color:var(--gpo-accent-strong);border-color:#fff}
+.gpo-admin-stage{display:grid;gap:20px}
+.gpo-page-header{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding:26px 28px;border-radius:26px;border:1px solid var(--gpo-border);background:linear-gradient(180deg,#ffffff,#f7f9ff);box-shadow:var(--gpo-shadow)}
+.gpo-page-header__copy{display:grid;gap:12px;max-width:900px}
+.gpo-page-header__copy h1{margin:0;font-size:34px;line-height:1.02;color:var(--gpo-ink)}
+.gpo-page-header__copy p{margin:0;color:var(--gpo-muted);font-size:15px;line-height:1.65}
+.gpo-page-actions{display:flex;gap:10px;flex-wrap:wrap}
+.gpo-page-actions .button,.gpo-inline-actions .button,.gpo-form-submit .button{border-radius:14px;padding:7px 16px}
+.gpo-page-actions .button-primary,.gpo-inline-actions .button-primary,.gpo-form-submit .button-primary{background:linear-gradient(135deg,var(--gpo-accent),var(--gpo-accent-strong));border-color:transparent}
+.gpo-page-actions .button-secondary,.gpo-inline-actions .button-secondary{border-color:var(--gpo-border-strong);background:#fff;color:var(--gpo-accent-strong)}
+.gpo-page-badges,.gpo-list-chips{display:flex;gap:8px;flex-wrap:wrap}
+.gpo-page-badge,.gpo-chip{display:inline-flex;align-items:center;padding:7px 12px;border-radius:999px;background:#e9f0ff;border:1px solid #d6e3ff;color:var(--gpo-accent-strong);font-size:12px;font-weight:700;letter-spacing:.02em}
+.gpo-kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.gpo-kpi-card{display:grid;gap:8px;padding:22px;border-radius:22px;border:1px solid var(--gpo-border);background:var(--gpo-surface);box-shadow:0 14px 34px rgba(15,23,42,.05)}
+.gpo-kpi-card__title{margin:0;color:var(--gpo-muted);font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.gpo-kpi-card__value{margin:0;color:var(--gpo-ink);font-size:28px;font-weight:800;line-height:1.05}
+.gpo-kpi-card__desc{margin:0;color:var(--gpo-muted)}
+.gpo-surface-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.gpo-surface-grid--connections{align-items:start}
+.gpo-surface{display:grid;gap:12px;padding:24px;border-radius:24px;border:1px solid var(--gpo-border);background:var(--gpo-surface);box-shadow:0 16px 38px rgba(15,23,42,.05)}
+.gpo-surface--accent{background:linear-gradient(180deg,#f8fbff,#eef5ff)}
+.gpo-surface__eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gpo-accent-strong);font-weight:700}
+.gpo-surface h2{margin:0;font-size:24px;color:var(--gpo-ink)}
+.gpo-surface p{margin:0;color:var(--gpo-muted);line-height:1.7}
+.gpo-inline-actions{display:flex;gap:10px;flex-wrap:wrap}
+.gpo-inline-code-list{display:flex;flex-wrap:wrap;gap:10px;padding:0;margin:0;list-style:none}
+.gpo-inline-code-list code,.gpo-flow-list code{padding:6px 9px;border-radius:10px;background:#eff4ff;border:1px solid #dce8ff;color:var(--gpo-accent-strong)}
+.gpo-flow-list{display:grid;gap:10px;margin:0;padding-left:18px;color:var(--gpo-muted)}
+.gpo-api-shell{display:grid;gap:18px}
+.gpo-connection-switch{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.gpo-mode-card{display:grid;gap:10px;padding:20px 22px;border-radius:22px;border:1px solid var(--gpo-border);background:var(--gpo-surface);cursor:pointer;box-shadow:0 12px 28px rgba(15,23,42,.04)}
+.gpo-mode-card input{margin:0}
+.gpo-mode-card.is-active{border-color:#b8caf8;background:linear-gradient(180deg,#f8fbff,#eef4ff)}
+.gpo-mode-card__title{font-size:18px;font-weight:800;color:var(--gpo-ink)}
+.gpo-mode-card__text{color:var(--gpo-muted);line-height:1.65}
+.gpo-field-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.gpo-field{display:grid;gap:8px}
+.gpo-field__label{font-weight:700;color:var(--gpo-ink)}
+.gpo-field input:not([type=checkbox]),.gpo-field select,.gpo-admin-wrap textarea,.gpo-admin-wrap .regular-text{width:100%;min-height:48px;padding:12px 14px;border:1px solid var(--gpo-border-strong);border-radius:16px;background:#fbfcff;color:var(--gpo-ink);box-shadow:inset 0 1px 0 rgba(255,255,255,.75)}
+.gpo-field input[type=password]{letter-spacing:.04em}
+.gpo-field input:focus,.gpo-field select:focus,.gpo-admin-wrap textarea:focus,.gpo-admin-wrap .regular-text:focus{border-color:#8eb2ff;box-shadow:0 0 0 4px rgba(37,99,235,.12);outline:none}
+.gpo-field__description{font-size:12px;line-height:1.55;color:var(--gpo-muted)}
+.gpo-field__toggle{display:flex;align-items:flex-start;gap:10px;padding:14px;border-radius:16px;border:1px solid var(--gpo-border);background:#f8fbff;color:var(--gpo-muted)}
+.gpo-field__toggle input{margin-top:3px}
+.gpo-form-submit{display:flex;justify-content:flex-end}
+.gpo-admin-wrap .form-table th{width:260px;color:var(--gpo-ink);font-weight:700}
+.gpo-admin-wrap .form-table td,.gpo-admin-wrap .form-table th{padding:18px 12px;border-bottom:1px solid #eef2fb}
+.gpo-admin-wrap .form-table{margin-top:10px;border-collapse:separate;border-spacing:0;background:#fff;border:1px solid var(--gpo-border);border-radius:20px;overflow:hidden;box-shadow:0 16px 38px rgba(15,23,42,.04)}
+.gpo-admin-wrap .widefat,.gpo-admin-wrap .striped>tbody>:nth-child(odd),.gpo-admin-wrap .striped>tbody>:nth-child(odd) td{background:#fff}
+.gpo-admin-wrap .widefat{border:1px solid var(--gpo-border);border-radius:22px;overflow:hidden;box-shadow:0 16px 38px rgba(15,23,42,.04)}
+.gpo-admin-wrap .widefat th{background:#f6f9ff;color:var(--gpo-ink)}
+.gpo-admin-wrap .widefat td,.gpo-admin-wrap .widefat th{padding:14px 16px;border-bottom:1px solid #eef2fb}
+.gpo-checkbox-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:14px 0 26px}
+.gpo-checkbox-card{display:flex;align-items:center;gap:10px;padding:14px 16px;border-radius:18px;border:1px solid var(--gpo-border);background:#fff;box-shadow:0 10px 22px rgba(15,23,42,.04)}
+.gpo-admin-panel{margin-top:24px;padding:24px;border-radius:24px;border:1px solid var(--gpo-border);background:#fff;box-shadow:0 16px 38px rgba(15,23,42,.05)}
+.gpo-admin-panel h2{margin-top:0}
+.gpo-api-shell[data-manual-format="gestpark"] .gpo-field--manual-generic{display:none}
+.gpo-api-shell[data-manual-format="generic"] .gpo-field--manual-gestpark{display:none}
+@media (max-width:1280px){
+    .gpo-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .gpo-field-grid{grid-template-columns:1fr}
+}
+@media (max-width:1100px){
+    .gpo-admin-nav,.gpo-page-header{grid-template-columns:1fr;display:grid}
+    .gpo-page-actions{justify-content:flex-start}
+    .gpo-surface-grid,.gpo-connection-switch,.gpo-checkbox-grid{grid-template-columns:1fr}
+}
+@media (max-width:782px){
+    .gpo-admin-shell{padding-top:8px}
+    .gpo-admin-nav{padding:16px}
+    .gpo-admin-nav__logo{width:120px}
+    .gpo-page-header{padding:22px 18px}
+    .gpo-page-header__copy h1{font-size:28px}
+    .gpo-kpi-grid{grid-template-columns:1fr}
+    .gpo-surface{padding:20px}
+}

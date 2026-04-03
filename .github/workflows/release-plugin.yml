@@ -1,0 +1,35 @@
+name: Release Plugin
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare plugin package
+        run: |
+          mkdir -p dist/gestpark-online
+          rsync -av ./ dist/gestpark-online/ \
+            --exclude ".git" \
+            --exclude ".github" \
+            --exclude "node_modules" \
+            --exclude ".DS_Store" \
+            --exclude "testwrite"
+          cd dist
+          zip -r gestpark-online.zip gestpark-online
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/gestpark-online.zip
+          generate_release_notes: true

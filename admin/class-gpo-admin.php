@@ -1,0 +1,957 @@
+<?php
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+class GPO_Admin {
+    public static function init() {
+        add_action('admin_menu', [__CLASS__, 'menu']);
+        add_action('admin_init', [__CLASS__, 'register_settings']);
+        add_action('admin_enqueue_scripts', [__CLASS__, 'enqueue_assets']);
+        add_action('admin_post_gpo_test_connection', [__CLASS__, 'handle_test_connection']);
+        add_action('admin_post_gpo_run_sync', [__CLASS__, 'handle_run_sync']);
+        add_action('admin_post_gpo_clear_logs', [__CLASS__, 'handle_clear_logs']);
+        add_action('admin_post_gpo_save_showcase', [__CLASS__, 'handle_save_showcase']);
+        add_action('admin_post_gpo_github_refresh', [__CLASS__, 'handle_github_refresh']);
+    }
+
+    public static function default_settings() {
+        return [
+            'api' => GPO_API_Client::default_api_settings(),
+            'mapping' => [
+                'external_id' => 'id',
+                'brand' => 'brand',
+                'model' => 'model',
+                'version' => 'version',
+                'description' => 'description',
+                'condition' => 'condition',
+                'year' => 'year',
+                'price' => 'price',
+                'fuel' => 'fuel',
+                'mileage' => 'mileage',
+                'body_type' => 'body_type',
+                'transmission' => 'transmission',
+                'engine_size' => 'engine_size',
+                'gallery_urls' => 'images',
+            ],
+            'sync' => [
+                'enabled' => 0,
+            ],
+            'github' => [
+                'enabled' => 0,
+                'repository' => '',
+                'branch' => 'main',
+                'release_asset' => 'gestpark-online.zip',
+                'access_token' => '',
+            ],
+            'style' => [
+                'primary_color' => '#111827',
+                'accent_color' => '#12b981',
+                'card_bg' => '#ffffff',
+                'radius' => '16px',
+                'title_font' => 'inherit',
+                'body_font' => 'inherit',
+                'card_layout' => 'default',
+                'single_layout' => 'classic',
+                'single_template_id' => 0,
+                'card_gap' => '24',
+                'card_padding' => '22',
+                'content_max_width' => '1280',
+                'outer_margin_y' => '32',
+                'outer_padding_x' => '18',
+                'section_gap' => '24',
+                'filter_columns' => '5',
+                'fallback_vehicle_image' => '',
+                'filter_fields' => [
+                    'search' => '1',
+                    'brand' => '1',
+                    'condition' => '1',
+                    'fuel' => '1',
+                    'body_type' => '1',
+                    'transmission' => '1',
+                    'year' => '1',
+                    'min_price' => '1',
+                    'max_price' => '1',
+                    'max_mileage' => '1',
+                    'sort' => '1',
+                ],
+                'card_elements' => [
+                    'image' => '1',
+                    'badge' => '1',
+                    'brand' => '1',
+                    'title' => '1',
+                    'price' => '1',
+                    'chips' => '1',
+                    'year' => '1',
+                    'mileage' => '1',
+                    'body_type' => '1',
+                    'transmission' => '1',
+                    'engine_size' => '1',
+                    'specs' => '1',
+                    'primary_button' => '1',
+                    'secondary_button' => '1',
+                ],
+                'single_sections' => [
+                    'gallery' => '1',
+                    'summary' => '1',
+                    'description' => '1',
+                    'notes' => '1',
+                    'specs' => '1',
+                    'accessories' => '1',
+                    'contact_box' => '1',
+                    'strengths' => '1',
+                ],
+            ],
+        ];
+    }
+
+    public static function menu() {
+        add_menu_page('gestpark online', 'gestpark online', 'manage_options', 'gestpark-online', [__CLASS__, 'dashboard_page'], 'dashicons-car', 26);
+        add_submenu_page('gestpark-online', 'Dashboard', 'Dashboard', 'manage_options', 'gestpark-online', [__CLASS__, 'dashboard_page']);
+        add_submenu_page('gestpark-online', 'Veicoli', 'Veicoli', 'edit_posts', 'edit.php?post_type=gpo_vehicle');
+        add_submenu_page('gestpark-online', 'Connessioni API', 'Connessioni API', 'manage_options', 'gpo-api', [__CLASS__, 'api_page']);
+        add_submenu_page('gestpark-online', 'Mappatura campi', 'Mappatura campi', 'manage_options', 'gpo-mapping', [__CLASS__, 'mapping_page']);
+        add_submenu_page('gestpark-online', 'Vetrina', 'Vetrina', 'manage_options', 'gpo-showcase', [__CLASS__, 'showcase_page']);
+        add_submenu_page('gestpark-online', 'Aspetto', 'Aspetto', 'manage_options', 'gpo-style', [__CLASS__, 'style_page']);
+        add_submenu_page('gestpark-online', 'Aggiornamenti GitHub', 'Aggiornamenti', 'manage_options', 'gpo-updates', [__CLASS__, 'updates_page']);
+        add_submenu_page('gestpark-online', 'Template veicolo', 'Template veicolo', 'edit_posts', 'edit.php?post_type=gpo_template');
+        add_submenu_page('gestpark-online', 'Log e diagnostica', 'Log e diagnostica', 'manage_options', 'gpo-logs', [__CLASS__, 'logs_page']);
+        add_submenu_page('gestpark-online', 'Guida rapida', 'Guida rapida', 'manage_options', 'gpo-guide', [__CLASS__, 'guide_page']);
+    }
+
+    public static function enqueue_assets($hook) {
+        if (strpos((string) $hook, 'gestpark-online') === false && strpos((string) $hook, 'gpo-') === false && $hook !== 'post.php' && $hook !== 'post-new.php') {
+            return;
+        }
+
+        wp_enqueue_style('gpo-admin', GPO_PLUGIN_URL . 'admin/assets/gpo-admin.css', [], GPO_VERSION);
+        wp_enqueue_script('gpo-admin', GPO_PLUGIN_URL . 'admin/assets/gpo-admin.js', [], GPO_VERSION, true);
+        wp_enqueue_media();
+        wp_add_inline_script('jquery-core', "jQuery(function($){var frame;$(document).on('click','.gpo-media-upload',function(e){e.preventDefault();var target=$($(this).data('target'));if(!target.length){return;}frame=wp.media({title:'Seleziona immagine fallback',button:{text:'Usa questa immagine'},multiple:false});frame.on('select',function(){var attachment=frame.state().get('selection').first().toJSON();target.val(attachment.url).trigger('change');});frame.open();});$(document).on('click','.gpo-media-clear',function(e){e.preventDefault();var target=$($(this).data('target'));if(target.length){target.val('').trigger('change');}});});");
+    }
+
+    public static function register_settings() {
+        register_setting('gpo_api_group', 'gpo_settings', [__CLASS__, 'sanitize_settings']);
+    }
+
+    public static function sanitize_settings($input) {
+        $defaults = self::default_settings();
+        $input = is_array($input) ? $input : [];
+        $existing = self::get_settings();
+        $output = array_replace_recursive($defaults, $existing);
+
+        if (!empty($input['api']) && is_array($input['api'])) {
+            $text_fields = [
+                'connection_mode',
+                'manual_format',
+                'endpoint',
+                'detail_endpoint',
+                'login_endpoint',
+                'auth_method',
+                'items_path',
+                'gestpark_base_url',
+                'gestpark_login_path',
+                'gestpark_list_path',
+                'gestpark_mainphoto_path',
+                'gestpark_detail_path',
+            ];
+
+            foreach ($text_fields as $key) {
+                if (isset($input['api'][$key])) {
+                    $output['api'][$key] = sanitize_text_field((string) $input['api'][$key]);
+                }
+            }
+
+            foreach (['gestpark_username', 'gestpark_password', 'token', 'api_key'] as $key) {
+                if (isset($input['api'][$key])) {
+                    $output['api'][$key] = self::clean_secret_value($input['api'][$key]);
+                }
+            }
+
+            if (isset($input['api']['timeout'])) {
+                $output['api']['timeout'] = max(5, absint($input['api']['timeout']));
+            }
+
+            $output['api']['prefer_mainphoto'] = !empty($input['api']['prefer_mainphoto']) ? 1 : 0;
+            $output['api']['include_details'] = !empty($input['api']['include_details']) ? 1 : 0;
+            $output['api'] = GPO_API_Client::normalize_api_settings($output['api']);
+        }
+
+        if (!empty($input['mapping']) && is_array($input['mapping'])) {
+            foreach ($input['mapping'] as $key => $value) {
+                $output['mapping'][$key] = sanitize_text_field($value);
+            }
+        }
+
+        if (!empty($input['sync']) && is_array($input['sync'])) {
+            foreach ($input['sync'] as $key => $value) {
+                $output['sync'][$key] = !empty($value) ? 1 : 0;
+            }
+        }
+
+        if (!empty($input['github']) && is_array($input['github'])) {
+            $output['github']['enabled'] = !empty($input['github']['enabled']) ? 1 : 0;
+
+            foreach (['repository', 'branch', 'release_asset'] as $key) {
+                if (isset($input['github'][$key])) {
+                    $output['github'][$key] = sanitize_text_field((string) $input['github'][$key]);
+                }
+            }
+
+            if (isset($input['github']['access_token'])) {
+                $output['github']['access_token'] = self::clean_secret_value($input['github']['access_token']);
+            }
+
+            if (class_exists('GPO_GitHub_Updater')) {
+                GPO_GitHub_Updater::clear_cache();
+            }
+        }
+
+        if (!empty($input['style']) && is_array($input['style'])) {
+            foreach (['primary_color', 'accent_color', 'card_bg', 'radius', 'title_font', 'body_font', 'card_layout', 'single_layout', 'single_template_id', 'card_gap', 'card_padding', 'content_max_width', 'outer_margin_y', 'outer_padding_x', 'section_gap', 'filter_columns'] as $key) {
+                if (isset($input['style'][$key])) {
+                    $output['style'][$key] = sanitize_text_field($input['style'][$key]);
+                }
+            }
+            if (isset($input['style']['fallback_vehicle_image'])) {
+                $output['style']['fallback_vehicle_image'] = esc_url_raw($input['style']['fallback_vehicle_image']);
+            }
+
+            $output['style']['card_elements'] = [];
+            foreach (array_keys($defaults['style']['card_elements']) as $key) {
+                $output['style']['card_elements'][$key] = !empty($input['style']['card_elements'][$key]) ? '1' : '0';
+            }
+
+            $output['style']['single_sections'] = [];
+            foreach (array_keys($defaults['style']['single_sections']) as $key) {
+                $output['style']['single_sections'][$key] = !empty($input['style']['single_sections'][$key]) ? '1' : '0';
+            }
+
+            $output['style']['filter_fields'] = [];
+            foreach (array_keys($defaults['style']['filter_fields']) as $key) {
+                $output['style']['filter_fields'][$key] = !empty($input['style']['filter_fields'][$key]) ? '1' : '0';
+            }
+        }
+
+        return $output;
+    }
+
+    protected static function clean_secret_value($value) {
+        $value = is_scalar($value) ? (string) $value : '';
+        $value = str_replace(["\r", "\n", "\t"], '', $value);
+
+        return trim($value);
+    }
+
+    protected static function get_settings() {
+        $settings = get_option('gpo_settings', []);
+        $settings = array_replace_recursive(self::default_settings(), is_array($settings) ? $settings : []);
+        $settings['api'] = GPO_API_Client::normalize_api_settings(isset($settings['api']) ? $settings['api'] : []);
+
+        return $settings;
+    }
+
+    protected static function get_logo_url($name) {
+        return GPO_PLUGIN_URL . 'admin/assets/' . $name;
+    }
+
+    protected static function nav_items() {
+        return [
+            'dashboard' => ['label' => 'Dashboard', 'url' => admin_url('admin.php?page=gestpark-online')],
+            'api' => ['label' => 'Connessioni', 'url' => admin_url('admin.php?page=gpo-api')],
+            'mapping' => ['label' => 'Mappatura', 'url' => admin_url('admin.php?page=gpo-mapping')],
+            'showcase' => ['label' => 'Vetrina', 'url' => admin_url('admin.php?page=gpo-showcase')],
+            'style' => ['label' => 'Aspetto', 'url' => admin_url('admin.php?page=gpo-style')],
+            'updates' => ['label' => 'Aggiornamenti', 'url' => admin_url('admin.php?page=gpo-updates')],
+            'vehicles' => ['label' => 'Veicoli', 'url' => admin_url('edit.php?post_type=gpo_vehicle')],
+            'templates' => ['label' => 'Template', 'url' => admin_url('edit.php?post_type=gpo_template')],
+            'logs' => ['label' => 'Log', 'url' => admin_url('admin.php?page=gpo-logs')],
+            'guide' => ['label' => 'Guida', 'url' => admin_url('admin.php?page=gpo-guide')],
+        ];
+    }
+
+    protected static function render_page_start($current, $title, $description, $actions = [], $badges = []) {
+        echo '<div class="wrap gpo-admin-wrap">';
+        echo '<div class="gpo-admin-shell">';
+        self::render_page_nav($current);
+        echo '<section class="gpo-admin-stage">';
+        echo '<header class="gpo-page-header">';
+        echo '<div class="gpo-page-header__copy">';
+        if (!empty($badges)) {
+            echo '<div class="gpo-page-badges">';
+            foreach ($badges as $badge) {
+                echo '<span class="gpo-page-badge">' . esc_html($badge) . '</span>';
+            }
+            echo '</div>';
+        }
+        echo '<h1>' . esc_html($title) . '</h1>';
+        echo '<p>' . esc_html($description) . '</p>';
+        echo '</div>';
+        if (!empty($actions)) {
+            echo '<div class="gpo-page-actions">';
+            foreach ($actions as $action) {
+                $class = !empty($action['variant']) && $action['variant'] === 'secondary' ? 'button button-secondary' : 'button button-primary';
+                echo '<a class="' . esc_attr($class) . '" href="' . esc_url($action['url']) . '"';
+                if (!empty($action['target'])) {
+                    echo ' target="' . esc_attr($action['target']) . '"';
+                }
+                echo '>' . esc_html($action['label']) . '</a>';
+            }
+            echo '</div>';
+        }
+        echo '</header>';
+    }
+
+    protected static function render_page_end() {
+        echo '</section>';
+        echo '</div>';
+        echo '</div>';
+    }
+
+    protected static function render_page_nav($current) {
+        echo '<nav class="gpo-admin-nav">';
+        echo '<div class="gpo-admin-nav__brand">';
+        echo '<img class="gpo-admin-nav__logo" src="' . esc_url(self::get_logo_url('gestpark.png')) . '" alt="GestPark online" />';
+        echo '<span class="gpo-admin-nav__caption">Dealer workspace</span>';
+        echo '</div>';
+        echo '<div class="gpo-admin-nav__links">';
+        foreach (self::nav_items() as $slug => $item) {
+            $active = $slug === $current ? ' is-active' : '';
+            echo '<a class="gpo-admin-nav__link' . esc_attr($active) . '" href="' . esc_url($item['url']) . '">' . esc_html($item['label']) . '</a>';
+        }
+        echo '</div>';
+        echo '</nav>';
+    }
+
+    protected static function render_setting_field($args) {
+        $defaults = [
+            'label' => '',
+            'name' => '',
+            'value' => '',
+            'type' => 'text',
+            'description' => '',
+            'options' => [],
+            'placeholder' => '',
+            'classes' => '',
+        ];
+        $args = wp_parse_args($args, $defaults);
+
+        echo '<label class="gpo-field ' . esc_attr($args['classes']) . '">';
+        echo '<span class="gpo-field__label">' . esc_html($args['label']) . '</span>';
+
+        if ($args['type'] === 'select') {
+            echo '<select name="' . esc_attr($args['name']) . '">';
+            foreach ($args['options'] as $key => $label) {
+                echo '<option value="' . esc_attr($key) . '" ' . selected($args['value'], $key, false) . '>' . esc_html($label) . '</option>';
+            }
+            echo '</select>';
+        } elseif ($args['type'] === 'checkbox') {
+            echo '<span class="gpo-field__toggle">';
+            echo '<input type="checkbox" name="' . esc_attr($args['name']) . '" value="1" ' . checked(!empty($args['value']), true, false) . ' />';
+            echo '<span>' . esc_html($args['description']) . '</span>';
+            echo '</span>';
+        } else {
+            $input_type = $args['type'] === 'password' ? 'password' : 'text';
+            echo '<input type="' . esc_attr($input_type) . '" name="' . esc_attr($args['name']) . '" value="' . esc_attr((string) $args['value']) . '" placeholder="' . esc_attr($args['placeholder']) . '" />';
+        }
+
+        if ($args['description'] && $args['type'] !== 'checkbox') {
+            echo '<span class="gpo-field__description">' . esc_html($args['description']) . '</span>';
+        }
+
+        echo '</label>';
+    }
+
+    public static function dashboard_page() {
+        $stats = wp_count_posts('gpo_vehicle');
+        $last_sync = get_option('gpo_last_sync_result', []);
+        $settings = self::get_settings();
+        $connection = GPO_API_Client::connection_summary($settings['api']);
+        $featured = new WP_Query([
+            'post_type' => 'gpo_vehicle',
+            'posts_per_page' => -1,
+            'fields' => 'ids',
+            'meta_key' => '_gpo_featured',
+            'meta_value' => '1',
+        ]);
+
+        self::render_page_start(
+            'dashboard',
+            'GestPark control center',
+            'Monitora sincronizzazioni, inventario, template veicolo e stato della connessione da un unico spazio operativo.',
+            [
+                ['label' => 'Sincronizza adesso', 'url' => admin_url('admin-post.php?action=gpo_run_sync&_wpnonce=' . wp_create_nonce('gpo_run_sync'))],
+                ['label' => 'Configura connessione', 'url' => admin_url('admin.php?page=gpo-api'), 'variant' => 'secondary'],
+            ],
+            [$connection['mode_label'], $connection['status_label']]
+        );
+
+        self::admin_notices_from_query();
+
+        echo '<section class="gpo-kpi-grid">';
+        self::metric_card('Veicoli pubblicati', (int) ($stats->publish ?? 0), 'Archivio disponibile sul sito');
+        self::metric_card('Veicoli in vetrina', count($featured->posts), 'Selezionati per showcase e carosello');
+        self::metric_card('Ultima sincronizzazione', !empty($last_sync['time']) ? $last_sync['time'] : 'Mai', 'Ultimo import eseguito');
+        self::metric_card('Modalita attiva', $connection['mode_label'], $connection['detail_label']);
+        echo '</section>';
+
+        echo '<section class="gpo-surface-grid">';
+        echo '<article class="gpo-surface gpo-surface--accent">';
+        echo '<div class="gpo-surface__eyebrow">Operativita immediata</div>';
+        echo '<h2>Connessione e import</h2>';
+        echo '<p>' . esc_html($connection['description']) . '</p>';
+        echo '<div class="gpo-list-chips">';
+        echo '<span class="gpo-chip">' . esc_html($connection['surface_label']) . '</span>';
+        echo '<span class="gpo-chip">' . esc_html($connection['detail_label']) . '</span>';
+        echo '</div>';
+        echo '<div class="gpo-inline-actions">';
+        echo '<a class="button button-primary" href="' . esc_url(admin_url('admin-post.php?action=gpo_test_connection&_wpnonce=' . wp_create_nonce('gpo_test_connection'))) . '">Test connessione</a>';
+        echo '<a class="button button-secondary" href="' . esc_url(admin_url('admin-post.php?action=gpo_run_sync&_wpnonce=' . wp_create_nonce('gpo_run_sync'))) . '">Sincronizza adesso</a>';
+        echo '</div>';
+        echo '</article>';
+
+        echo '<article class="gpo-surface">';
+        echo '<div class="gpo-surface__eyebrow">Publishing stack</div>';
+        echo '<h2>Blocchi pronti per il sito</h2>';
+        echo '<p>Il plugin espone catalogo, vetrina e scheda veicolo con lo stesso layer dati su shortcode, editor WordPress ed Elementor.</p>';
+        echo '<ul class="gpo-inline-code-list">';
+        echo '<li><code>[gestpark_vehicle_catalog]</code></li>';
+        echo '<li><code>[gestpark_featured_carousel]</code></li>';
+        echo '<li><code>[gestpark_featured_vehicle]</code></li>';
+        echo '</ul>';
+        echo '</article>';
+
+        echo '<article class="gpo-surface">';
+        echo '<div class="gpo-surface__eyebrow">Template globale</div>';
+        echo '<h2>Scheda veicolo editabile</h2>';
+        echo '<p>Seleziona un template globale, aprilo con un veicolo reale importato e costruisci un layout unico per tutte le schede del concessionario.</p>';
+        echo '<a class="button button-secondary" href="' . esc_url(admin_url('admin.php?page=gpo-style')) . '">Apri Aspetto</a>';
+        echo '</article>';
+
+        echo '<article class="gpo-surface">';
+        echo '<div class="gpo-surface__eyebrow">Stato dati</div>';
+        echo '<h2>Controlli rapidi</h2>';
+        echo '<p>Ultimo sync: <strong>' . esc_html(!empty($last_sync['time']) ? $last_sync['time'] : 'Mai eseguito') . '</strong></p>';
+        echo '<p>Sorgente: <strong>' . esc_html(!empty($last_sync['source']) ? $last_sync['source'] : 'n.d.') . '</strong></p>';
+        echo '<a class="button button-secondary" href="' . esc_url(admin_url('admin.php?page=gpo-logs')) . '">Apri log e diagnostica</a>';
+        echo '</article>';
+        echo '</section>';
+
+        self::render_page_end();
+    }
+
+    protected static function metric_card($title, $value, $description = '') {
+        echo '<div class="gpo-kpi-card">';
+        echo '<p class="gpo-kpi-card__title">' . esc_html($title) . '</p>';
+        echo '<p class="gpo-kpi-card__value">' . esc_html((string) $value) . '</p>';
+        if ($description) {
+            echo '<p class="gpo-kpi-card__desc">' . esc_html($description) . '</p>';
+        }
+        echo '</div>';
+    }
+
+    public static function api_page() {
+        $settings = self::get_settings();
+        $api = $settings['api'];
+        $summary = GPO_API_Client::connection_summary($api);
+
+        self::render_page_start(
+            'api',
+            'Connessioni ParkPlatform API',
+            'Configura il plugin in modalita automatica con account email abilitato alle API ParkPlatform oppure in modalita manuale con endpoint e token.',
+            [
+                ['label' => 'Test connessione', 'url' => admin_url('admin-post.php?action=gpo_test_connection&_wpnonce=' . wp_create_nonce('gpo_test_connection'))],
+                ['label' => 'Sincronizza adesso', 'url' => admin_url('admin-post.php?action=gpo_run_sync&_wpnonce=' . wp_create_nonce('gpo_run_sync')), 'variant' => 'secondary'],
+            ],
+            [$summary['mode_label'], $summary['status_label']]
+        );
+        self::admin_notices_from_query();
+        echo '<form class="gpo-api-shell" method="post" action="options.php" data-connection-mode="' . esc_attr($api['connection_mode']) . '" data-manual-format="' . esc_attr($api['manual_format']) . '">';
+        settings_fields('gpo_api_group');
+
+        echo '<section class="gpo-connection-switch">';
+        echo '<label class="gpo-mode-card' . ($api['connection_mode'] === 'gestpark_auto' ? ' is-active' : '') . '">';
+        echo '<input type="radio" name="gpo_settings[api][connection_mode]" value="gestpark_auto" ' . checked($api['connection_mode'], 'gestpark_auto', false) . ' />';
+        echo '<span class="gpo-mode-card__title">Automatico con account ParkPlatform API</span>';
+        echo '<span class="gpo-mode-card__text">Inserisci l email dell account abilitato alle API e la relativa password. Il plugin ottiene il JWT, legge la lista veicoli e completa le schede con dettaglio e galleria dei dati provenienti da GestPark.</span>';
+        echo '</label>';
+        echo '<label class="gpo-mode-card' . ($api['connection_mode'] === 'manual' ? ' is-active' : '') . '">';
+        echo '<input type="radio" name="gpo_settings[api][connection_mode]" value="manual" ' . checked($api['connection_mode'], 'manual', false) . ' />';
+        echo '<span class="gpo-mode-card__title">Manuale con endpoint</span>';
+        echo '<span class="gpo-mode-card__text">Usa token JWT gia disponibile oppure un feed JSON legacy, mantenendo il controllo completo sugli endpoint.</span>';
+        echo '</label>';
+        echo '</section>';
+
+        echo '<section class="gpo-surface-grid gpo-surface-grid--connections">';
+        echo '<article class="gpo-surface gpo-connection-panel">';
+        echo '<div class="gpo-surface__eyebrow">Percorso consigliato</div>';
+        echo '<h2>Account ParkPlatform API</h2>';
+        echo '<p>I veicoli arrivano da GestPark dentro ParkPlatform. Il plugin effettua login JWT su <code>/api/auth/login</code>, legge la lista vetrina su <code>/api/vetrina/mainphoto</code> e recupera il dettaglio singolo su <code>/api/vetrina/{idGestionale}</code>.</p>';
+        echo '<div class="gpo-field-grid">';
+        self::render_setting_field(['label' => 'Base URL API ParkPlatform', 'name' => 'gpo_settings[api][gestpark_base_url]', 'value' => $api['gestpark_base_url'], 'description' => 'Host API usato per login, lista e dettaglio.']);
+        self::render_setting_field(['label' => 'Email account API', 'name' => 'gpo_settings[api][gestpark_username]', 'value' => $api['gestpark_username'], 'description' => 'L endpoint di login accetta solo un indirizzo email valido nel campo Username.', 'placeholder' => 'nome@dominio.it']);
+        self::render_setting_field(['label' => 'Password account API', 'name' => 'gpo_settings[api][gestpark_password]', 'value' => $api['gestpark_password'], 'type' => 'password', 'description' => 'La password viene usata solo per ottenere il token JWT.']);
+        self::render_setting_field(['label' => 'Path login', 'name' => 'gpo_settings[api][gestpark_login_path]', 'value' => $api['gestpark_login_path'], 'description' => 'Di default: /api/auth/login']);
+        self::render_setting_field(['label' => 'Path lista veicoli', 'name' => 'gpo_settings[api][gestpark_list_path]', 'value' => $api['gestpark_list_path'], 'description' => 'Endpoint lista leggera senza foto originali.']);
+        self::render_setting_field(['label' => 'Path lista con thumbnail', 'name' => 'gpo_settings[api][gestpark_mainphoto_path]', 'value' => $api['gestpark_mainphoto_path'], 'description' => 'Endpoint consigliato per il catalogo con foto principale.']);
+        self::render_setting_field(['label' => 'Path dettaglio veicolo', 'name' => 'gpo_settings[api][gestpark_detail_path]', 'value' => $api['gestpark_detail_path'], 'description' => 'Usa il placeholder {idGestionale}.']);
+        self::render_setting_field(['label' => 'Usa lista con thumbnail', 'name' => 'gpo_settings[api][prefer_mainphoto]', 'value' => !empty($api['prefer_mainphoto']), 'type' => 'checkbox', 'description' => 'Consigliato: migliora resa di catalogo e ricerca.']);
+        self::render_setting_field(['label' => 'Completa ogni veicolo con dettaglio', 'name' => 'gpo_settings[api][include_details]', 'value' => !empty($api['include_details']), 'type' => 'checkbox', 'description' => 'Recupera galleria immagini, optional e dati tecnici completi.']);
+        echo '</div>';
+        echo '</article>';
+
+        echo '<article class="gpo-surface gpo-connection-panel">';
+        echo '<div class="gpo-surface__eyebrow">Fallback manuale</div>';
+        echo '<h2>Endpoint e token</h2>';
+        echo '<p>Quando preferisci gestire tutto manualmente puoi incollare token JWT ed endpoint ParkPlatform API, oppure mantenere un feed JSON generico gia presente.</p>';
+        echo '<div class="gpo-field-grid">';
+        self::render_setting_field(['label' => 'Formato manuale', 'name' => 'gpo_settings[api][manual_format]', 'value' => $api['manual_format'], 'type' => 'select', 'options' => ['gestpark' => 'ParkPlatform API manuale', 'generic' => 'JSON generico legacy'], 'description' => 'Scegli come interpretare endpoint e token.']);
+        self::render_setting_field(['label' => 'Endpoint lista', 'name' => 'gpo_settings[api][endpoint]', 'value' => $api['endpoint'], 'description' => 'Per ParkPlatform usa /api/vetrina oppure /api/vetrina/mainphoto.', 'classes' => 'gpo-field--manual-common']);
+        self::render_setting_field(['label' => 'Endpoint dettaglio', 'name' => 'gpo_settings[api][detail_endpoint]', 'value' => $api['detail_endpoint'], 'description' => 'Per ParkPlatform usa il placeholder {idGestionale}.', 'classes' => 'gpo-field--manual-gestpark']);
+        self::render_setting_field(['label' => 'Endpoint login manuale', 'name' => 'gpo_settings[api][login_endpoint]', 'value' => $api['login_endpoint'], 'description' => 'Riferimento rapido per ottenere il token fuori dal plugin.', 'classes' => 'gpo-field--manual-gestpark']);
+        self::render_setting_field(['label' => 'Autenticazione', 'name' => 'gpo_settings[api][auth_method]', 'value' => $api['auth_method'], 'type' => 'select', 'options' => ['bearer' => 'Bearer token', 'x_api_key' => 'X-API-Key', 'none' => 'Nessuna'], 'description' => 'GestPark usa Bearer token JWT.']);
+        self::render_setting_field(['label' => 'Bearer token', 'name' => 'gpo_settings[api][token]', 'value' => $api['token'], 'type' => 'password', 'description' => 'Incolla il token ottenuto via login GestPark.']);
+        self::render_setting_field(['label' => 'API key', 'name' => 'gpo_settings[api][api_key]', 'value' => $api['api_key'], 'description' => 'Usato solo da feed generici alternativi.', 'classes' => 'gpo-field--manual-generic']);
+        self::render_setting_field(['label' => 'Items path JSON', 'name' => 'gpo_settings[api][items_path]', 'value' => $api['items_path'], 'description' => 'Solo per feed annidati, ad esempio data.vehicles.', 'classes' => 'gpo-field--manual-generic']);
+        self::render_setting_field(['label' => 'Timeout richieste', 'name' => 'gpo_settings[api][timeout]', 'value' => $api['timeout'], 'description' => 'Secondi massimi di attesa per login e fetch.']);
+        echo '</div>';
+        echo '</article>';
+        echo '</section>';
+
+        echo '<section class="gpo-surface-grid">';
+        echo '<article class="gpo-surface">';
+        echo '<div class="gpo-surface__eyebrow">Flow tecnico</div>';
+        echo '<h2>Come lavora il plugin</h2>';
+        echo '<ol class="gpo-flow-list">';
+        echo '<li>Login JWT con username e password oppure token manuale gia disponibile.</li>';
+        echo '<li>Recupero lista veicoli con marchio, modello, prezzo e thumbnail principale.</li>';
+        echo '<li>Dettaglio singolo veicolo per galleria completa, optional e dati tecnici estesi.</li>';
+        echo '</ol>';
+        echo '</article>';
+        echo '<article class="gpo-surface">';
+        echo '<div class="gpo-surface__eyebrow">Mappatura</div>';
+        echo '<h2>Quando serve davvero</h2>';
+        echo '<p>Con ParkPlatform API la mappatura principale e gia integrata nel plugin. La pagina <strong>Mappatura campi</strong> rimane utile solo per il fallback manuale JSON legacy.</p>';
+        echo '</article>';
+        echo '</section>';
+
+        echo '<div class="gpo-form-submit">';
+        submit_button('Salva configurazione API', 'primary', 'submit', false);
+        echo '</div>';
+        echo '</form>';
+        self::render_page_end();
+        return;
+        echo '<div class="wrap gpo-admin-wrap"><h1>Connessioni API</h1>';
+        self::admin_notices_from_query();
+        echo '<p><strong>Flusso consigliato:</strong> scegli il template, aprilo nellâ€™editor, usa il veicolo demo per rifinire layout e contenuti e poi assegna quel template a tutte le schede veicolo.</p>';
+        if (GPO_API_Client::uses_gestpark($settings['api'])) {
+            echo '<div class="notice notice-info inline"><p>Con GestPark automatico o manuale la mappatura base e gia integrata nel plugin. Modifica questi campi solo se stai usando il fallback JSON legacy.</p></div>';
+        }
+        if (GPO_API_Client::uses_gestpark($settings['api'])) {
+            echo '<div class="notice notice-info inline"><p>Con GestPark automatico o manuale la mappatura base e gia integrata nel plugin. Modifica questi campi solo se stai usando il fallback JSON legacy.</p></div>';
+        }
+        echo '<form method="post" action="options.php">';
+        settings_fields('gpo_api_group');
+        echo '<table class="form-table"><tbody>';
+        self::input_row('Endpoint API', 'gpo_settings[api][endpoint]', $settings['api']['endpoint'], 'URL dell’endpoint che restituisce i veicoli in JSON.');
+        self::select_row('Autenticazione', 'gpo_settings[api][auth_method]', $settings['api']['auth_method'], ['none' => 'Nessuna', 'bearer' => 'Bearer Token', 'x_api_key' => 'X-API-Key']);
+        self::input_row('Bearer token', 'gpo_settings[api][token]', $settings['api']['token']);
+        self::input_row('API key', 'gpo_settings[api][api_key]', $settings['api']['api_key']);
+        self::input_row('Percorso elementi', 'gpo_settings[api][items_path]', $settings['api']['items_path'], 'Esempio: data.vehicles se il JSON è annidato. Lascia vuoto se l’endpoint restituisce direttamente l’array.');
+        self::input_row('Timeout', 'gpo_settings[api][timeout]', $settings['api']['timeout']);
+        echo '</tbody></table>';
+        submit_button('Salva configurazione API');
+        echo '</form>';
+        echo '<p><a class="button" href="' . esc_url(admin_url('admin-post.php?action=gpo_test_connection&_wpnonce=' . wp_create_nonce('gpo_test_connection'))) . '">Test connessione</a> ';
+        echo '<a class="button button-primary" href="' . esc_url(admin_url('admin-post.php?action=gpo_run_sync&_wpnonce=' . wp_create_nonce('gpo_run_sync'))) . '">Sincronizza adesso</a></p>';
+        echo '</div>';
+    }
+
+    public static function mapping_page() {
+        $settings = self::get_settings();
+        $required = ['condition', 'year', 'price', 'fuel', 'mileage', 'body_type', 'transmission', 'engine_size'];
+        echo '<div class="wrap gpo-admin-wrap"><h1>Mappatura campi</h1>';
+        echo '<p>I campi obbligatori sono evidenziati e servono per pubblicare correttamente i veicoli sul web. Ogni singolo valore può essere collegato a una propria API o a un percorso JSON dedicato.</p>';
+        echo '<form method="post" action="options.php">';
+        settings_fields('gpo_api_group');
+        echo '<table class="form-table"><tbody>';
+        foreach (GPO_CPT::fields() as $key => $label) {
+            $is_required = in_array($key, $required, true);
+            self::input_row(
+                $label . ($is_required ? ' *' : ''),
+                'gpo_settings[mapping][' . $key . ']',
+                $settings['mapping'][$key] ?? '',
+                $is_required ? 'Campo obbligatorio da mappare.' : 'Nome campo JSON oppure percorso annidato, ad esempio data.vehicle.brand'
+            );
+        }
+        self::input_row('Descrizione', 'gpo_settings[mapping][description]', $settings['mapping']['description'] ?? 'description', 'Campo descrittivo da usare nel contenuto del post.');
+        echo '</tbody></table>';
+        submit_button('Salva mappatura');
+        echo '</form>';
+        echo '</div>';
+    }
+
+    public static function showcase_page() {
+        $query = new WP_Query([
+            'post_type' => 'gpo_vehicle',
+            'post_status' => ['publish', 'draft'],
+            'posts_per_page' => 100,
+            'orderby' => 'date',
+            'order' => 'DESC',
+        ]);
+        echo '<div class="wrap gpo-admin-wrap"><h1>Vetrina</h1>';
+        echo '<p>Da questa dashboard puoi selezionare i veicoli già importati e programmare la vetrina generale.</p>';
+        echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
+        wp_nonce_field('gpo_save_showcase');
+        echo '<input type="hidden" name="action" value="gpo_save_showcase" />';
+        echo '<table class="widefat striped"><thead><tr><th>Veicolo</th><th>In vetrina</th><th>Ordine</th><th>Dal</th><th>Al</th><th>Badge</th></tr></thead><tbody>';
+        if ($query->have_posts()) {
+            while ($query->have_posts()) {
+                $query->the_post();
+                $post_id = get_the_ID();
+                echo '<tr>';
+                echo '<td><strong>' . esc_html(get_the_title()) . '</strong><br><small>' . esc_html(get_post_meta($post_id, '_gpo_external_id', true)) . '</small></td>';
+                echo '<td><input type="checkbox" name="showcase[' . esc_attr($post_id) . '][featured]" value="1" ' . checked(get_post_meta($post_id, '_gpo_featured', true), '1', false) . ' /></td>';
+                echo '<td><input type="number" name="showcase[' . esc_attr($post_id) . '][order]" value="' . esc_attr(get_post_meta($post_id, '_gpo_featured_order', true)) . '" style="width:80px;" /></td>';
+                echo '<td><input type="datetime-local" name="showcase[' . esc_attr($post_id) . '][from]" value="' . esc_attr(get_post_meta($post_id, '_gpo_featured_from', true)) . '" /></td>';
+                echo '<td><input type="datetime-local" name="showcase[' . esc_attr($post_id) . '][to]" value="' . esc_attr(get_post_meta($post_id, '_gpo_featured_to', true)) . '" /></td>';
+                echo '<td><input type="text" name="showcase[' . esc_attr($post_id) . '][badge]" value="' . esc_attr(get_post_meta($post_id, '_gpo_badge', true)) . '" /></td>';
+                echo '</tr>';
+            }
+            wp_reset_postdata();
+        }
+        echo '</tbody></table>';
+        submit_button('Salva programmazione vetrina');
+        echo '</form></div>';
+    }
+
+    public static function style_page() {
+        $settings = self::get_settings();
+        $card_elements = [
+            'image' => 'Immagine',
+            'badge' => 'Badge',
+            'brand' => 'Marca e modello',
+            'title' => 'Titolo',
+            'price' => 'Prezzo',
+            'chips' => 'Chip rapidi',
+            'year' => 'Anno',
+            'mileage' => 'Chilometraggio',
+            'body_type' => 'Carrozzeria',
+            'transmission' => 'Cambio',
+            'engine_size' => 'Cilindrata',
+            'specs' => 'Specifiche sintetiche',
+            'primary_button' => 'Pulsante principale',
+            'secondary_button' => 'Link secondario',
+        ];
+        $single_sections = [
+            'gallery' => 'Galleria',
+            'summary' => 'Riepilogo',
+            'description' => 'Descrizione',
+            'notes' => 'Note',
+            'specs' => 'Specifiche',
+            'accessories' => 'Accessori',
+            'contact_box' => 'Box contatto',
+            'strengths' => 'Punti di forza',
+        ];
+        $filter_fields = [
+            'search' => 'Ricerca libera',
+            'brand' => 'Marca',
+            'condition' => 'Condizione',
+            'fuel' => 'Alimentazione',
+            'body_type' => 'Carrozzeria',
+            'transmission' => 'Cambio',
+            'year' => 'Anno',
+            'min_price' => 'Prezzo minimo',
+            'max_price' => 'Prezzo massimo',
+            'max_mileage' => 'KM massimo',
+            'sort' => 'Ordinamento',
+        ];
+        $templates = get_posts(['post_type' => 'gpo_template', 'post_status' => ['publish', 'draft'], 'posts_per_page' => -1]);
+        $selected_template_id = absint($settings['style']['single_template_id'] ?? 0);
+        $template_preview_url = class_exists('GPO_Frontend') ? GPO_Frontend::template_preview_vehicle_link($selected_template_id) : '';
+        $template_preview_vehicle_id = class_exists('GPO_Frontend') ? GPO_Frontend::current_vehicle_id() : 0;
+        $template_preview_edit_url = $template_preview_vehicle_id ? get_edit_post_link($template_preview_vehicle_id) : '';
+
+        echo '<div class="wrap gpo-admin-wrap"><h1>Aspetto</h1>';
+        echo '<p>Qui definisci il layout generale del catalogo e della scheda veicolo. Puoi anche selezionare un template veicolo modificabile direttamente nell’editor di WordPress, così da spostare box, caroselli, annunci e blocchi senza toccare codice.</p>';
+        echo '<form method="post" action="options.php">';
+        settings_fields('gpo_api_group');
+        echo '<table class="form-table"><tbody>';
+        self::input_row('Colore principale', 'gpo_settings[style][primary_color]', $settings['style']['primary_color']);
+        self::input_row('Colore accento', 'gpo_settings[style][accent_color]', $settings['style']['accent_color']);
+        self::input_row('Sfondo card', 'gpo_settings[style][card_bg]', $settings['style']['card_bg']);
+        self::input_row('Raggio bordi', 'gpo_settings[style][radius]', $settings['style']['radius']);
+        self::input_row('Font titoli', 'gpo_settings[style][title_font]', $settings['style']['title_font'], 'Inserisci un font CSS, ad esempio Inter, Arial, sans-serif');
+        self::input_row('Font testi', 'gpo_settings[style][body_font]', $settings['style']['body_font'], 'Inserisci un font CSS, ad esempio Inter, Arial, sans-serif');
+        self::select_row('Layout globale card', 'gpo_settings[style][card_layout]', $settings['style']['card_layout'], ['default' => 'Default', 'compact' => 'Compact', 'minimal' => 'Minimal']);
+        self::select_row('Layout fallback scheda veicolo', 'gpo_settings[style][single_layout]', $settings['style']['single_layout'], ['classic' => 'Classic', 'reversed' => 'Reversed', 'stacked' => 'Stacked']);
+        echo '<tr><th scope="row"><label>Template veicolo da editor</label></th><td><select name="gpo_settings[style][single_template_id]">';
+        echo '<option value="0">Usa il template fallback del plugin</option>';
+        foreach ($templates as $template_post) {
+            echo '<option value="' . esc_attr($template_post->ID) . '" ' . selected($selected_template_id, $template_post->ID, false) . '>' . esc_html($template_post->post_title) . '</option>';
+        }
+        echo '</select><p class="description">Seleziona un template costruito con l’editor di WordPress. Tutti i veicoli useranno questo layout globale.</p>';
+        echo '<p><a class="button" href="' . esc_url(admin_url('post-new.php?post_type=gpo_template')) . '">Crea nuovo template veicolo</a>';
+        if ($selected_template_id > 0) {
+            echo ' <a class="button button-secondary" href="' . esc_url(get_edit_post_link($selected_template_id)) . '">Modifica template selezionato</a>';
+        }
+        if ($template_preview_url) {
+            echo ' <a class="button button-secondary" target="_blank" href="' . esc_url($template_preview_url) . '">Anteprima con veicolo reale</a>';
+        }
+        if ($template_preview_edit_url) {
+            echo ' <a class="button button-secondary" href="' . esc_url($template_preview_edit_url) . '">Apri veicolo usato per l anteprima</a>';
+        }
+        echo '</p></td></tr>';
+        echo '<tr><th scope="row"><label>Immagine fallback veicolo</label></th><td>';
+        echo '<input id="gpo-fallback-vehicle-image" class="regular-text" type="text" name="gpo_settings[style][fallback_vehicle_image]" value="' . esc_attr((string) ($settings['style']['fallback_vehicle_image'] ?? '')) . '" /> ';
+        echo '<a href="#" class="button gpo-media-upload" data-target="#gpo-fallback-vehicle-image">Carica o scegli immagine</a> ';
+        echo '<a href="#" class="button gpo-media-clear" data-target="#gpo-fallback-vehicle-image">Rimuovi</a>';
+        echo '<p class="description">Se un veicolo non ha foto, verrà mostrata questa immagine. Se lasci vuoto, verrà usata l\'immagine standard inclusa nel plugin.</p>';
+        echo '</td></tr>';
+        self::input_row('Gap card catalogo', 'gpo_settings[style][card_gap]', $settings['style']['card_gap'], 'Valore in px, senza unità. Esempio: 24');
+        self::input_row('Padding interno card', 'gpo_settings[style][card_padding]', $settings['style']['card_padding'], 'Valore in px, senza unità. Esempio: 22');
+        self::input_row('Larghezza massima contenuto', 'gpo_settings[style][content_max_width]', $settings['style']['content_max_width'], 'Valore in px. Controlla il contenitore generale in modo responsive.');
+        self::input_row('Margine verticale sezioni', 'gpo_settings[style][outer_margin_y]', $settings['style']['outer_margin_y'], 'Valore in px. Spazio sopra e sotto ai moduli.');
+        self::input_row('Padding laterale contenitore', 'gpo_settings[style][outer_padding_x]', $settings['style']['outer_padding_x'], 'Valore in px. Spazio laterale adattabile a ogni risoluzione.');
+        self::input_row('Spazio verticale tra moduli', 'gpo_settings[style][section_gap]', $settings['style']['section_gap'], 'Valore in px. Distanza tra gruppi, sezioni e blocchi.');
+        self::input_row('Colonne pannello filtri', 'gpo_settings[style][filter_columns]', $settings['style']['filter_columns'], 'Numero massimo di colonne su desktop per il pannello filtri.');
+        echo '</tbody></table>';
+
+        echo '<h2>Elementi visibili nelle card</h2><div class="gpo-checkbox-grid">';
+        foreach ($card_elements as $key => $label) {
+            echo '<label class="gpo-checkbox-card"><input type="checkbox" name="gpo_settings[style][card_elements][' . esc_attr($key) . ']" value="1" ' . checked($settings['style']['card_elements'][$key] ?? '0', '1', false) . ' /> <span>' . esc_html($label) . '</span></label>';
+        }
+        echo '</div>';
+
+        echo '<h2>Sezioni visibili nella scheda veicolo fallback</h2><div class="gpo-checkbox-grid">';
+        foreach ($single_sections as $key => $label) {
+            echo '<label class="gpo-checkbox-card"><input type="checkbox" name="gpo_settings[style][single_sections][' . esc_attr($key) . ']" value="1" ' . checked($settings['style']['single_sections'][$key] ?? '0', '1', false) . ' /> <span>' . esc_html($label) . '</span></label>';
+        }
+        echo '</div>';
+
+        echo '<h2>Campi visibili nel pannello filtri</h2><div class="gpo-checkbox-grid">';
+        foreach ($filter_fields as $key => $label) {
+            echo '<label class="gpo-checkbox-card"><input type="checkbox" name="gpo_settings[style][filter_fields][' . esc_attr($key) . ']" value="1" ' . checked($settings['style']['filter_fields'][$key] ?? '0', '1', false) . ' /> <span>' . esc_html($label) . '</span></label>';
+        }
+        echo '</div>';
+
+        submit_button('Salva aspetto');
+        echo '</form>';
+
+        echo '<div class="gpo-admin-panel" style="margin-top:24px;"><h2>Come funziona il template veicolo nell’editor</h2>';
+        echo '<p>Apri o crea un contenuto del tipo <strong>Template veicolo</strong> e usa i blocchi GestPark: Hero veicolo, Galleria veicolo, Scheda tecnica, Descrizione, Note, Accessori, Contatto e Carosello veicoli. Puoi spostare i blocchi, inserirli dentro colonne o gruppi, aggiungere annunci, CTA, banner o qualsiasi blocco Gutenberg del tema.</p>';
+        echo '<p><code>[gestpark_featured_carousel show="title,primary_button" card_layout="minimal"]</code></p>';
+        echo '<p><code>[gestpark_vehicle_catalog show="image,title,price,primary_button" card_layout="compact"]</code></p>';
+        echo '</div>';
+        echo '</div>';
+    }
+
+
+    public static function updates_page() {
+        $settings = self::get_settings();
+        $github = isset($settings['github']) && is_array($settings['github']) ? $settings['github'] : [];
+        $summary = class_exists('GPO_GitHub_Updater') ? GPO_GitHub_Updater::summary() : [
+            'enabled' => false,
+            'repository' => '',
+            'repository_url' => '',
+            'branch' => 'main',
+            'asset_name' => 'gestpark-online.zip',
+            'has_token' => false,
+        ];
+
+        $actions = [
+            ['label' => 'Forza controllo aggiornamenti', 'url' => admin_url('admin-post.php?action=gpo_github_refresh&_wpnonce=' . wp_create_nonce('gpo_github_refresh'))],
+        ];
+
+        if (!empty($summary['repository_url'])) {
+            $actions[] = ['label' => 'Apri repository', 'url' => $summary['repository_url'], 'variant' => 'secondary', 'target' => '_blank'];
+        }
+
+        self::render_page_start(
+            'updates',
+            'Aggiornamenti GitHub',
+            'Collega il plugin a un repository GitHub e usa le release per distribuire aggiornamenti WordPress senza ricreare manualmente la zip a ogni modifica.',
+            $actions,
+            [$summary['enabled'] ? 'Aggiornamenti attivi' : 'Aggiornamenti non configurati']
+        );
+
+        self::admin_notices_from_query();
+
+        echo '<form class="gpo-api-shell" method="post" action="options.php">';
+        settings_fields('gpo_api_group');
+
+        echo '<section class="gpo-surface-grid gpo-surface-grid--connections">';
+        echo '<article class="gpo-surface gpo-connection-panel">';
+        echo '<div class="gpo-surface__eyebrow">Configurazione plugin</div>';
+        echo '<h2>Repository e release asset</h2>';
+        echo '<p>Il plugin controlla GitHub per leggere l ultima release pubblicata, confronta il tag con la versione installata e propone l aggiornamento direttamente dentro WordPress.</p>';
+        echo '<div class="gpo-field-grid">';
+        self::render_setting_field(['label' => 'Abilita aggiornamenti GitHub', 'name' => 'gpo_settings[github][enabled]', 'value' => !empty($github['enabled']), 'type' => 'checkbox', 'description' => 'Attiva il controllo automatico delle release GitHub per questo plugin.']);
+        self::render_setting_field(['label' => 'Repository GitHub', 'name' => 'gpo_settings[github][repository]', 'value' => $github['repository'] ?? '', 'description' => 'Formato consigliato: owner/repository oppure URL completo GitHub.', 'placeholder' => 'francesco/gestpark-online']);
+        self::render_setting_field(['label' => 'Branch principale', 'name' => 'gpo_settings[github][branch]', 'value' => $github['branch'] ?? 'main', 'description' => 'Branch usato per lo sviluppo e come riferimento nella documentazione della release.', 'placeholder' => 'main']);
+        self::render_setting_field(['label' => 'Nome file zip release', 'name' => 'gpo_settings[github][release_asset]', 'value' => $github['release_asset'] ?? 'gestpark-online.zip', 'description' => 'Il workflow GitHub generera questo asset e WordPress scarichera proprio quel file.', 'placeholder' => 'gestpark-online.zip']);
+        self::render_setting_field(['label' => 'Token GitHub opzionale', 'name' => 'gpo_settings[github][access_token]', 'value' => $github['access_token'] ?? '', 'type' => 'password', 'description' => 'Serve solo se il repository e privato oppure se vuoi evitare limiti API piu stretti.']);
+        echo '</div>';
+        echo '</article>';
+
+        echo '<article class="gpo-surface gpo-connection-panel">';
+        echo '<div class="gpo-surface__eyebrow">Stato corrente</div>';
+        echo '<h2>Cosa usera WordPress</h2>';
+        echo '<ul class="gpo-flow-list">';
+        echo '<li><strong>Repository:</strong> ' . esc_html($summary['repository'] ?: 'non configurato') . '</li>';
+        echo '<li><strong>Branch:</strong> ' . esc_html($summary['branch'] ?: 'main') . '</li>';
+        echo '<li><strong>Asset zip:</strong> ' . esc_html($summary['asset_name'] ?: 'gestpark-online.zip') . '</li>';
+        echo '<li><strong>Repository privato:</strong> ' . esc_html($summary['has_token'] ? 'token configurato' : 'no, accesso pubblico o token mancante') . '</li>';
+        echo '<li><strong>Versione plugin installata:</strong> ' . esc_html((string) GPO_VERSION) . '</li>';
+        echo '</ul>';
+        echo '</article>';
+        echo '</section>';
+
+        echo '<section class="gpo-surface-grid">';
+        echo '<article class="gpo-surface">';
+        echo '<div class="gpo-surface__eyebrow">Workflow consigliato</div>';
+        echo '<h2>Come pubblicare senza zip manuale</h2>';
+        echo '<ol class="gpo-flow-list">';
+        echo '<li>Lavora nel repository GitHub del plugin invece di creare zip locali.</li>';
+        echo '<li>Quando vuoi distribuire un update, aggiorna il numero versione nel plugin.</li>';
+        echo '<li>Crea un tag Git come <code>v' . esc_html((string) GPO_VERSION) . '</code> o successivo e fai push.</li>';
+        echo '<li>GitHub Actions crea la release e allega automaticamente il file zip del plugin.</li>';
+        echo '<li>WordPress rileva il nuovo tag e mostra l aggiornamento nel pannello plugin.</li>';
+        echo '</ol>';
+        echo '</article>';
+
+        echo '<article class="gpo-surface">';
+        echo '<div class="gpo-surface__eyebrow">Sviluppo locale</div>';
+        echo '<h2>Niente reinstallazioni durante il lavoro</h2>';
+        echo '<p>Per sviluppo locale conviene usare il repository direttamente dentro <code>wp-content/plugins</code> oppure una junction Windows verso quella cartella. GitHub serve per distribuire gli aggiornamenti, non per obbligarti a reinstallare il plugin a ogni modifica.</p>';
+        echo '<p>Trovi i file gia pronti in <code>.github/workflows/release-plugin.yml</code> e <code>docs/github-updates.md</code>.</p>';
+        echo '</article>';
+        echo '</section>';
+
+        submit_button('Salva configurazione GitHub');
+        echo '</form>';
+
+        self::render_page_end();
+    }
+
+
+    public static function logs_page() {
+        $logs = GPO_Logger::all();
+        echo '<div class="wrap gpo-admin-wrap"><h1>Log e diagnostica</h1>';
+        echo '<p><a class="button" href="' . esc_url(admin_url('admin-post.php?action=gpo_clear_logs&_wpnonce=' . wp_create_nonce('gpo_clear_logs'))) . '">Svuota log</a></p>';
+        if (empty($logs)) {
+            echo '<p>Nessun log disponibile.</p></div>';
+            return;
+        }
+        echo '<table class="widefat striped"><thead><tr><th>Data</th><th>Messaggio</th><th>Contesto</th></tr></thead><tbody>';
+        foreach ($logs as $log) {
+            echo '<tr><td>' . esc_html($log['time']) . '</td><td>' . esc_html($log['message']) . '</td><td><code>' . esc_html(wp_json_encode($log['context'])) . '</code></td></tr>';
+        }
+        echo '</tbody></table></div>';
+    }
+
+    public static function guide_page() {
+        echo '<div class="wrap gpo-admin-wrap"><h1>Guida rapida</h1>';
+        echo '<ol>';
+        echo '<li>Configura l’endpoint in <strong>Connessioni API</strong>.</li>';
+        echo '<li>Mappa i campi obbligatori in <strong>Mappatura campi</strong>.</li>';
+        echo '<li>Esegui <strong>Test connessione</strong> e poi <strong>Sincronizza adesso</strong>.</li>';
+        echo '<li>Apri <strong>Veicoli</strong> per modificare manualmente dati, note, accessori e vetrina.</li>';
+        echo '<li>Configura <strong>Aspetto</strong> per decidere il layout generale di card e scheda singola.</li>';
+        echo '<li>Inserisci nel sito i blocchi Gutenberg, gli shortcode o i widget Elementor.</li>';
+        echo '</ol>';
+        echo '</div>';
+    }
+
+    protected static function input_row($label, $name, $value, $description = '') {
+        echo '<tr><th scope="row"><label>' . esc_html($label) . '</label></th><td>';
+        echo '<input class="regular-text" type="text" name="' . esc_attr($name) . '" value="' . esc_attr((string) $value) . '" />';
+        if ($description) {
+            echo '<p class="description">' . esc_html($description) . '</p>';
+        }
+        echo '</td></tr>';
+    }
+
+    protected static function select_row($label, $name, $value, $options) {
+        echo '<tr><th scope="row"><label>' . esc_html($label) . '</label></th><td><select name="' . esc_attr($name) . '">';
+        foreach ($options as $key => $option_label) {
+            echo '<option value="' . esc_attr($key) . '" ' . selected($value, $key, false) . '>' . esc_html($option_label) . '</option>';
+        }
+        echo '</select></td></tr>';
+    }
+
+    protected static function admin_notices_from_query() {
+        if (empty($_GET['gpo_notice'])) {
+            return;
+        }
+        $notice = sanitize_text_field(wp_unslash($_GET['gpo_notice']));
+        $type = $notice === 'error' ? 'notice-error' : 'notice-success';
+        $message = !empty($_GET['message']) ? sanitize_text_field(wp_unslash($_GET['message'])) : 'Operazione completata.';
+        echo '<div class="notice ' . esc_attr($type) . '"><p>' . esc_html($message) . '</p></div>';
+    }
+
+    public static function handle_test_connection() {
+        if (!current_user_can('manage_options') || !check_admin_referer('gpo_test_connection')) {
+            wp_die('Operazione non consentita.');
+        }
+        $result = GPO_API_Client::test_connection();
+        $notice = is_wp_error($result) ? 'error' : 'success';
+        $message = is_wp_error($result) ? $result->get_error_message() : 'Connessione riuscita. Elementi letti: ' . $result['count'];
+        wp_safe_redirect(admin_url('admin.php?page=gpo-api&gpo_notice=' . $notice . '&message=' . rawurlencode($message)));
+        exit;
+    }
+
+    public static function handle_run_sync() {
+        if (!current_user_can('manage_options') || !check_admin_referer('gpo_run_sync')) {
+            wp_die('Operazione non consentita.');
+        }
+        $result = GPO_Sync_Manager::sync();
+        $notice = is_wp_error($result) ? 'error' : 'success';
+        $message = is_wp_error($result) ? $result->get_error_message() : 'Sincronizzazione completata. Veicoli processati: ' . $result['processed'];
+        wp_safe_redirect(admin_url('admin.php?page=gestpark-online&gpo_notice=' . $notice . '&message=' . rawurlencode($message)));
+        exit;
+    }
+
+    public static function handle_clear_logs() {
+        if (!current_user_can('manage_options') || !check_admin_referer('gpo_clear_logs')) {
+            wp_die('Operazione non consentita.');
+        }
+        GPO_Logger::clear();
+        wp_safe_redirect(admin_url('admin.php?page=gpo-logs'));
+        exit;
+    }
+
+    public static function handle_github_refresh() {
+        if (!current_user_can('manage_options') || !check_admin_referer('gpo_github_refresh')) {
+            wp_die('Operazione non consentita.');
+        }
+
+        if (class_exists('GPO_GitHub_Updater')) {
+            GPO_GitHub_Updater::clear_cache();
+        }
+
+        if (function_exists('wp_update_plugins')) {
+            wp_update_plugins();
+        }
+
+        wp_safe_redirect(admin_url('admin.php?page=gpo-updates&gpo_notice=success&message=' . rawurlencode('Controllo aggiornamenti GitHub eseguito.')));
+        exit;
+    }
+
+    public static function handle_save_showcase() {
+        if (!current_user_can('manage_options') || !check_admin_referer('gpo_save_showcase')) {
+            wp_die('Operazione non consentita.');
+        }
+        $showcase = isset($_POST['showcase']) ? (array) wp_unslash($_POST['showcase']) : [];
+        foreach ($showcase as $post_id => $data) {
+            $post_id = absint($post_id);
+            update_post_meta($post_id, '_gpo_featured', isset($data['featured']) ? '1' : '0');
+            update_post_meta($post_id, '_gpo_featured_order', isset($data['order']) ? absint($data['order']) : 0);
+            update_post_meta($post_id, '_gpo_featured_from', isset($data['from']) ? sanitize_text_field($data['from']) : '');
+            update_post_meta($post_id, '_gpo_featured_to', isset($data['to']) ? sanitize_text_field($data['to']) : '');
+            update_post_meta($post_id, '_gpo_badge', isset($data['badge']) ? sanitize_text_field($data['badge']) : '');
+        }
+        wp_safe_redirect(admin_url('admin.php?page=gpo-showcase'));
+        exit;
+    }
+}

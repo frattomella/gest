@@ -1,0 +1,46 @@
+[
+  {
+    "id": "CAR-001",
+    "brand": "Audi",
+    "model": "A3",
+    "version": "Sportback 35 TDI S line",
+    "description": "Compatta premium con allestimento sportivo e manutenzione certificata.",
+    "condition": "Usato",
+    "year": "2022",
+    "price": "28900",
+    "fuel": "Diesel",
+    "mileage": "38100",
+    "body_type": "Berlina",
+    "transmission": "Automatico",
+    "engine_size": "1968 cc",
+    "power": "150 CV",
+    "color": "Nero",
+    "plate": "AB123CD",
+    "images": [
+      "https://picsum.photos/seed/audi1/1200/800",
+      "https://picsum.photos/seed/audi2/1200/800"
+    ]
+  },
+  {
+    "id": "CAR-002",
+    "brand": "Jeep",
+    "model": "Compass",
+    "version": "1.5 e-Hybrid Limited",
+    "description": "SUV ideale per famiglia e città, con accessori completi.",
+    "condition": "Nuovo",
+    "year": "2025",
+    "price": "36900",
+    "fuel": "Ibrido",
+    "mileage": "0",
+    "body_type": "SUV",
+    "transmission": "Automatico",
+    "engine_size": "1469 cc",
+    "power": "130 CV",
+    "color": "Bianco",
+    "plate": "",
+    "images": [
+      "https://picsum.photos/seed/jeep1/1200/800",
+      "https://picsum.photos/seed/jeep2/1200/800"
+    ]
+  }
+]

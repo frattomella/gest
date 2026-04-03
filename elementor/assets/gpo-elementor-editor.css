@@ -1,0 +1,14 @@
+.gpo-elementor-widget-shell--editor > .elementor-widget-container,
+.gpo-elementor-widget-shell--editor > .elementor-widget-container * {
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.gpo-elementor-widget-shell--editor > .elementor-widget-container a,
+.gpo-elementor-widget-shell--editor > .elementor-widget-container button,
+.gpo-elementor-widget-shell--editor > .elementor-widget-container input,
+.gpo-elementor-widget-shell--editor > .elementor-widget-container select,
+.gpo-elementor-widget-shell--editor > .elementor-widget-container textarea,
+.gpo-elementor-widget-shell--editor > .elementor-widget-container img {
+  pointer-events: none !important;
+}
