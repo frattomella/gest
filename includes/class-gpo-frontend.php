@@ -1632,8 +1632,14 @@ class GPO_Frontend {
                 'gpo_brand_key' => $brand['key'],
                 'gpo_catalog_ref' => sanitize_text_field($atts['catalog_ref']),
             ], $target_url);
-            echo '<a class="gpo-brand-item" href="' . esc_url($url) . '" aria-label="' . esc_attr($brand['name']) . '">';
-            echo '<span class="gpo-brand-item__visual"><img src="' . esc_url($brand['logo']) . '" alt="' . esc_attr($brand['name']) . '" loading="lazy" /></span>';
+            $classes = 'gpo-brand-item';
+            if (empty($brand['has_local_logo'])) {
+                $classes .= ' gpo-brand-item--text-only';
+            }
+            echo '<a class="' . esc_attr($classes) . '" href="' . esc_url($url) . '" aria-label="' . esc_attr($brand['name']) . '">';
+            if (!empty($brand['has_local_logo'])) {
+                echo '<span class="gpo-brand-item__visual"><img src="' . esc_url($brand['logo']) . '" alt="' . esc_attr($brand['name']) . '" loading="lazy" /></span>';
+            }
             if (empty($brand['has_local_logo'])) {
                 echo '<span class="gpo-brand-item__meta"><strong class="gpo-brand-name">' . esc_html($brand['name']) . '</strong></span>';
             }

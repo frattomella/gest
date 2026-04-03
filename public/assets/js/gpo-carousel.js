@@ -12,6 +12,7 @@
     var autoplay = carousel.dataset.autoplay === 'yes';
     var interval = parseInt(carousel.dataset.interval || '5000', 10);
     var currentIndex = 0;
+    var currentPage = 0;
     var timer = null;
     var startX = 0;
     var pointerId = null;
@@ -41,6 +42,29 @@
       });
     }
 
+    function slideStep() {
+      var slides = getSlides();
+      var first = slides[0];
+      var styles;
+
+      if (!first) {
+        return track.clientWidth;
+      }
+
+      styles = window.getComputedStyle(track);
+      return first.getBoundingClientRect().width + parseFloat(styles.columnGap || styles.gap || '0');
+    }
+
+    function visiblePerPage() {
+      var step = slideStep();
+      var visible = step > 0 ? Math.floor((track.clientWidth + 2) / step) : 1;
+      return Math.max(1, Math.min(3, visible || 1));
+    }
+
+    function pageCount() {
+      return Math.max(1, Math.ceil(slideCount() / visiblePerPage()));
+    }
+
     function nearestIndex() {
       var positions = slidePositions();
       var scrollLeft = track.scrollLeft;
@@ -58,19 +82,23 @@
       return bestIndex;
     }
 
+    function pageStartIndex(page) {
+      return Math.min(page * visiblePerPage(), Math.max(0, slideCount() - 1));
+    }
+
     function updateDots() {
       if (!dotsWrap) {
         return;
       }
 
       Array.prototype.slice.call(dotsWrap.querySelectorAll('.gpo-carousel-dot')).forEach(function (dot, index) {
-        dot.classList.toggle('is-active', index === currentIndex);
-        dot.setAttribute('aria-current', index === currentIndex ? 'true' : 'false');
+        dot.classList.toggle('is-active', index === currentPage);
+        dot.setAttribute('aria-current', index === currentPage ? 'true' : 'false');
       });
     }
 
     function updateControls() {
-      var multiple = slideCount() > 1;
+      var multiple = pageCount() > 1;
 
       if (prev) {
         prev.disabled = !multiple;
@@ -85,56 +113,51 @@
 
     function syncIndex() {
       currentIndex = nearestIndex();
+      currentPage = Math.min(pageCount() - 1, Math.floor(currentIndex / visiblePerPage()));
       updateDots();
     }
 
-    function goTo(index, behavior) {
+    function goToPage(page, behavior) {
       var slides = getSlides();
-      var target;
+      var positions;
+      var startIndex;
 
       if (!slides.length) {
         return;
       }
 
       if (canLoop()) {
-        if (index < 0) {
-          index = slides.length - 1;
-        } else if (index >= slides.length) {
-          index = 0;
+        if (page < 0) {
+          page = pageCount() - 1;
+        } else if (page >= pageCount()) {
+          page = 0;
         }
       } else {
-        index = Math.max(0, Math.min(index, slides.length - 1));
+        page = Math.max(0, Math.min(page, pageCount() - 1));
       }
 
-      currentIndex = index;
-      target = slides[currentIndex];
-
-      if (target && typeof target.scrollIntoView === 'function') {
-        target.scrollIntoView({
-          behavior: behavior || 'smooth',
-          block: 'nearest',
-          inline: 'start'
-        });
-      } else {
-        track.scrollTo({
-          left: slidePositions()[currentIndex] || 0,
-          behavior: behavior || 'smooth'
-        });
-      }
+      currentPage = page;
+      startIndex = pageStartIndex(currentPage);
+      currentIndex = startIndex;
+      positions = slidePositions();
+      track.scrollTo({
+        left: positions[startIndex] || 0,
+        behavior: behavior || 'smooth'
+      });
 
       updateDots();
     }
 
     function nextSlide() {
-      goTo(currentIndex + 1, 'smooth');
+      goToPage(currentPage + 1, 'smooth');
     }
 
     function prevSlide() {
-      goTo(currentIndex - 1, 'smooth');
+      goToPage(currentPage - 1, 'smooth');
     }
 
     function buildDots() {
-      var slides = getSlides();
+      var pages = pageCount();
 
       if (!dotsWrap) {
         return;
@@ -142,14 +165,14 @@
 
       dotsWrap.innerHTML = '';
 
-      slides.forEach(function (_, index) {
+      Array.from({ length: pages }).forEach(function (_, index) {
         var dot = document.createElement('button');
         dot.type = 'button';
-        dot.className = 'gpo-carousel-dot' + (index === currentIndex ? ' is-active' : '');
-        dot.setAttribute('aria-label', 'Vai alla slide ' + (index + 1));
-        dot.setAttribute('aria-current', index === currentIndex ? 'true' : 'false');
+        dot.className = 'gpo-carousel-dot' + (index === currentPage ? ' is-active' : '');
+        dot.setAttribute('aria-label', 'Vai alla pagina ' + (index + 1));
+        dot.setAttribute('aria-current', index === currentPage ? 'true' : 'false');
         dot.addEventListener('click', function () {
-          goTo(index, 'smooth');
+          goToPage(index, 'smooth');
           restart();
         });
         dotsWrap.appendChild(dot);
@@ -240,12 +263,14 @@
     track.addEventListener('focusout', start);
 
     window.addEventListener('resize', function () {
-      goTo(currentIndex, 'auto');
+      buildDots();
+      updateControls();
+      goToPage(currentPage, 'auto');
     });
 
     buildDots();
     updateControls();
-    goTo(0, 'auto');
+    goToPage(0, 'auto');
     start();
   }
 
