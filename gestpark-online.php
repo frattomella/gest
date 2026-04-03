@@ -18,6 +18,7 @@ define('GPO_PLUGIN_FILE', __FILE__);
 define('GPO_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('GPO_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('GPO_PLUGIN_BASENAME', plugin_basename(__FILE__));
+define('GPO_GITHUB_REPOSITORY', 'frattomella/gest');
 
 require_once GPO_PLUGIN_DIR . 'includes/class-gpo-logger.php';
 require_once GPO_PLUGIN_DIR . 'includes/class-gpo-core.php';

@@ -38,8 +38,8 @@ class GPO_Admin {
                 'enabled' => 0,
             ],
             'github' => [
-                'enabled' => 0,
-                'repository' => '',
+                'enabled' => 1,
+                'repository' => defined('GPO_GITHUB_REPOSITORY') ? GPO_GITHUB_REPOSITORY : '',
                 'branch' => 'main',
                 'release_asset' => 'gestpark-online.zip',
                 'access_token' => '',

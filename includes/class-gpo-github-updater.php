@@ -52,7 +52,7 @@ class GPO_GitHub_Updater {
         $repository = trim((string) ($settings['repository'] ?? ''));
 
         if ($repository === '') {
-            return '';
+            $repository = defined('GPO_GITHUB_REPOSITORY') ? GPO_GITHUB_REPOSITORY : '';
         }
 
         $repository = preg_replace('~^https?://github\.com/~i', '', $repository);
