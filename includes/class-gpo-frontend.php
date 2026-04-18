@@ -21,6 +21,10 @@ class GPO_Frontend {
         add_filter('template_include', [__CLASS__, 'single_template']);
     }
 
+    protected static function empty_state_markup($title, $message, $class = 'gpo-empty-state') {
+        return '<div class="' . esc_attr($class) . '"><h3>' . esc_html($title) . '</h3><p>' . esc_html($message) . '</p></div>';
+    }
+
     public static function assets() {
         wp_register_style('gpo-public', GPO_PLUGIN_URL . 'public/assets/css/gpo-public.css', [], gpo_asset_version('public/assets/css/gpo-public.css'));
         wp_register_script('gpo-carousel', GPO_PLUGIN_URL . 'public/assets/js/gpo-carousel.js', [], gpo_asset_version('public/assets/js/gpo-carousel.js'), true);
@@ -401,7 +405,10 @@ class GPO_Frontend {
             self::render_card($ids[0], $display);
             echo '</div>';
         } else {
-            echo '<div class="gpo-empty-state"><h3>Nessun veicolo disponibile</h3><p>Sincronizza almeno un veicolo reale da ParkPlatform oppure seleziona una vetrina attiva.</p></div>';
+            echo self::empty_state_markup(
+                'Nessun veicolo disponibile',
+                'Sincronizza almeno un veicolo reale da ParkPlatform oppure seleziona una vetrina attiva.'
+            );
         }
         return ob_get_clean();
     }
@@ -460,7 +467,10 @@ class GPO_Frontend {
                 echo '</div>';
             }
         } else {
-            echo '<div class="gpo-empty-state"><h3>Nessun veicolo disponibile</h3><p>Sincronizza almeno un veicolo reale da ParkPlatform oppure seleziona una vetrina attiva.</p></div>';
+            echo self::empty_state_markup(
+                'Nessun veicolo disponibile',
+                'Sincronizza almeno un veicolo reale da ParkPlatform oppure seleziona una vetrina attiva.'
+            );
         }
         echo '</div><div class="gpo-carousel-dots" aria-hidden="true"></div></div></div>';
         return ob_get_clean();
@@ -577,6 +587,7 @@ class GPO_Frontend {
             'specs',
             'accessories',
             'contact_box',
+            'strengths',
         ];
         return [
             'layout' => sanitize_key($settings['style']['single_layout'] ?? 'classic'),
@@ -788,7 +799,7 @@ class GPO_Frontend {
         if (in_array('max_price', $visible_filters, true)) { self::render_filter_input('Prezzo max', 'gpo_max_price', self::request_value('gpo_max_price'), 'number', '50000'); }
         if (in_array('max_mileage', $visible_filters, true)) { self::render_filter_input('KM max', 'gpo_max_mileage', self::request_value('gpo_max_mileage'), 'number', '60000'); }
         if (in_array('sort', $visible_filters, true)) {
-            echo '<label><span>Ordina per</span><select name="gpo_sort">';
+            echo '<label class="gpo-filter-control gpo-filter-control--select"><span class="gpo-filter-control__label">Ordina per</span><select class="gpo-filter-control__field" name="gpo_sort">';
             $sort = self::request_value('gpo_sort') ?: 'date_desc';
             $options = [
                 'date_desc' => 'Più recenti',
@@ -816,7 +827,7 @@ class GPO_Frontend {
     }
 
     protected static function render_filter_select($label, $name, $values) {
-        echo '<label><span>' . esc_html($label) . '</span><select name="' . esc_attr($name) . '"><option value="">Tutti</option>';
+        echo '<label class="gpo-filter-control gpo-filter-control--select"><span class="gpo-filter-control__label">' . esc_html($label) . '</span><select class="gpo-filter-control__field" name="' . esc_attr($name) . '"><option value="">Tutti</option>';
         $current = self::request_value($name);
         foreach ($values as $value) {
             echo '<option value="' . esc_attr($value) . '" ' . selected($current, $value, false) . '>' . esc_html($value) . '</option>';
@@ -825,7 +836,7 @@ class GPO_Frontend {
     }
 
     protected static function render_filter_input($label, $name, $value, $type = 'text', $placeholder = '') {
-        echo '<label><span>' . esc_html($label) . '</span><input type="' . esc_attr($type) . '" name="' . esc_attr($name) . '" value="' . esc_attr($value) . '" placeholder="' . esc_attr($placeholder) . '" /></label>';
+        echo '<label class="gpo-filter-control gpo-filter-control--input"><span class="gpo-filter-control__label">' . esc_html($label) . '</span><input class="gpo-filter-control__field" type="' . esc_attr($type) . '" name="' . esc_attr($name) . '" value="' . esc_attr($value) . '" placeholder="' . esc_attr($placeholder) . '" /></label>';
     }
 
     public static function fallback_vehicle_image_url() {
@@ -1075,11 +1086,9 @@ class GPO_Frontend {
 
     public static function single_template($template) {
         if (is_singular('gpo_vehicle')) {
-            if (function_exists('wp_is_block_theme') && wp_is_block_theme()) {
-                return $template;
-            }
             $custom = GPO_PLUGIN_DIR . 'public/templates/single-gpo_vehicle.php';
-            if (file_exists($custom)) {
+            $use_plugin_template = apply_filters('gpo_use_plugin_single_template', true, $template);
+            if ($use_plugin_template && file_exists($custom)) {
                 return $custom;
             }
         }

@@ -88,6 +88,18 @@
 .gpo-admin-panel h2{margin-top:0}
 .gpo-api-shell[data-manual-format="gestpark"] .gpo-field--manual-generic{display:none}
 .gpo-api-shell[data-manual-format="generic"] .gpo-field--manual-gestpark{display:none}
+.gpo-connection-status{position:relative;overflow:hidden}
+.gpo-connection-status__head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.gpo-connection-status--connected{background:linear-gradient(180deg,#f3fff9,#ffffff);border-color:#b8e7cf}
+.gpo-connection-status--connected .gpo-status-pill{background:#dcfce7;border-color:#bbf7d0;color:#166534}
+.gpo-connection-status--disconnected{background:linear-gradient(180deg,#fff7f7,#ffffff);border-color:#f1c6c6}
+.gpo-connection-status--disconnected .gpo-status-pill{background:#fee2e2;border-color:#fecaca;color:#b91c1c}
+.gpo-connection-status--pending{background:linear-gradient(180deg,#fffaf0,#ffffff);border-color:#f4d8a8}
+.gpo-connection-status--pending .gpo-status-pill{background:#fef3c7;border-color:#fde68a;color:#92400e}
+.gpo-status-pill{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:8px 14px;border-radius:999px;border:1px solid var(--gpo-border);font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.gpo-status-note{padding:12px 14px;border-radius:16px;background:#f8fbff;border:1px solid var(--gpo-border);font-size:13px;line-height:1.6}
+.gpo-surface-grid--compact{grid-template-columns:minmax(0,1fr)}
+.gpo-update-mini{gap:10px}
 @media (max-width:1280px){
     .gpo-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
     .gpo-field-grid{grid-template-columns:1fr}

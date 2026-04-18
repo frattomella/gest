@@ -9,6 +9,7 @@ class GPO_Admin {
         add_action('admin_init', [__CLASS__, 'register_settings']);
         add_action('admin_enqueue_scripts', [__CLASS__, 'enqueue_assets']);
         add_action('admin_post_gpo_test_connection', [__CLASS__, 'handle_test_connection']);
+        add_action('admin_post_gpo_disconnect_parkplatform', [__CLASS__, 'handle_disconnect_parkplatform']);
         add_action('admin_post_gpo_run_sync', [__CLASS__, 'handle_run_sync']);
         add_action('admin_post_gpo_clear_logs', [__CLASS__, 'handle_clear_logs']);
         add_action('admin_post_gpo_save_showcase', [__CLASS__, 'handle_save_showcase']);
@@ -111,10 +112,7 @@ class GPO_Admin {
         add_submenu_page('gestpark-online', 'Dashboard', 'Dashboard', 'manage_options', 'gestpark-online', [__CLASS__, 'dashboard_page']);
         add_submenu_page('gestpark-online', 'Veicoli', 'Veicoli', 'edit_posts', 'edit.php?post_type=gpo_vehicle');
         add_submenu_page('gestpark-online', 'Connessioni API', 'Connessioni API', 'manage_options', 'gpo-api', [__CLASS__, 'api_page']);
-        add_submenu_page('gestpark-online', 'Mappatura campi', 'Mappatura campi', 'manage_options', 'gpo-mapping', [__CLASS__, 'mapping_page']);
         add_submenu_page('gestpark-online', 'Vetrina', 'Vetrina', 'manage_options', 'gpo-showcase', [__CLASS__, 'showcase_page']);
-        add_submenu_page('gestpark-online', 'Aspetto', 'Aspetto', 'manage_options', 'gpo-style', [__CLASS__, 'style_page']);
-        add_submenu_page('gestpark-online', 'Aggiornamenti GitHub', 'Aggiornamenti', 'manage_options', 'gpo-updates', [__CLASS__, 'updates_page']);
         add_submenu_page('gestpark-online', 'Log e diagnostica', 'Log e diagnostica', 'manage_options', 'gpo-logs', [__CLASS__, 'logs_page']);
         add_submenu_page('gestpark-online', 'Guida rapida', 'Guida rapida', 'manage_options', 'gpo-guide', [__CLASS__, 'guide_page']);
     }
@@ -266,10 +264,7 @@ class GPO_Admin {
         return [
             'dashboard' => ['label' => 'Dashboard', 'url' => admin_url('admin.php?page=gestpark-online')],
             'api' => ['label' => 'Connessioni', 'url' => admin_url('admin.php?page=gpo-api')],
-            'mapping' => ['label' => 'Mappatura', 'url' => admin_url('admin.php?page=gpo-mapping')],
             'showcase' => ['label' => 'Vetrina', 'url' => admin_url('admin.php?page=gpo-showcase')],
-            'style' => ['label' => 'Aspetto', 'url' => admin_url('admin.php?page=gpo-style')],
-            'updates' => ['label' => 'Aggiornamenti', 'url' => admin_url('admin.php?page=gpo-updates')],
             'vehicles' => ['label' => 'Veicoli', 'url' => admin_url('edit.php?post_type=gpo_vehicle')],
             'logs' => ['label' => 'Log', 'url' => admin_url('admin.php?page=gpo-logs')],
             'guide' => ['label' => 'Guida', 'url' => admin_url('admin.php?page=gpo-guide')],
@@ -372,7 +367,8 @@ class GPO_Admin {
         $stats = wp_count_posts('gpo_vehicle');
         $last_sync = get_option('gpo_last_sync_result', []);
         $settings = self::get_settings();
-        $connection = GPO_API_Client::connection_summary($settings['api']);
+        $parkplatform = self::parkplatform_state($settings['api']);
+        $updates = self::plugin_update_state();
         $featured = new WP_Query([
             'post_type' => 'gpo_vehicle',
             'posts_per_page' => -1,
@@ -383,67 +379,182 @@ class GPO_Admin {
 
         self::render_page_start(
             'dashboard',
-            'GestPark control center',
-            'Monitora sincronizzazioni, inventario, template veicolo e stato della connessione da un unico spazio operativo.',
+            'GestPark dashboard',
+            'Controlla connessione ParkPlatform, stato inventario e aggiornamenti plugin da un unico pannello pulito.',
             [
                 ['label' => 'Sincronizza adesso', 'url' => admin_url('admin-post.php?action=gpo_run_sync&_wpnonce=' . wp_create_nonce('gpo_run_sync'))],
-                ['label' => 'Configura connessione', 'url' => admin_url('admin.php?page=gpo-api'), 'variant' => 'secondary'],
+                ['label' => 'Apri connessione API', 'url' => admin_url('admin.php?page=gpo-api'), 'variant' => 'secondary'],
             ],
-            [$connection['mode_label'], $connection['status_label']]
+            [$parkplatform['badge_label'], 'Versione ' . GPO_VERSION]
         );
 
         self::admin_notices_from_query();
 
         echo '<section class="gpo-kpi-grid">';
         self::metric_card('Veicoli pubblicati', (int) ($stats->publish ?? 0), 'Archivio disponibile sul sito');
-        self::metric_card('Veicoli in vetrina', count($featured->posts), 'Selezionati per showcase e carosello');
+        self::metric_card('Veicoli in vetrina', count($featured->posts), 'Selezionati per showcase e caroselli');
         self::metric_card('Ultima sincronizzazione', !empty($last_sync['time']) ? $last_sync['time'] : 'Mai', 'Ultimo import eseguito');
-        self::metric_card('Modalita attiva', $connection['mode_label'], $connection['detail_label']);
+        self::metric_card('Aggiornamento plugin', $updates['headline'], $updates['description']);
         echo '</section>';
 
         echo '<section class="gpo-surface-grid">';
-        echo '<article class="gpo-surface gpo-surface--accent">';
-        echo '<div class="gpo-surface__eyebrow">Operativita immediata</div>';
-        echo '<h2>Connessione e import</h2>';
-        echo '<p>' . esc_html($connection['description']) . '</p>';
+        echo '<article class="gpo-surface gpo-connection-status gpo-connection-status--' . esc_attr($parkplatform['state']) . '">';
+        echo '<div class="gpo-surface__eyebrow">Stato ParkPlatform</div>';
+        echo '<div class="gpo-connection-status__head">';
+        echo '<div>';
+        echo '<h2>' . esc_html($parkplatform['title']) . '</h2>';
+        echo '<p>' . esc_html($parkplatform['message']) . '</p>';
+        echo '</div>';
+        echo '<span class="gpo-status-pill">' . esc_html($parkplatform['badge_label']) . '</span>';
+        echo '</div>';
         echo '<div class="gpo-list-chips">';
-        echo '<span class="gpo-chip">' . esc_html($connection['surface_label']) . '</span>';
-        echo '<span class="gpo-chip">' . esc_html($connection['detail_label']) . '</span>';
+        echo '<span class="gpo-chip">' . esc_html($parkplatform['summary']['surface_label']) . '</span>';
+        echo '<span class="gpo-chip">' . esc_html($parkplatform['summary']['detail_label']) . '</span>';
+        if ($parkplatform['last_check_label']) {
+            echo '<span class="gpo-chip">' . esc_html($parkplatform['last_check_label']) . '</span>';
+        }
         echo '</div>';
         echo '<div class="gpo-inline-actions">';
-        echo '<a class="button button-primary" href="' . esc_url(admin_url('admin-post.php?action=gpo_test_connection&_wpnonce=' . wp_create_nonce('gpo_test_connection'))) . '">Test connessione</a>';
-        echo '<a class="button button-secondary" href="' . esc_url(admin_url('admin-post.php?action=gpo_run_sync&_wpnonce=' . wp_create_nonce('gpo_run_sync'))) . '">Sincronizza adesso</a>';
+        echo '<a class="button button-primary" href="' . esc_url(admin_url('admin-post.php?action=gpo_test_connection&_wpnonce=' . wp_create_nonce('gpo_test_connection'))) . '">Verifica connessione</a>';
+        echo '<a class="button button-secondary" href="' . esc_url(admin_url('admin.php?page=gpo-api')) . '">Gestisci account</a>';
+        if ($parkplatform['configured']) {
+            echo '<a class="button button-secondary" href="' . esc_url(self::disconnect_parkplatform_url()) . '">Scollega</a>';
+        }
         echo '</div>';
+        if ($parkplatform['last_message']) {
+            echo '<p class="gpo-status-note">' . esc_html($parkplatform['last_message']) . '</p>';
+        }
         echo '</article>';
 
         echo '<article class="gpo-surface">';
         echo '<div class="gpo-surface__eyebrow">Publishing stack</div>';
         echo '<h2>Blocchi pronti per il sito</h2>';
-        echo '<p>Il plugin espone catalogo, vetrina e scheda veicolo con lo stesso layer dati su shortcode, editor WordPress ed Elementor.</p>';
+        echo '<p>Catalogo, carosello vetrina, banner marchi, ricerca e veicolo in evidenza restano disponibili in Gutenberg e shortcode con lo stesso layer dati.</p>';
         echo '<ul class="gpo-inline-code-list">';
         echo '<li><code>[gestpark_vehicle_catalog]</code></li>';
         echo '<li><code>[gestpark_featured_carousel]</code></li>';
         echo '<li><code>[gestpark_featured_vehicle]</code></li>';
+        echo '<li><code>[gestpark_brand_carousel]</code></li>';
         echo '</ul>';
         echo '</article>';
 
         echo '<article class="gpo-surface">';
-        echo '<div class="gpo-surface__eyebrow">Template nativo</div>';
-        echo '<h2>Scheda veicolo nel WordPress Editor</h2>';
-        echo '<p>La scheda veicolo si appoggia al template nativo del tema e del Site Editor. Il plugin continua a fornire i blocchi dinamici principali, senza imporre un builder separato.</p>';
-        echo '<a class="button button-secondary" href="' . esc_url(admin_url('admin.php?page=gpo-style')) . '">Apri Aspetto</a>';
-        echo '</article>';
-
-        echo '<article class="gpo-surface">';
-        echo '<div class="gpo-surface__eyebrow">Stato dati</div>';
+        echo '<div class="gpo-surface__eyebrow">Operativita</div>';
         echo '<h2>Controlli rapidi</h2>';
         echo '<p>Ultimo sync: <strong>' . esc_html(!empty($last_sync['time']) ? $last_sync['time'] : 'Mai eseguito') . '</strong></p>';
-        echo '<p>Sorgente: <strong>' . esc_html(!empty($last_sync['source']) ? $last_sync['source'] : 'n.d.') . '</strong></p>';
+        echo '<p>Sorgente dati: <strong>' . esc_html(!empty($last_sync['source']) ? strtoupper((string) $last_sync['source']) : 'N.D.') . '</strong></p>';
+        echo '<div class="gpo-inline-actions">';
+        echo '<a class="button button-secondary" href="' . esc_url(admin_url('admin.php?page=gpo-showcase')) . '">Apri vetrina</a>';
         echo '<a class="button button-secondary" href="' . esc_url(admin_url('admin.php?page=gpo-logs')) . '">Apri log e diagnostica</a>';
+        echo '</div>';
+        echo '</article>';
+        echo '</section>';
+
+        echo '<section class="gpo-surface-grid gpo-surface-grid--compact">';
+        echo '<article class="gpo-surface gpo-update-mini">';
+        echo '<div class="gpo-surface__eyebrow">Aggiornamenti plugin</div>';
+        echo '<h2>' . esc_html($updates['mini_title']) . '</h2>';
+        echo '<p>' . esc_html($updates['mini_body']) . '</p>';
+        echo '<div class="gpo-inline-actions">';
+        echo '<a class="button button-secondary" href="' . esc_url(admin_url('admin-post.php?action=gpo_github_refresh&_wpnonce=' . wp_create_nonce('gpo_github_refresh'))) . '">Verifica aggiornamenti</a>';
+        if (!empty($updates['repository_url'])) {
+            echo '<a class="button button-secondary" href="' . esc_url($updates['repository_url']) . '" target="_blank">Apri repository</a>';
+        }
+        echo '</div>';
         echo '</article>';
         echo '</section>';
 
         self::render_page_end();
+    }
+
+    protected static function parkplatform_state($api) {
+        $summary = GPO_API_Client::connection_summary($api);
+        $last_check = get_option('gpo_last_connection_check', []);
+        $last_status = sanitize_key((string) ($last_check['status'] ?? ''));
+        $configured = !empty($summary['ready']);
+
+        if (!$configured) {
+            $state = 'disconnected';
+            $title = 'Account ParkPlatform non collegato';
+            $message = 'Inserisci email e password dell’account API ParkPlatform per attivare login JWT, sync e aggiornamento inventario.';
+            $badge = 'Non collegato';
+        } elseif ($last_status === 'success') {
+            $state = 'connected';
+            $title = 'Account ParkPlatform collegato';
+            $message = 'Le credenziali risultano valide e il plugin è pronto a leggere vetrina, foto e dettaglio veicoli.';
+            $badge = 'Collegato';
+        } elseif ($last_status === 'error') {
+            $state = 'disconnected';
+            $title = 'Connessione ParkPlatform da correggere';
+            $message = 'Le credenziali sono presenti ma l’ultimo controllo non è andato a buon fine. Conviene verificare subito il collegamento.';
+            $badge = 'Verifica richiesta';
+        } else {
+            $state = 'pending';
+            $title = 'Account ParkPlatform configurato';
+            $message = 'Le credenziali sono salvate. Esegui un test per confermare il collegamento prima della sincronizzazione.';
+            $badge = 'Da verificare';
+        }
+
+        $last_check_label = '';
+        if (!empty($last_check['time'])) {
+            $last_check_label = 'Ultimo check: ' . sanitize_text_field((string) $last_check['time']);
+        }
+
+        return [
+            'state' => $state,
+            'title' => $title,
+            'message' => $message,
+            'badge_label' => $badge,
+            'summary' => $summary,
+            'configured' => $configured,
+            'last_check_label' => $last_check_label,
+            'last_message' => !empty($last_check['message']) ? sanitize_text_field((string) $last_check['message']) : '',
+        ];
+    }
+
+    protected static function plugin_update_state() {
+        $summary = class_exists('GPO_GitHub_Updater') ? GPO_GitHub_Updater::summary() : [
+            'enabled' => false,
+            'repository' => '',
+            'repository_url' => '',
+            'branch' => 'main',
+            'asset_name' => 'gestpark-online.zip',
+        ];
+        $transient = get_site_transient('update_plugins');
+        $plugin_file = defined('GPO_PLUGIN_BASENAME') ? GPO_PLUGIN_BASENAME : plugin_basename(GPO_PLUGIN_FILE);
+        $update = (!empty($transient->response[$plugin_file]) && is_object($transient->response[$plugin_file])) ? $transient->response[$plugin_file] : null;
+
+        if (!$summary['enabled']) {
+            return [
+                'headline' => 'GitHub non configurato',
+                'description' => 'Collega il repository per distribuire gli update del plugin.',
+                'mini_title' => 'Aggiornamenti non configurati',
+                'mini_body' => 'Salva il repository GitHub e usa il pulsante di verifica per far controllare nuove release a WordPress.',
+                'repository_url' => '',
+            ];
+        }
+
+        if ($update && !empty($update->new_version)) {
+            return [
+                'headline' => 'Disponibile ' . sanitize_text_field((string) $update->new_version),
+                'description' => 'WordPress ha rilevato una release più recente del plugin.',
+                'mini_title' => 'Aggiornamento disponibile',
+                'mini_body' => 'Versione installata ' . GPO_VERSION . '. È stata rilevata la versione ' . sanitize_text_field((string) $update->new_version) . '.',
+                'repository_url' => $summary['repository_url'],
+            ];
+        }
+
+        return [
+            'headline' => 'Plugin aggiornato',
+            'description' => 'La build installata coincide con l’ultima release rilevata.',
+            'mini_title' => 'Nessun aggiornamento in attesa',
+            'mini_body' => 'Versione corrente ' . GPO_VERSION . '. Se hai appena pubblicato una release, usa la verifica manuale qui sotto.',
+            'repository_url' => $summary['repository_url'],
+        ];
+    }
+
+    protected static function disconnect_parkplatform_url() {
+        return admin_url('admin-post.php?action=gpo_disconnect_parkplatform&_wpnonce=' . wp_create_nonce('gpo_disconnect_parkplatform'));
     }
 
     protected static function metric_card($title, $value, $description = '') {
@@ -459,34 +570,102 @@ class GPO_Admin {
     public static function api_page() {
         $settings = self::get_settings();
         $api = $settings['api'];
-        $summary = GPO_API_Client::connection_summary($api);
+        $parkplatform = self::parkplatform_state($api);
 
         self::render_page_start(
             'api',
             'Connessioni ParkPlatform API',
-            'Configura il plugin in modalita automatica con account email abilitato alle API ParkPlatform oppure in modalita manuale con endpoint e token.',
+            'Collega il plugin al tuo account ParkPlatform API con un flusso semplice: email, password, verifica connessione e sincronizzazione veicoli.',
             [
                 ['label' => 'Test connessione', 'url' => admin_url('admin-post.php?action=gpo_test_connection&_wpnonce=' . wp_create_nonce('gpo_test_connection'))],
                 ['label' => 'Sincronizza adesso', 'url' => admin_url('admin-post.php?action=gpo_run_sync&_wpnonce=' . wp_create_nonce('gpo_run_sync')), 'variant' => 'secondary'],
             ],
-            [$summary['mode_label'], $summary['status_label']]
+            ['ParkPlatform API', $parkplatform['badge_label']]
         );
         self::admin_notices_from_query();
-        echo '<form class="gpo-api-shell" method="post" action="options.php" data-connection-mode="' . esc_attr($api['connection_mode']) . '" data-manual-format="' . esc_attr($api['manual_format']) . '">';
+        echo '<form class="gpo-api-shell" method="post" action="options.php">';
         settings_fields('gpo_api_group');
+        echo '<input type="hidden" name="gpo_settings[api][connection_mode]" value="' . esc_attr(GPO_API_Client::MODE_GESTPARK_AUTO) . '" />';
+        echo '<input type="hidden" name="gpo_settings[api][manual_format]" value="' . esc_attr(GPO_API_Client::MANUAL_FORMAT_GESTPARK) . '" />';
+        echo '<input type="hidden" name="gpo_settings[api][auth_method]" value="bearer" />';
 
-        echo '<section class="gpo-connection-switch">';
-        echo '<label class="gpo-mode-card' . ($api['connection_mode'] === 'gestpark_auto' ? ' is-active' : '') . '">';
-        echo '<input type="radio" name="gpo_settings[api][connection_mode]" value="gestpark_auto" ' . checked($api['connection_mode'], 'gestpark_auto', false) . ' />';
-        echo '<span class="gpo-mode-card__title">Automatico con account ParkPlatform API</span>';
-        echo '<span class="gpo-mode-card__text">Inserisci l email dell account abilitato alle API e la relativa password. Il plugin ottiene il JWT, legge la lista veicoli e completa le schede con dettaglio e galleria dei dati provenienti da GestPark.</span>';
-        echo '</label>';
-        echo '<label class="gpo-mode-card' . ($api['connection_mode'] === 'manual' ? ' is-active' : '') . '">';
-        echo '<input type="radio" name="gpo_settings[api][connection_mode]" value="manual" ' . checked($api['connection_mode'], 'manual', false) . ' />';
-        echo '<span class="gpo-mode-card__title">Manuale con endpoint</span>';
-        echo '<span class="gpo-mode-card__text">Usa token JWT gia disponibile oppure un feed JSON legacy, mantenendo il controllo completo sugli endpoint.</span>';
-        echo '</label>';
+        echo '<section class="gpo-surface-grid">';
+        echo '<article class="gpo-surface gpo-connection-status gpo-connection-status--' . esc_attr($parkplatform['state']) . '">';
+        echo '<div class="gpo-surface__eyebrow">Stato collegamento</div>';
+        echo '<div class="gpo-connection-status__head">';
+        echo '<div>';
+        echo '<h2>' . esc_html($parkplatform['title']) . '</h2>';
+        echo '<p>' . esc_html($parkplatform['message']) . '</p>';
+        echo '</div>';
+        echo '<span class="gpo-status-pill">' . esc_html($parkplatform['badge_label']) . '</span>';
+        echo '</div>';
+        echo '<div class="gpo-list-chips">';
+        echo '<span class="gpo-chip">' . esc_html($parkplatform['summary']['surface_label']) . '</span>';
+        echo '<span class="gpo-chip">' . esc_html($parkplatform['summary']['detail_label']) . '</span>';
+        if ($parkplatform['last_check_label']) {
+            echo '<span class="gpo-chip">' . esc_html($parkplatform['last_check_label']) . '</span>';
+        }
+        echo '</div>';
+        if ($parkplatform['last_message']) {
+            echo '<p class="gpo-status-note">' . esc_html($parkplatform['last_message']) . '</p>';
+        }
+        echo '</article>';
+        echo '<article class="gpo-surface">';
+        echo '<div class="gpo-surface__eyebrow">Flusso dati</div>';
+        echo '<h2>Solo ParkPlatform</h2>';
+        echo '<p>Il plugin usa un solo provider: login JWT su ParkPlatform API, lista veicoli con thumbnail e dettaglio completo per galleria, optional e dati tecnici. Non ci sono piu provider alternativi o mapping da gestire qui.</p>';
+        echo '<ul class="gpo-flow-list">';
+        echo '<li><strong>Login:</strong> <code>/api/auth/login</code></li>';
+        echo '<li><strong>Lista:</strong> <code>/api/vetrina/mainphoto</code></li>';
+        echo '<li><strong>Dettaglio:</strong> <code>/api/vetrina/{idGestionale}</code></li>';
+        echo '</ul>';
+        echo '</article>';
         echo '</section>';
+
+        echo '<section class="gpo-surface-grid gpo-surface-grid--connections">';
+        echo '<article class="gpo-surface gpo-connection-panel">';
+        echo '<div class="gpo-surface__eyebrow">Credenziali account</div>';
+        echo '<h2>Collega account ParkPlatform API</h2>';
+        echo '<p>Usa l email dell account abilitato alle API ParkPlatform. Il plugin ottiene il token JWT in automatico e aggiorna l inventario del sito senza configurazioni dispersive.</p>';
+        echo '<div class="gpo-field-grid">';
+        self::render_setting_field(['label' => 'Base URL API ParkPlatform', 'name' => 'gpo_settings[api][gestpark_base_url]', 'value' => $api['gestpark_base_url'], 'description' => 'Host API usato per login, lista e dettaglio.']);
+        self::render_setting_field(['label' => 'Email account API', 'name' => 'gpo_settings[api][gestpark_username]', 'value' => $api['gestpark_username'], 'description' => 'Il login API richiede un indirizzo email valido nel campo Username.', 'placeholder' => 'nome@dominio.it']);
+        self::render_setting_field(['label' => 'Password account API', 'name' => 'gpo_settings[api][gestpark_password]', 'value' => $api['gestpark_password'], 'type' => 'password', 'description' => 'La password viene usata solo per ottenere il token JWT.']);
+        self::render_setting_field(['label' => 'Path login', 'name' => 'gpo_settings[api][gestpark_login_path]', 'value' => $api['gestpark_login_path'], 'description' => 'Di default: /api/auth/login']);
+        self::render_setting_field(['label' => 'Path lista veicoli', 'name' => 'gpo_settings[api][gestpark_list_path]', 'value' => $api['gestpark_list_path'], 'description' => 'Endpoint lista leggera senza foto originali.']);
+        self::render_setting_field(['label' => 'Path lista con thumbnail', 'name' => 'gpo_settings[api][gestpark_mainphoto_path]', 'value' => $api['gestpark_mainphoto_path'], 'description' => 'Endpoint consigliato per il catalogo con foto principale.']);
+        self::render_setting_field(['label' => 'Path dettaglio veicolo', 'name' => 'gpo_settings[api][gestpark_detail_path]', 'value' => $api['gestpark_detail_path'], 'description' => 'Usa il placeholder {idGestionale}.']);
+        self::render_setting_field(['label' => 'Usa lista con thumbnail', 'name' => 'gpo_settings[api][prefer_mainphoto]', 'value' => !empty($api['prefer_mainphoto']), 'type' => 'checkbox', 'description' => 'Consigliato: migliora resa di catalogo e ricerca.']);
+        self::render_setting_field(['label' => 'Completa ogni veicolo con dettaglio', 'name' => 'gpo_settings[api][include_details]', 'value' => !empty($api['include_details']), 'type' => 'checkbox', 'description' => 'Recupera galleria immagini, optional e dati tecnici completi.']);
+        self::render_setting_field(['label' => 'Timeout richieste', 'name' => 'gpo_settings[api][timeout]', 'value' => $api['timeout'], 'description' => 'Secondi massimi di attesa per login e fetch.']);
+        echo '</div>';
+        echo '</article>';
+
+        echo '<article class="gpo-surface gpo-connection-panel">';
+        echo '<div class="gpo-surface__eyebrow">Azioni disponibili</div>';
+        echo '<h2>Verifica e manutenzione</h2>';
+        echo '<p>Da qui puoi testare subito il collegamento, lanciare una sincronizzazione reale oppure scollegare l account se vuoi ripartire da zero.</p>';
+        echo '<div class="gpo-inline-actions">';
+        echo '<a class="button button-primary" href="' . esc_url(admin_url('admin-post.php?action=gpo_test_connection&_wpnonce=' . wp_create_nonce('gpo_test_connection'))) . '">Verifica connessione</a>';
+        echo '<a class="button button-secondary" href="' . esc_url(admin_url('admin-post.php?action=gpo_run_sync&_wpnonce=' . wp_create_nonce('gpo_run_sync'))) . '">Sincronizza adesso</a>';
+        if ($parkplatform['configured']) {
+            echo '<a class="button button-secondary" href="' . esc_url(self::disconnect_parkplatform_url()) . '">Scollega account</a>';
+        }
+        echo '</div>';
+        echo '<div class="gpo-list-chips">';
+        echo '<span class="gpo-chip">Timeout ' . absint($api['timeout']) . 's</span>';
+        echo '<span class="gpo-chip">JWT automatico</span>';
+        echo '<span class="gpo-chip">Sync inventario e immagini</span>';
+        echo '</div>';
+        echo '</article>';
+        echo '</section>';
+
+        echo '<div class="gpo-form-submit">';
+        submit_button('Salva configurazione API', 'primary', 'submit', false);
+        echo '</div>';
+        echo '</form>';
+        self::render_page_end();
+        return;
 
         echo '<section class="gpo-surface-grid gpo-surface-grid--connections">';
         echo '<article class="gpo-surface gpo-connection-panel">';
@@ -814,12 +993,11 @@ class GPO_Admin {
     public static function guide_page() {
         echo '<div class="wrap gpo-admin-wrap"><h1>Guida rapida</h1>';
         echo '<ol>';
-        echo '<li>Configura l’endpoint in <strong>Connessioni API</strong>.</li>';
-        echo '<li>Mappa i campi obbligatori in <strong>Mappatura campi</strong>.</li>';
+        echo '<li>Collega il tuo account in <strong>Connessioni API</strong> con email e password ParkPlatform.</li>';
         echo '<li>Esegui <strong>Test connessione</strong> e poi <strong>Sincronizza adesso</strong>.</li>';
-        echo '<li>Apri <strong>Veicoli</strong> per modificare manualmente dati, note, accessori e vetrina.</li>';
-        echo '<li>Configura <strong>Aspetto</strong> per decidere il layout generale di card e scheda singola.</li>';
-        echo '<li>Inserisci nel sito i blocchi Gutenberg, gli shortcode o i widget Elementor.</li>';
+        echo '<li>Apri <strong>Veicoli</strong> per verificare i dati importati e scegliere cosa mettere in vetrina.</li>';
+        echo '<li>Costruisci cataloghi e componenti direttamente dal WordPress Editor con i blocchi GestPark.</li>';
+        echo '<li>Controlla dalla <strong>Dashboard</strong> lo stato ParkPlatform e gli aggiornamenti plugin.</li>';
         echo '</ol>';
         echo '</div>';
     }
@@ -858,6 +1036,11 @@ class GPO_Admin {
         $result = GPO_API_Client::test_connection();
         $notice = is_wp_error($result) ? 'error' : 'success';
         $message = is_wp_error($result) ? $result->get_error_message() : 'Connessione riuscita. Elementi letti: ' . $result['count'];
+        update_option('gpo_last_connection_check', [
+            'status' => is_wp_error($result) ? 'error' : 'success',
+            'time' => current_time('mysql'),
+            'message' => $message,
+        ]);
         wp_safe_redirect(admin_url('admin.php?page=gpo-api&gpo_notice=' . $notice . '&message=' . rawurlencode($message)));
         exit;
     }
@@ -869,7 +1052,31 @@ class GPO_Admin {
         $result = GPO_Sync_Manager::sync();
         $notice = is_wp_error($result) ? 'error' : 'success';
         $message = is_wp_error($result) ? $result->get_error_message() : 'Sincronizzazione completata. Veicoli processati: ' . $result['processed'];
+        update_option('gpo_last_connection_check', [
+            'status' => is_wp_error($result) ? 'error' : 'success',
+            'time' => current_time('mysql'),
+            'message' => is_wp_error($result) ? $message : 'Ultima sincronizzazione completata con successo.',
+        ]);
         wp_safe_redirect(admin_url('admin.php?page=gestpark-online&gpo_notice=' . $notice . '&message=' . rawurlencode($message)));
+        exit;
+    }
+
+    public static function handle_disconnect_parkplatform() {
+        if (!current_user_can('manage_options') || !check_admin_referer('gpo_disconnect_parkplatform')) {
+            wp_die('Operazione non consentita.');
+        }
+
+        $settings = self::get_settings();
+        $settings['api']['connection_mode'] = GPO_API_Client::MODE_GESTPARK_AUTO;
+        $settings['api']['manual_format'] = GPO_API_Client::MANUAL_FORMAT_GESTPARK;
+        $settings['api']['gestpark_username'] = '';
+        $settings['api']['gestpark_password'] = '';
+        $settings['api']['token'] = '';
+        $settings['api']['api_key'] = '';
+        update_option('gpo_settings', $settings);
+        delete_option('gpo_last_connection_check');
+
+        wp_safe_redirect(admin_url('admin.php?page=gpo-api&gpo_notice=success&message=' . rawurlencode('Account ParkPlatform scollegato.')));
         exit;
     }
 
@@ -895,7 +1102,7 @@ class GPO_Admin {
             wp_update_plugins();
         }
 
-        wp_safe_redirect(admin_url('admin.php?page=gpo-updates&gpo_notice=success&message=' . rawurlencode('Controllo aggiornamenti GitHub eseguito.')));
+        wp_safe_redirect(admin_url('admin.php?page=gestpark-online&gpo_notice=success&message=' . rawurlencode('Controllo aggiornamenti GitHub eseguito.')));
         exit;
     }
 
