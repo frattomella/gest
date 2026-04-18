@@ -20,7 +20,13 @@
     var targetUrl = form.getAttribute('data-target-url') || form.action || window.location.href;
     var catalogRef = form.getAttribute('data-catalog-ref') || 'default';
 
-    function syncClear(){ if (clear) clear.hidden = !input.value.trim(); }
+    function syncClear(){
+      var hasValue;
+      if (!clear) return;
+      hasValue = !!input.value.trim();
+      clear.hidden = !hasValue;
+      clear.setAttribute('aria-hidden', hasValue ? 'false' : 'true');
+    }
     function hide(){ results.hidden = true; results.innerHTML = ''; }
     function render(items){
       if (!items.length) { hide(); return; }

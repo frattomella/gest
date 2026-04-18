@@ -40,9 +40,9 @@ class GPO_CPT {
                 'menu_name' => 'Template veicolo',
             ],
             'public' => false,
-            'show_ui' => true,
-            'show_in_menu' => true,
-            'show_in_rest' => true,
+            'show_ui' => false,
+            'show_in_menu' => false,
+            'show_in_rest' => false,
             'supports' => ['title', 'editor', 'revisions'],
             'map_meta_cap' => true,
             'menu_icon' => 'dashicons-layout',
@@ -80,7 +80,6 @@ class GPO_CPT {
         add_meta_box('gpo_vehicle_data', 'Dati veicolo', [__CLASS__, 'render_vehicle_data_metabox'], 'gpo_vehicle', 'normal', 'high');
         add_meta_box('gpo_vehicle_notes', 'Note, specifiche e accessori', [__CLASS__, 'render_notes_metabox'], 'gpo_vehicle', 'normal', 'default');
         add_meta_box('gpo_vehicle_showcase', 'Vetrina e promozioni', [__CLASS__, 'render_showcase_metabox'], 'gpo_vehicle', 'side', 'high');
-        add_meta_box('gpo_template_help', 'Come usare questo template', [__CLASS__, 'render_template_help_metabox'], 'gpo_template', 'side', 'high');
     }
 
     public static function render_template_help_metabox($post) {

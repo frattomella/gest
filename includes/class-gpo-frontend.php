@@ -87,7 +87,6 @@ class GPO_Frontend {
             'engine_size',
             'specs',
             'primary_button',
-            'secondary_button',
         ];
     }
 
@@ -340,7 +339,6 @@ class GPO_Frontend {
             'button_color' => '',
             'button_text_color' => '',
             'primary_button_label' => 'Scheda veicolo',
-            'secondary_button_label' => 'Richiedi info',
         ], $atts, 'gestpark_vehicle_grid');
 
         $query = self::build_vehicle_query($atts);
@@ -389,7 +387,6 @@ class GPO_Frontend {
             'button_color' => '',
             'button_text_color' => '',
             'primary_button_label' => 'Scheda veicolo',
-            'secondary_button_label' => 'Richiedi info',
         ], $atts, 'gestpark_featured_vehicle');
         $display = self::resolve_card_display($atts);
 
@@ -437,7 +434,6 @@ class GPO_Frontend {
             'button_color' => '',
             'button_text_color' => '',
             'primary_button_label' => 'Scheda veicolo',
-            'secondary_button_label' => 'Richiedi info',
         ], $atts, 'gestpark_featured_carousel');
         $display = self::resolve_card_display($atts);
         $items_per_page = max(1, min(4, absint($atts['items_per_page'] ?? 3)));
@@ -497,7 +493,6 @@ class GPO_Frontend {
             'button_color' => '',
             'button_text_color' => '',
             'primary_button_label' => 'Scheda veicolo',
-            'secondary_button_label' => 'Richiedi info',
         ], $atts, 'gestpark_vehicle_catalog');
 
         return self::vehicle_grid_shortcode([
@@ -569,7 +564,6 @@ class GPO_Frontend {
             'visible_mobile' => $visible_mobile,
             'hero' => !empty($atts['hero']),
             'primary_button_label' => sanitize_text_field($atts['primary_button_label'] ?? 'Scheda veicolo'),
-            'secondary_button_label' => sanitize_text_field($atts['secondary_button_label'] ?? 'Richiedi info'),
         ];
     }
 
@@ -993,15 +987,15 @@ class GPO_Frontend {
             }
         }
         if ($has_meta) {
-            echo '<div class="gpo-meta-grid gpo-card-meta-grid">';
+            echo '<div class="gpo-card-meta-grid">';
             foreach ($meta as $meta_key => $meta_item) {
                 if (!self::is_visible($display, $meta_key) || $meta_item['value'] === '') {
                     continue;
                 }
-                echo '<div class="' . esc_attr('gpo-card-meta-item ' . self::visibility_classes($display, $meta_key)) . '">';
+                echo '<span class="' . esc_attr('gpo-card-meta-item ' . self::visibility_classes($display, $meta_key)) . '">';
                 echo '<span class="gpo-card-meta-item__icon" aria-hidden="true">' . self::icon_markup($meta_item['icon']) . '</span>';
                 echo '<span class="gpo-card-meta-item__copy"><small>' . esc_html($meta_item['label']) . '</small><strong>' . esc_html($meta_item['value']) . '</strong></span>';
-                echo '</div>';
+                echo '</span>';
             }
             echo '</div>';
         }
@@ -1014,14 +1008,9 @@ class GPO_Frontend {
             echo '</ul>';
         }
 
-        if (self::is_visible($display, 'primary_button') || self::is_visible($display, 'secondary_button')) {
+        if (self::is_visible($display, 'primary_button')) {
             echo '<div class="gpo-card-actions">';
-            if (self::is_visible($display, 'primary_button')) {
-                echo '<a class="' . esc_attr('gpo-button ' . self::visibility_classes($display, 'primary_button')) . '" href="' . esc_url(get_permalink($post_id)) . '">' . esc_html($display['primary_button_label'] ?? 'Scheda veicolo') . '</a>';
-            }
-            if (self::is_visible($display, 'secondary_button')) {
-                echo '<a class="' . esc_attr('gpo-link ' . self::visibility_classes($display, 'secondary_button')) . '" href="' . esc_url(get_permalink($post_id)) . '">' . esc_html($display['secondary_button_label'] ?? 'Richiedi info') . '</a>';
-            }
+            echo '<a class="' . esc_attr('gpo-button ' . self::visibility_classes($display, 'primary_button')) . '" href="' . esc_url(get_permalink($post_id)) . '">' . esc_html($display['primary_button_label'] ?? 'Scheda veicolo') . '</a>';
             echo '</div>';
         }
         echo '</div></article>';
@@ -1086,6 +1075,9 @@ class GPO_Frontend {
 
     public static function single_template($template) {
         if (is_singular('gpo_vehicle')) {
+            if (function_exists('wp_is_block_theme') && wp_is_block_theme()) {
+                return $template;
+            }
             $custom = GPO_PLUGIN_DIR . 'public/templates/single-gpo_vehicle.php';
             if (file_exists($custom)) {
                 return $custom;
@@ -1103,15 +1095,7 @@ class GPO_Frontend {
     }
 
     public static function current_single_template_id() {
-        if (current_user_can('edit_posts') && isset($_GET['gpo_preview_template'])) {
-            $preview_id = absint(wp_unslash($_GET['gpo_preview_template']));
-            if ($preview_id > 0 && get_post_type($preview_id) === 'gpo_template') {
-                return $preview_id;
-            }
-        }
-
-        $settings = self::display_settings();
-        return absint($settings['style']['single_template_id'] ?? 0);
+        return 0;
     }
 
     public static function template_preview_vehicle_link($template_id = 0) {
@@ -1123,10 +1107,6 @@ class GPO_Frontend {
         $url = get_permalink($vehicle_id);
         if (!$url) {
             return '';
-        }
-
-        if ($template_id > 0) {
-            $url = add_query_arg('gpo_preview_template', absint($template_id), $url);
         }
 
         return $url;

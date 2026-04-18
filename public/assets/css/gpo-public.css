@@ -2977,6 +2977,117 @@ body.gpo-lightbox-open {
   }
 }
 
+/* April 2026 compact cards + touch carousel polish */
+
+.gpo-card-meta-grid {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.gpo-card-meta-item {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 8px;
+  flex: 0 1 auto;
+  min-height: 0 !important;
+  min-width: 0;
+  padding: 7px 10px !important;
+  border-radius: 999px;
+  border: 1px solid rgba(203, 213, 225, 0.88);
+  background: rgba(248, 250, 252, 0.78) !important;
+  box-shadow: none !important;
+}
+
+.gpo-card-meta-item__icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: #64748b;
+  background: transparent !important;
+}
+
+.gpo-card-meta-item__icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.gpo-card-meta-item__copy {
+  min-width: 0;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.gpo-card-meta-item__copy small,
+.gpo-card-meta-item__copy strong {
+  display: inline;
+  margin: 0;
+}
+
+.gpo-card-meta-item__copy small {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.gpo-card-meta-item__copy strong {
+  font-size: 0.84rem;
+  line-height: 1.2;
+  font-weight: 800;
+  color: var(--gpo-local-text, var(--gpo-primary));
+}
+
+.gpo-card-actions {
+  gap: 0;
+}
+
+.gpo-card-actions .gpo-link {
+  display: none !important;
+}
+
+.gpo-search-clear[hidden] {
+  display: none !important;
+}
+
+.gpo-carousel-track {
+  touch-action: pan-y pinch-zoom;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  cursor: grab;
+}
+
+.gpo-carousel-track.is-dragging {
+  cursor: grabbing;
+  scroll-snap-type: none;
+}
+
+.gpo-carousel-track.is-dragging .gpo-card {
+  pointer-events: none;
+}
+
+@media (max-width: 720px) {
+  .gpo-card-meta-grid {
+    gap: 6px;
+  }
+
+  .gpo-card-meta-item {
+    padding: 7px 9px !important;
+  }
+
+  .gpo-card-meta-item__copy strong {
+    font-size: 0.8rem;
+  }
+}
+
 /* Final brand marquee overrides */
 
 .gpo-brand-nav,

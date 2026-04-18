@@ -31,7 +31,6 @@ class GPO_Core {
         }
 
         add_option('gpo_settings', GPO_Admin::default_settings());
-        self::ensure_default_vehicle_template();
     }
 
     public function maybe_cleanup_legacy_demo_content() {
@@ -47,39 +46,7 @@ class GPO_Core {
     }
 
     public static function ensure_default_vehicle_template() {
-        $existing = get_posts([
-            'post_type' => 'gpo_template',
-            'post_status' => ['publish', 'draft'],
-            'posts_per_page' => 1,
-            'orderby' => 'date',
-            'order' => 'ASC',
-            'fields' => 'ids',
-        ]);
-
-        if (!empty($existing)) {
-            $settings = wp_parse_args(get_option('gpo_settings', []), GPO_Admin::default_settings());
-            if (empty($settings['style']['single_template_id'])) {
-                $settings['style']['single_template_id'] = absint($existing[0]);
-                update_option('gpo_settings', $settings);
-            }
-            self::maybe_refresh_default_vehicle_template(absint($existing[0]));
-            return;
-        }
-
-        $content = self::default_vehicle_template_content();
-
-        $template_id = wp_insert_post([
-            'post_type' => 'gpo_template',
-            'post_status' => 'publish',
-            'post_title' => 'Scheda veicolo predefinita',
-            'post_content' => $content,
-        ]);
-
-        if ($template_id && !is_wp_error($template_id)) {
-            $settings = wp_parse_args(get_option('gpo_settings', []), GPO_Admin::default_settings());
-            $settings['style']['single_template_id'] = absint($template_id);
-            update_option('gpo_settings', $settings);
-        }
+        return 0;
     }
 
     protected static function default_vehicle_template_content() {

@@ -5,19 +5,6 @@ if (!defined('ABSPATH')) {
 wp_enqueue_style('gpo-public');
 get_header();
 $post_id = get_the_ID();
-$settings = GPO_Frontend::display_settings();
-$template_id = GPO_Frontend::current_single_template_id();
-
-if ($template_id && get_post($template_id) && get_post_field('post_content', $template_id)) {
-    GPO_Frontend::set_template_vehicle_context($post_id);
-    echo '<div class="gpo-template-shell">';
-    echo GPO_Frontend::back_button_markup($post_id);
-    echo apply_filters('the_content', get_post_field('post_content', $template_id));
-    echo '</div>';
-    GPO_Frontend::clear_template_vehicle_context();
-    get_footer();
-    return;
-}
 
 $display = GPO_Frontend::single_display();
 $visible = $display['visible'];

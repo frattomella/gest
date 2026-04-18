@@ -14,9 +14,13 @@
     var currentIndex = 0;
     var currentPage = 0;
     var timer = null;
-    var startX = 0;
-    var pointerId = null;
     var scrollFrame = null;
+    var dragPointerId = null;
+    var dragStartX = 0;
+    var dragStartScroll = 0;
+    var dragging = false;
+    var dragMoved = false;
+    var suppressClick = false;
 
     if (!track) {
       return;
@@ -180,6 +184,11 @@
       goToPage(currentPage - 1, 'smooth');
     }
 
+    function settleToNearestPage() {
+      syncIndex();
+      goToPage(currentPage, 'smooth');
+    }
+
     function buildDots() {
       var pages = pageCount();
 
@@ -240,27 +249,59 @@
     }
 
     track.addEventListener('pointerdown', function (event) {
-      pointerId = event.pointerId;
-      startX = event.clientX;
-      stop();
-    });
-
-    track.addEventListener('pointerup', function (event) {
-      var delta;
-
-      if (pointerId !== event.pointerId) {
+      if (event.pointerType === 'mouse' && event.button !== 0) {
         return;
       }
 
-      delta = event.clientX - startX;
-      pointerId = null;
+      dragPointerId = event.pointerId;
+      dragStartX = event.clientX;
+      dragStartScroll = track.scrollLeft;
+      dragging = true;
+      dragMoved = false;
+      track.classList.add('is-dragging');
 
-      if (Math.abs(delta) > 48) {
-        if (delta < 0) {
-          nextSlide();
-        } else {
-          prevSlide();
-        }
+      if (track.setPointerCapture) {
+        track.setPointerCapture(event.pointerId);
+      }
+
+      stop();
+    });
+
+    track.addEventListener('pointermove', function (event) {
+      var delta;
+
+      if (!dragging || dragPointerId !== event.pointerId) {
+        return;
+      }
+
+      delta = event.clientX - dragStartX;
+
+      if (Math.abs(delta) > 6) {
+        dragMoved = true;
+        suppressClick = true;
+      }
+
+      track.scrollLeft = dragStartScroll - delta;
+
+      if (dragMoved) {
+        event.preventDefault();
+      }
+    });
+
+    track.addEventListener('pointerup', function (event) {
+      if (!dragging || dragPointerId !== event.pointerId) {
+        return;
+      }
+
+      dragging = false;
+      dragPointerId = null;
+      track.classList.remove('is-dragging');
+
+      if (dragMoved) {
+        settleToNearestPage();
+        window.setTimeout(function () {
+          suppressClick = false;
+        }, 220);
       } else {
         syncIndex();
       }
@@ -269,9 +310,35 @@
     });
 
     track.addEventListener('pointercancel', function () {
-      pointerId = null;
+      dragging = false;
+      dragPointerId = null;
+      dragMoved = false;
+      track.classList.remove('is-dragging');
+      settleToNearestPage();
       restart();
     });
+
+    track.addEventListener('lostpointercapture', function () {
+      if (!dragging) {
+        return;
+      }
+
+      dragging = false;
+      dragPointerId = null;
+      track.classList.remove('is-dragging');
+      settleToNearestPage();
+      restart();
+    });
+
+    track.addEventListener('click', function (event) {
+      if (!suppressClick) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      suppressClick = false;
+    }, true);
 
     track.addEventListener('scroll', function () {
       if (scrollFrame) {

@@ -57,7 +57,7 @@ class GPO_Admin {
                 'card_gap' => '24',
                 'card_padding' => '22',
                 'content_max_width' => '1280',
-                'outer_margin_y' => '32',
+                'outer_margin_y' => '0',
                 'outer_padding_x' => '18',
                 'section_gap' => '24',
                 'filter_columns' => '5',
@@ -89,10 +89,9 @@ class GPO_Admin {
                     'body_type' => '1',
                     'transmission' => '1',
                     'engine_size' => '1',
-                    'specs' => '1',
-                    'primary_button' => '1',
-                    'secondary_button' => '1',
-                ],
+                'specs' => '1',
+                'primary_button' => '1',
+            ],
                 'single_sections' => [
                     'gallery' => '1',
                     'summary' => '1',
@@ -272,7 +271,6 @@ class GPO_Admin {
             'style' => ['label' => 'Aspetto', 'url' => admin_url('admin.php?page=gpo-style')],
             'updates' => ['label' => 'Aggiornamenti', 'url' => admin_url('admin.php?page=gpo-updates')],
             'vehicles' => ['label' => 'Veicoli', 'url' => admin_url('edit.php?post_type=gpo_vehicle')],
-            'templates' => ['label' => 'Template', 'url' => admin_url('edit.php?post_type=gpo_template')],
             'logs' => ['label' => 'Log', 'url' => admin_url('admin.php?page=gpo-logs')],
             'guide' => ['label' => 'Guida', 'url' => admin_url('admin.php?page=gpo-guide')],
         ];
@@ -430,9 +428,9 @@ class GPO_Admin {
         echo '</article>';
 
         echo '<article class="gpo-surface">';
-        echo '<div class="gpo-surface__eyebrow">Template globale</div>';
-        echo '<h2>Scheda veicolo editabile</h2>';
-        echo '<p>Seleziona un template globale, aprilo con un veicolo reale importato e costruisci un layout unico per tutte le schede del concessionario.</p>';
+        echo '<div class="gpo-surface__eyebrow">Template nativo</div>';
+        echo '<h2>Scheda veicolo nel WordPress Editor</h2>';
+        echo '<p>La scheda veicolo si appoggia al template nativo del tema e del Site Editor. Il plugin continua a fornire i blocchi dinamici principali, senza imporre un builder separato.</p>';
         echo '<a class="button button-secondary" href="' . esc_url(admin_url('admin.php?page=gpo-style')) . '">Apri Aspetto</a>';
         echo '</article>';
 
@@ -636,11 +634,9 @@ class GPO_Admin {
 
     public static function style_page() {
         $settings = self::get_settings();
-        $templates = get_posts(['post_type' => 'gpo_template', 'post_status' => ['publish', 'draft'], 'posts_per_page' => -1]);
-        $selected_template_id = absint($settings['style']['single_template_id'] ?? 0);
-        $template_preview_url = class_exists('GPO_Frontend') ? GPO_Frontend::template_preview_vehicle_link($selected_template_id) : '';
-        $template_preview_vehicle_id = class_exists('GPO_Frontend') ? GPO_Frontend::current_vehicle_id() : 0;
-        $template_preview_edit_url = $template_preview_vehicle_id ? get_edit_post_link($template_preview_vehicle_id) : '';
+        $site_editor_url = function_exists('wp_is_block_theme') && wp_is_block_theme()
+            ? admin_url('site-editor.php')
+            : '';
 
         echo '<div class="wrap gpo-admin-wrap"><h1>Aspetto</h1>';
         echo '<p>Qui definisci il layout generale del catalogo e della scheda veicolo. Puoi anche selezionare un template veicolo modificabile direttamente nell’editor di WordPress, così da spostare box, caroselli, annunci e blocchi senza toccare codice.</p>';
@@ -654,6 +650,7 @@ class GPO_Admin {
         self::input_row('Font titoli', 'gpo_settings[style][title_font]', $settings['style']['title_font'], 'Inserisci un font CSS, ad esempio Inter, Arial, sans-serif');
         self::input_row('Font testi', 'gpo_settings[style][body_font]', $settings['style']['body_font'], 'Inserisci un font CSS, ad esempio Inter, Arial, sans-serif');
         self::select_row('Layout fallback scheda veicolo', 'gpo_settings[style][single_layout]', $settings['style']['single_layout'], ['classic' => 'Classic', 'reversed' => 'Reversed', 'stacked' => 'Stacked']);
+        if (false) {
         echo '<tr><th scope="row"><label>Template veicolo da editor</label></th><td><select name="gpo_settings[style][single_template_id]">';
         echo '<option value="0">Usa il template fallback del plugin</option>';
         foreach ($templates as $template_post) {
@@ -671,6 +668,13 @@ class GPO_Admin {
             echo ' <a class="button button-secondary" href="' . esc_url($template_preview_edit_url) . '">Apri veicolo usato per l anteprima</a>';
         }
         echo '</p></td></tr>';
+        }
+        echo '<tr><th scope="row"><label>Template single veicolo</label></th><td>';
+        echo '<p class="description">Il plugin non usa piu un template separato da questa dashboard. Per comporre la scheda veicolo usa il template single del tema nel WordPress Editor.</p>';
+        if ($site_editor_url) {
+            echo '<p><a class="button button-secondary" href="' . esc_url($site_editor_url) . '">Apri Site Editor</a></p>';
+        }
+        echo '</td></tr>';
         echo '<tr><th scope="row"><label>Immagine fallback veicolo</label></th><td>';
         echo '<input id="gpo-fallback-vehicle-image" class="regular-text" type="text" name="gpo_settings[style][fallback_vehicle_image]" value="' . esc_attr((string) ($settings['style']['fallback_vehicle_image'] ?? '')) . '" /> ';
         echo '<a href="#" class="button gpo-media-upload" data-target="#gpo-fallback-vehicle-image">Carica o scegli immagine</a> ';
@@ -693,6 +697,10 @@ class GPO_Admin {
 
         echo '<div class="gpo-admin-panel" style="margin-top:24px;"><h2>Come funziona il template veicolo nell’editor</h2>';
         echo '<p>Apri o crea un contenuto del tipo <strong>Template veicolo</strong> e usa i blocchi GestPark: Hero veicolo, Galleria veicolo, Scheda tecnica, Descrizione, Note, Accessori, Contatto e Carosello veicoli. Puoi spostare i blocchi, inserirli dentro colonne o gruppi, aggiungere annunci, CTA, banner o qualsiasi blocco Gutenberg del tema.</p>';
+        if ($site_editor_url) {
+            echo '<p><a class="button button-secondary" href="' . esc_url($site_editor_url) . '">Apri Site Editor</a></p>';
+        }
+        echo '<p><strong>Nota:</strong> il frontend non usa piu un template separato del plugin. Questa sezione resta solo come riferimento ai blocchi dinamici disponibili.</p>';
         echo '<p><code>[gestpark_featured_carousel show="title,primary_button" card_layout="minimal"]</code></p>';
         echo '<p><code>[gestpark_vehicle_catalog show="image,title,price,primary_button" card_layout="compact"]</code></p>';
         echo '</div>';
