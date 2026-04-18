@@ -39,7 +39,7 @@ class GPO_Frontend {
             '--gpo-card-gap:' . absint($style['card_gap'] ?? 24) . 'px;' .
             '--gpo-card-padding:' . absint($style['card_padding'] ?? 22) . 'px;' .
             '--gpo-content-max-width:' . absint($style['content_max_width'] ?? 1280) . 'px;' .
-            '--gpo-shell-margin-y:' . absint($style['outer_margin_y'] ?? 32) . 'px;' .
+            '--gpo-shell-margin-y:' . absint($style['outer_margin_y'] ?? 0) . 'px;' .
             '--gpo-shell-padding-x:' . absint($style['outer_padding_x'] ?? 18) . 'px;' .
             '--gpo-section-gap:' . absint($style['section_gap'] ?? 24) . 'px;' .
             '--gpo-filter-columns:' . max(2, min(6, absint($style['filter_columns'] ?? 5))) . ';' .
@@ -326,7 +326,7 @@ class GPO_Frontend {
             'card_gap' => self::display_settings()['style']['card_gap'] ?? '24',
             'card_padding' => self::display_settings()['style']['card_padding'] ?? '22',
             'content_max_width' => self::display_settings()['style']['content_max_width'] ?? '1280',
-            'outer_margin_y' => self::display_settings()['style']['outer_margin_y'] ?? '32',
+            'outer_margin_y' => self::display_settings()['style']['outer_margin_y'] ?? '0',
             'outer_padding_x' => self::display_settings()['style']['outer_padding_x'] ?? '18',
             'section_gap' => self::display_settings()['style']['section_gap'] ?? '24',
             'filter_fields' => '',
@@ -373,7 +373,7 @@ class GPO_Frontend {
             'card_gap' => self::display_settings()['style']['card_gap'] ?? '24',
             'card_padding' => self::display_settings()['style']['card_padding'] ?? '22',
             'content_max_width' => self::display_settings()['style']['content_max_width'] ?? '1280',
-            'outer_margin_y' => self::display_settings()['style']['outer_margin_y'] ?? '32',
+            'outer_margin_y' => self::display_settings()['style']['outer_margin_y'] ?? '0',
             'outer_padding_x' => self::display_settings()['style']['outer_padding_x'] ?? '18',
             'section_gap' => self::display_settings()['style']['section_gap'] ?? '24',
             'primary_color' => '',
@@ -416,7 +416,7 @@ class GPO_Frontend {
             'card_gap' => self::display_settings()['style']['card_gap'] ?? '24',
             'card_padding' => self::display_settings()['style']['card_padding'] ?? '22',
             'content_max_width' => self::display_settings()['style']['content_max_width'] ?? '1280',
-            'outer_margin_y' => self::display_settings()['style']['outer_margin_y'] ?? '32',
+            'outer_margin_y' => self::display_settings()['style']['outer_margin_y'] ?? '0',
             'outer_padding_x' => self::display_settings()['style']['outer_padding_x'] ?? '18',
             'section_gap' => self::display_settings()['style']['section_gap'] ?? '24',
             'primary_color' => '',
@@ -466,7 +466,7 @@ class GPO_Frontend {
             'card_gap' => self::display_settings()['style']['card_gap'] ?? '24',
             'card_padding' => self::display_settings()['style']['card_padding'] ?? '22',
             'content_max_width' => self::display_settings()['style']['content_max_width'] ?? '1280',
-            'outer_margin_y' => self::display_settings()['style']['outer_margin_y'] ?? '32',
+            'outer_margin_y' => self::display_settings()['style']['outer_margin_y'] ?? '0',
             'outer_padding_x' => self::display_settings()['style']['outer_padding_x'] ?? '18',
             'section_gap' => self::display_settings()['style']['section_gap'] ?? '24',
             'filter_fields' => '',
@@ -499,18 +499,35 @@ class GPO_Frontend {
     }
 
     protected static function wrapper_style($atts = []) {
-        return '--gpo-card-gap:' . absint($atts['card_gap'] ?? 24) . 'px;' .
-            '--gpo-card-padding:' . absint($atts['card_padding'] ?? 22) . 'px;' .
-            '--gpo-content-max-width:' . absint($atts['content_max_width'] ?? 1280) . 'px;' .
-            '--gpo-shell-margin-y:' . absint($atts['outer_margin_y'] ?? 32) . 'px;' .
-            '--gpo-shell-padding-x:' . absint($atts['outer_padding_x'] ?? 18) . 'px;' .
-            '--gpo-section-gap:' . absint($atts['section_gap'] ?? 24) . 'px;' .
-            (!empty($atts['primary_color']) ? '--gpo-primary:' . sanitize_text_field($atts['primary_color']) . ';' : '') .
-            (!empty($atts['accent_color']) ? '--gpo-accent:' . sanitize_text_field($atts['accent_color']) . ';' : '') .
-            (!empty($atts['bg_color']) ? '--gpo-bg:' . sanitize_text_field($atts['bg_color']) . ';' : '') .
-            (!empty($atts['text_color']) ? '--gpo-local-text:' . sanitize_text_field($atts['text_color']) . ';' : '') .
-            (!empty($atts['button_color']) ? '--gpo-button-bg:' . sanitize_text_field($atts['button_color']) . ';' : '') .
-            (!empty($atts['button_text_color']) ? '--gpo-button-text:' . sanitize_text_field($atts['button_text_color']) . ';' : '');
+        $settings = self::display_settings();
+        $style_defaults = isset($settings['style']) && is_array($settings['style']) ? $settings['style'] : [];
+        $merged = wp_parse_args($atts, [
+            'card_gap' => $style_defaults['card_gap'] ?? 24,
+            'card_padding' => $style_defaults['card_padding'] ?? 22,
+            'content_max_width' => $style_defaults['content_max_width'] ?? 1280,
+            'outer_margin_y' => $style_defaults['outer_margin_y'] ?? 0,
+            'outer_padding_x' => $style_defaults['outer_padding_x'] ?? 18,
+            'section_gap' => $style_defaults['section_gap'] ?? 24,
+            'primary_color' => '',
+            'accent_color' => '',
+            'bg_color' => '',
+            'text_color' => '',
+            'button_color' => '',
+            'button_text_color' => '',
+        ]);
+
+        return '--gpo-card-gap:' . absint($merged['card_gap']) . 'px;' .
+            '--gpo-card-padding:' . absint($merged['card_padding']) . 'px;' .
+            '--gpo-content-max-width:' . absint($merged['content_max_width']) . 'px;' .
+            '--gpo-shell-margin-y:' . absint($merged['outer_margin_y']) . 'px;' .
+            '--gpo-shell-padding-x:' . absint($merged['outer_padding_x']) . 'px;' .
+            '--gpo-section-gap:' . absint($merged['section_gap']) . 'px;' .
+            (!empty($merged['primary_color']) ? '--gpo-primary:' . sanitize_text_field($merged['primary_color']) . ';' : '') .
+            (!empty($merged['accent_color']) ? '--gpo-accent:' . sanitize_text_field($merged['accent_color']) . ';' : '') .
+            (!empty($merged['bg_color']) ? '--gpo-bg:' . sanitize_text_field($merged['bg_color']) . ';' : '') .
+            (!empty($merged['text_color']) ? '--gpo-local-text:' . sanitize_text_field($merged['text_color']) . ';' : '') .
+            (!empty($merged['button_color']) ? '--gpo-button-bg:' . sanitize_text_field($merged['button_color']) . ';' : '') .
+            (!empty($merged['button_text_color']) ? '--gpo-button-text:' . sanitize_text_field($merged['button_text_color']) . ';' : '');
     }
 
     protected static function resolve_card_display($atts = []) {
@@ -1630,6 +1647,52 @@ class GPO_Frontend {
         return home_url('/');
     }
 
+    protected static function brand_marquee_duration($atts = []) {
+        $interval = max(1500, absint($atts['interval'] ?? 6500));
+        $speed = max(300, absint($atts['speed'] ?? 900));
+        $seconds = ($interval / 400) + ($speed / 60);
+        return max(18, min(90, round($seconds, 1)));
+    }
+
+    protected static function brand_carousel_item_markup($brand, $target_url, $catalog_ref, $duplicate = false) {
+        $url = add_query_arg([
+            'gpo_brand_key' => $brand['key'],
+            'gpo_catalog_ref' => sanitize_text_field($catalog_ref),
+        ], $target_url);
+
+        $classes = 'gpo-brand-item';
+        if (empty($brand['has_local_logo'])) {
+            $classes .= ' gpo-brand-item--text-only';
+        }
+
+        $attrs = [
+            'class' => $classes,
+            'href' => esc_url($url),
+            'aria-label' => esc_attr($brand['name']),
+        ];
+
+        if ($duplicate) {
+            $attrs['aria-hidden'] = 'true';
+            $attrs['tabindex'] = '-1';
+        }
+
+        $html = '<a';
+        foreach ($attrs as $key => $value) {
+            $html .= ' ' . $key . '="' . $value . '"';
+        }
+        $html .= '>';
+
+        if (!empty($brand['has_local_logo'])) {
+            $html .= '<span class="gpo-brand-item__visual"><img src="' . esc_url($brand['logo']) . '" alt="' . esc_attr($brand['name']) . '" loading="lazy" decoding="async" /></span>';
+        }
+
+        $html .= '<span class="gpo-brand-item__meta">';
+        $html .= '<strong class="gpo-brand-name">' . esc_html($brand['name']) . '</strong>';
+        $html .= '</span></a>';
+
+        return $html;
+    }
+
     public static function brand_carousel_shortcode($atts) {
         wp_enqueue_style('gpo-public');
         wp_enqueue_script('gpo-live-search');
@@ -1652,38 +1715,35 @@ class GPO_Frontend {
             return '<div class="gpo-empty-state"><p>Nessuna marca disponibile.</p></div>';
         }
         $target_url = self::catalog_target_url($atts['page_id']);
+        $autoplay = ($atts['autoplay'] === 'yes') ? 'yes' : 'no';
         $style = self::wrapper_style([
             'primary_color' => $atts['primary_color'],
             'accent_color' => $atts['accent_color'],
             'bg_color' => $atts['bg_color'],
             'text_color' => $atts['text_color'],
-        ]) . '--gpo-brand-logo-size:' . max(72, absint($atts['logo_size'])) . 'px;--gpo-brand-card-size:' . max(120, absint($atts['card_size'])) . 'px;--gpo-brand-speed:' . max(300, absint($atts['speed'])) . 'ms;';
+        ]) .
+            '--gpo-brand-logo-size:' . max(72, absint($atts['logo_size'])) . 'px;' .
+            '--gpo-brand-card-size:' . max(120, absint($atts['card_size'])) . 'px;' .
+            '--gpo-brand-speed:' . max(300, absint($atts['speed'])) . 'ms;' .
+            '--gpo-brand-marquee-duration:' . self::brand_marquee_duration($atts) . 's;';
 
         ob_start();
         echo '<div class="gpo-brand-carousel-shell" style="' . esc_attr($style) . '">';
-        echo '<div class="gpo-brand-carousel" data-autoplay="' . esc_attr($atts['autoplay']) . '" data-interval="' . absint($atts['interval']) . '" data-speed="' . absint($atts['speed']) . '" data-loop="yes">';
-        echo '<button type="button" class="gpo-brand-nav prev" aria-label="Marchio precedente">' . self::icon_markup('chevron-left') . '</button>';
+        echo '<div class="gpo-brand-carousel" data-autoplay="' . esc_attr($autoplay) . '" data-interval="' . absint($atts['interval']) . '" data-speed="' . absint($atts['speed']) . '">';
         echo '<div class="gpo-brand-viewport"><div class="gpo-brand-track">';
+        echo '<div class="gpo-brand-run">';
         foreach ($brands as $brand) {
-            $url = add_query_arg([
-                'gpo_brand_key' => $brand['key'],
-                'gpo_catalog_ref' => sanitize_text_field($atts['catalog_ref']),
-            ], $target_url);
-            $classes = 'gpo-brand-item';
-            if (empty($brand['has_local_logo'])) {
-                $classes .= ' gpo-brand-item--text-only';
+            echo self::brand_carousel_item_markup($brand, $target_url, $atts['catalog_ref']);
+        }
+        echo '</div>';
+        if ($autoplay === 'yes') {
+            echo '<div class="gpo-brand-run gpo-brand-run--duplicate" aria-hidden="true">';
+            foreach ($brands as $brand) {
+                echo self::brand_carousel_item_markup($brand, $target_url, $atts['catalog_ref'], true);
             }
-            echo '<a class="' . esc_attr($classes) . '" href="' . esc_url($url) . '" aria-label="' . esc_attr($brand['name']) . '">';
-            if (!empty($brand['has_local_logo'])) {
-                echo '<span class="gpo-brand-item__visual"><img src="' . esc_url($brand['logo']) . '" alt="' . esc_attr($brand['name']) . '" loading="lazy" /></span>';
-            }
-            if (empty($brand['has_local_logo'])) {
-                echo '<span class="gpo-brand-item__meta"><strong class="gpo-brand-name">' . esc_html($brand['name']) . '</strong></span>';
-            }
-            echo '</a>';
+            echo '</div>';
         }
         echo '</div></div>';
-        echo '<button type="button" class="gpo-brand-nav next" aria-label="Marchio successivo">' . self::icon_markup('chevron-right') . '</button>';
         echo '</div></div>';
         return ob_get_clean();
     }

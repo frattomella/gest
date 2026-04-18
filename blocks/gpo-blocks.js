@@ -445,13 +445,13 @@
     category: 'widgets',
     attributes: { pageId:{type:'number',default:0}, catalogRef:{type:'string',default:'default'}, logoSize:{type:'number',default:96}, cardSize:{type:'number',default:168}, autoplay:{type:'boolean',default:true}, interval:{type:'number',default:6500}, speed:{type:'number',default:900}, primaryColor:{type:'string',default:''}, accentColor:{type:'string',default:''}, bgColor:{type:'string',default:''}, textColor:{type:'string',default:''} },
     edit: function (props) {
-      return previewEdit(props, 'GestPark Banner marchi', '', [
+      return previewEdit(props, 'GestPark Banner marchi', 'Anteprima reale del marquee continuo dei marchi veicolo.', [
         el(PanelBody, { title:'Impostazioni banner marchi', initialOpen:true }, targetPageControls(props).concat([
-          el(RangeControl, { label:'Dimensione card marchio', value:props.attributes.cardSize, min:120, max:240, onChange:function(v){ props.setAttributes({ cardSize:v || 120 }); } }),
-          el(RangeControl, { label:'Grandezza marchi', value:props.attributes.logoSize, min:56, max:180, onChange:function(v){ props.setAttributes({ logoSize:v || 56 }); } }),
-          el(ToggleControl, { label:'Scorrimento automatico', checked:props.attributes.autoplay, onChange:function(v){ props.setAttributes({ autoplay:v }); } }),
-          el(RangeControl, { label:'Tempo di scorrimento automatico', value:props.attributes.interval, min:1500, max:10000, step:100, onChange:function(v){ props.setAttributes({ interval:v || 1500 }); } }),
-          el(RangeControl, { label:'Velocità animazione', value:props.attributes.speed, min:300, max:2400, step:50, onChange:function(v){ props.setAttributes({ speed:v || 300 }); } })
+          el(RangeControl, { label:'Dimensione card marchio', value:props.attributes.cardSize, min:120, max:280, onChange:function(v){ props.setAttributes({ cardSize:v || 120 }); } }),
+          el(RangeControl, { label:'Grandezza logo marchio', value:props.attributes.logoSize, min:56, max:180, onChange:function(v){ props.setAttributes({ logoSize:v || 56 }); } }),
+          el(ToggleControl, { label:'Marquee automatico continuo', checked:props.attributes.autoplay, onChange:function(v){ props.setAttributes({ autoplay:v }); } }),
+          el(RangeControl, { label:'Durata ciclo marquee', value:props.attributes.interval, min:1500, max:12000, step:100, onChange:function(v){ props.setAttributes({ interval:v || 1500 }); } }),
+          el(RangeControl, { label:'Morbidezza animazione', value:props.attributes.speed, min:300, max:3200, step:50, onChange:function(v){ props.setAttributes({ speed:v || 300 }); } })
         ].concat(styleControls(props))))
       ]);
     },
