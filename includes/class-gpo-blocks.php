@@ -36,6 +36,9 @@ class GPO_Blocks {
 
     protected static function styled_card_attributes(array $defaults = []) {
         return array_merge($defaults, [
+            'showDesktop' => ['type' => 'string', 'default' => ''],
+            'showTablet' => ['type' => 'string', 'default' => ''],
+            'showMobile' => ['type' => 'string', 'default' => ''],
             'primaryColor' => ['type' => 'string', 'default' => ''],
             'accentColor' => ['type' => 'string', 'default' => ''],
             'bgColor' => ['type' => 'string', 'default' => ''],
@@ -47,6 +50,23 @@ class GPO_Blocks {
             'outerPaddingX' => ['type' => 'number', 'default' => 18],
             'sectionGap' => ['type' => 'number', 'default' => 24],
         ]);
+    }
+
+    protected static function responsive_show_shortcode_attributes($attributes = []) {
+        $parts = '';
+        $map = [
+            'showDesktop' => 'show_desktop',
+            'showTablet' => 'show_tablet',
+            'showMobile' => 'show_mobile',
+        ];
+
+        foreach ($map as $attribute => $shortcode_attribute) {
+            if (!empty($attributes[$attribute])) {
+                $parts .= ' ' . $shortcode_attribute . '="' . esc_attr($attributes[$attribute]) . '"';
+            }
+        }
+
+        return $parts;
     }
 
     public static function enqueue_shared_block_assets() {
@@ -104,7 +124,7 @@ class GPO_Blocks {
                 $filter_fields = isset($attributes['filterFields']) ? sanitize_text_field($attributes['filterFields']) : '';
                 $outer_padding_x = isset($attributes['outerPaddingX']) ? absint($attributes['outerPaddingX']) : 18;
                 $section_gap = isset($attributes['sectionGap']) ? absint($attributes['sectionGap']) : 24;
-                return self::render_dynamic_block('gpo-block-catalog', $attributes, do_shortcode('[gestpark_vehicle_grid limit="' . $limit . '" columns="' . $columns . '" show="' . esc_attr($show) . '" card_layout="' . esc_attr($card_layout) . '" filter_fields="' . esc_attr($filter_fields) . '" outer_padding_x="' . $outer_padding_x . '" section_gap="' . $section_gap . '" primary_color="' . esc_attr($attributes['primaryColor'] ?? '') . '" accent_color="' . esc_attr($attributes['accentColor'] ?? '') . '" bg_color="' . esc_attr($attributes['bgColor'] ?? '') . '" text_color="' . esc_attr($attributes['textColor'] ?? '') . '" button_color="' . esc_attr($attributes['buttonColor'] ?? '') . '" button_text_color="' . esc_attr($attributes['buttonTextColor'] ?? '') . '" primary_button_label="' . esc_attr($attributes['primaryButtonLabel'] ?? 'Scheda veicolo') . '" secondary_button_label="' . esc_attr($attributes['secondaryButtonLabel'] ?? 'Richiedi info') . '"]'));
+                return self::render_dynamic_block('gpo-block-catalog', $attributes, do_shortcode('[gestpark_vehicle_grid limit="' . $limit . '" columns="' . $columns . '" show="' . esc_attr($show) . '"' . self::responsive_show_shortcode_attributes($attributes) . ' card_layout="' . esc_attr($card_layout) . '" filter_fields="' . esc_attr($filter_fields) . '" outer_padding_x="' . $outer_padding_x . '" section_gap="' . $section_gap . '" primary_color="' . esc_attr($attributes['primaryColor'] ?? '') . '" accent_color="' . esc_attr($attributes['accentColor'] ?? '') . '" bg_color="' . esc_attr($attributes['bgColor'] ?? '') . '" text_color="' . esc_attr($attributes['textColor'] ?? '') . '" button_color="' . esc_attr($attributes['buttonColor'] ?? '') . '" button_text_color="' . esc_attr($attributes['buttonTextColor'] ?? '') . '" primary_button_label="' . esc_attr($attributes['primaryButtonLabel'] ?? 'Scheda veicolo') . '" secondary_button_label="' . esc_attr($attributes['secondaryButtonLabel'] ?? 'Richiedi info') . '"]'));
             },
             'attributes' => self::styled_card_attributes([
                 'limit' => ['type' => 'number', 'default' => 6],
@@ -126,7 +146,7 @@ class GPO_Blocks {
                 $filter_fields = isset($attributes['filterFields']) ? sanitize_text_field($attributes['filterFields']) : '';
                 $outer_padding_x = isset($attributes['outerPaddingX']) ? absint($attributes['outerPaddingX']) : 18;
                 $section_gap = isset($attributes['sectionGap']) ? absint($attributes['sectionGap']) : 24;
-                return self::render_dynamic_block('gpo-block-catalog', $attributes, do_shortcode('[gestpark_vehicle_catalog limit="' . $limit . '" columns="' . $columns . '" show="' . esc_attr($show) . '" card_layout="' . esc_attr($card_layout) . '" filter_fields="' . esc_attr($filter_fields) . '" outer_padding_x="' . $outer_padding_x . '" section_gap="' . $section_gap . '" primary_color="' . esc_attr($attributes['primaryColor'] ?? '') . '" accent_color="' . esc_attr($attributes['accentColor'] ?? '') . '" bg_color="' . esc_attr($attributes['bgColor'] ?? '') . '" text_color="' . esc_attr($attributes['textColor'] ?? '') . '" button_color="' . esc_attr($attributes['buttonColor'] ?? '') . '" button_text_color="' . esc_attr($attributes['buttonTextColor'] ?? '') . '" primary_button_label="' . esc_attr($attributes['primaryButtonLabel'] ?? 'Scheda veicolo') . '" secondary_button_label="' . esc_attr($attributes['secondaryButtonLabel'] ?? 'Richiedi info') . '"]'));
+                return self::render_dynamic_block('gpo-block-catalog', $attributes, do_shortcode('[gestpark_vehicle_catalog limit="' . $limit . '" columns="' . $columns . '" show="' . esc_attr($show) . '"' . self::responsive_show_shortcode_attributes($attributes) . ' card_layout="' . esc_attr($card_layout) . '" filter_fields="' . esc_attr($filter_fields) . '" outer_padding_x="' . $outer_padding_x . '" section_gap="' . $section_gap . '" primary_color="' . esc_attr($attributes['primaryColor'] ?? '') . '" accent_color="' . esc_attr($attributes['accentColor'] ?? '') . '" bg_color="' . esc_attr($attributes['bgColor'] ?? '') . '" text_color="' . esc_attr($attributes['textColor'] ?? '') . '" button_color="' . esc_attr($attributes['buttonColor'] ?? '') . '" button_text_color="' . esc_attr($attributes['buttonTextColor'] ?? '') . '" primary_button_label="' . esc_attr($attributes['primaryButtonLabel'] ?? 'Scheda veicolo') . '" secondary_button_label="' . esc_attr($attributes['secondaryButtonLabel'] ?? 'Richiedi info') . '"]'));
             },
             'attributes' => self::styled_card_attributes([
                 'limit' => ['type' => 'number', 'default' => 12],
@@ -145,7 +165,7 @@ class GPO_Blocks {
                 $card_layout = isset($attributes['cardLayout']) ? sanitize_key($attributes['cardLayout']) : 'default';
                 $outer_padding_x = isset($attributes['outerPaddingX']) ? absint($attributes['outerPaddingX']) : 18;
                 $section_gap = isset($attributes['sectionGap']) ? absint($attributes['sectionGap']) : 24;
-                return self::render_dynamic_block('gpo-block-featured-carousel', $attributes, do_shortcode('[gestpark_featured_carousel show="' . esc_attr($show) . '" card_layout="' . esc_attr($card_layout) . '" autoplay="' . (!empty($attributes['autoplay']) ? 'yes' : 'no') . '" interval="' . absint($attributes['interval'] ?? 5000) . '" items_per_page="' . absint($attributes['itemsPerPage'] ?? 3) . '" outer_padding_x="' . $outer_padding_x . '" section_gap="' . $section_gap . '" primary_color="' . esc_attr($attributes['primaryColor'] ?? '') . '" accent_color="' . esc_attr($attributes['accentColor'] ?? '') . '" bg_color="' . esc_attr($attributes['bgColor'] ?? '') . '" text_color="' . esc_attr($attributes['textColor'] ?? '') . '" button_color="' . esc_attr($attributes['buttonColor'] ?? '') . '" button_text_color="' . esc_attr($attributes['buttonTextColor'] ?? '') . '" primary_button_label="' . esc_attr($attributes['primaryButtonLabel'] ?? 'Scheda veicolo') . '" secondary_button_label="' . esc_attr($attributes['secondaryButtonLabel'] ?? 'Richiedi info') . '"]'));
+                return self::render_dynamic_block('gpo-block-featured-carousel', $attributes, do_shortcode('[gestpark_featured_carousel show="' . esc_attr($show) . '"' . self::responsive_show_shortcode_attributes($attributes) . ' card_layout="' . esc_attr($card_layout) . '" autoplay="' . (!empty($attributes['autoplay']) ? 'yes' : 'no') . '" interval="' . absint($attributes['interval'] ?? 5000) . '" items_per_page="' . absint($attributes['itemsPerPage'] ?? 3) . '" show_title="' . (!empty($attributes['showTitle']) ? 'yes' : 'no') . '" section_title="' . esc_attr($attributes['sectionTitle'] ?? 'Veicoli selezionati') . '" outer_padding_x="' . $outer_padding_x . '" section_gap="' . $section_gap . '" primary_color="' . esc_attr($attributes['primaryColor'] ?? '') . '" accent_color="' . esc_attr($attributes['accentColor'] ?? '') . '" bg_color="' . esc_attr($attributes['bgColor'] ?? '') . '" text_color="' . esc_attr($attributes['textColor'] ?? '') . '" button_color="' . esc_attr($attributes['buttonColor'] ?? '') . '" button_text_color="' . esc_attr($attributes['buttonTextColor'] ?? '') . '" primary_button_label="' . esc_attr($attributes['primaryButtonLabel'] ?? 'Scheda veicolo') . '" secondary_button_label="' . esc_attr($attributes['secondaryButtonLabel'] ?? 'Richiedi info') . '"]'));
             },
             'attributes' => self::styled_card_attributes([
                 'show' => ['type' => 'string', 'default' => ''],
@@ -153,6 +173,8 @@ class GPO_Blocks {
                 'autoplay' => ['type' => 'boolean', 'default' => true],
                 'interval' => ['type' => 'number', 'default' => 5000],
                 'itemsPerPage' => ['type' => 'number', 'default' => 3],
+                'showTitle' => ['type' => 'boolean', 'default' => true],
+                'sectionTitle' => ['type' => 'string', 'default' => 'Veicoli selezionati'],
             ]),
             'supports' => self::common_supports(),
         ]);
@@ -164,7 +186,7 @@ class GPO_Blocks {
                 $card_layout = isset($attributes['cardLayout']) ? sanitize_key($attributes['cardLayout']) : 'default';
                 $outer_padding_x = isset($attributes['outerPaddingX']) ? absint($attributes['outerPaddingX']) : 18;
                 $section_gap = isset($attributes['sectionGap']) ? absint($attributes['sectionGap']) : 24;
-                return self::render_dynamic_block('gpo-block-featured-vehicle', $attributes, do_shortcode('[gestpark_featured_vehicle show="' . esc_attr($show) . '" card_layout="' . esc_attr($card_layout) . '" outer_padding_x="' . $outer_padding_x . '" section_gap="' . $section_gap . '" primary_color="' . esc_attr($attributes['primaryColor'] ?? '') . '" accent_color="' . esc_attr($attributes['accentColor'] ?? '') . '" bg_color="' . esc_attr($attributes['bgColor'] ?? '') . '" text_color="' . esc_attr($attributes['textColor'] ?? '') . '" button_color="' . esc_attr($attributes['buttonColor'] ?? '') . '" button_text_color="' . esc_attr($attributes['buttonTextColor'] ?? '') . '" primary_button_label="' . esc_attr($attributes['primaryButtonLabel'] ?? 'Scheda veicolo') . '" secondary_button_label="' . esc_attr($attributes['secondaryButtonLabel'] ?? 'Richiedi info') . '"]'));
+                return self::render_dynamic_block('gpo-block-featured-vehicle', $attributes, do_shortcode('[gestpark_featured_vehicle show="' . esc_attr($show) . '"' . self::responsive_show_shortcode_attributes($attributes) . ' card_layout="' . esc_attr($card_layout) . '" outer_padding_x="' . $outer_padding_x . '" section_gap="' . $section_gap . '" primary_color="' . esc_attr($attributes['primaryColor'] ?? '') . '" accent_color="' . esc_attr($attributes['accentColor'] ?? '') . '" bg_color="' . esc_attr($attributes['bgColor'] ?? '') . '" text_color="' . esc_attr($attributes['textColor'] ?? '') . '" button_color="' . esc_attr($attributes['buttonColor'] ?? '') . '" button_text_color="' . esc_attr($attributes['buttonTextColor'] ?? '') . '" primary_button_label="' . esc_attr($attributes['primaryButtonLabel'] ?? 'Scheda veicolo') . '" secondary_button_label="' . esc_attr($attributes['secondaryButtonLabel'] ?? 'Richiedi info') . '"]'));
             },
             'attributes' => self::styled_card_attributes([
                 'show' => ['type' => 'string', 'default' => ''],
@@ -361,6 +383,9 @@ class GPO_Blocks {
                 'source' => ['type' => 'string', 'default' => 'related_brand'],
                 'limit' => ['type' => 'number', 'default' => 6],
                 'show' => ['type' => 'string', 'default' => 'image,title,price,primary_button'],
+                'showDesktop' => ['type' => 'string', 'default' => ''],
+                'showTablet' => ['type' => 'string', 'default' => ''],
+                'showMobile' => ['type' => 'string', 'default' => ''],
                 'cardLayout' => ['type' => 'string', 'default' => 'default'],
                 'primaryColor' => ['type' => 'string', 'default' => ''],
                 'accentColor' => ['type' => 'string', 'default' => ''],
@@ -598,9 +623,10 @@ class GPO_Blocks {
         $limit = !empty($attributes['limit']) ? absint($attributes['limit']) : 6;
         $show = !empty($attributes['show']) ? sanitize_text_field($attributes['show']) : 'image,title,price,primary_button';
         $card_layout = !empty($attributes['cardLayout']) ? sanitize_key($attributes['cardLayout']) : 'default';
-        $shortcode = '[gestpark_featured_carousel limit="' . $limit . '" show="' . esc_attr($show) . '" card_layout="' . esc_attr($card_layout) . '" primary_color="' . esc_attr($attributes['primaryColor'] ?? '') . '" accent_color="' . esc_attr($attributes['accentColor'] ?? '') . '" bg_color="' . esc_attr($attributes['bgColor'] ?? '') . '" text_color="' . esc_attr($attributes['textColor'] ?? '') . '" button_color="' . esc_attr($attributes['buttonColor'] ?? '') . '" button_text_color="' . esc_attr($attributes['buttonTextColor'] ?? '') . '" primary_button_label="' . esc_attr($attributes['primaryButtonLabel'] ?? 'Scheda veicolo') . '" secondary_button_label="' . esc_attr($attributes['secondaryButtonLabel'] ?? 'Richiedi info') . '"]';
+        $responsive_show = self::responsive_show_shortcode_attributes($attributes);
+        $shortcode = '[gestpark_featured_carousel limit="' . $limit . '" show="' . esc_attr($show) . '"' . $responsive_show . ' card_layout="' . esc_attr($card_layout) . '" primary_color="' . esc_attr($attributes['primaryColor'] ?? '') . '" accent_color="' . esc_attr($attributes['accentColor'] ?? '') . '" bg_color="' . esc_attr($attributes['bgColor'] ?? '') . '" text_color="' . esc_attr($attributes['textColor'] ?? '') . '" button_color="' . esc_attr($attributes['buttonColor'] ?? '') . '" button_text_color="' . esc_attr($attributes['buttonTextColor'] ?? '') . '" primary_button_label="' . esc_attr($attributes['primaryButtonLabel'] ?? 'Scheda veicolo') . '" secondary_button_label="' . esc_attr($attributes['secondaryButtonLabel'] ?? 'Richiedi info') . '"]';
         if ($source === 'related_brand' && $post_id) {
-            $shortcode = '[gestpark_vehicle_grid limit="' . $limit . '" columns="3" show="' . esc_attr($show) . '" card_layout="' . esc_attr($card_layout) . '" primary_color="' . esc_attr($attributes['primaryColor'] ?? '') . '" accent_color="' . esc_attr($attributes['accentColor'] ?? '') . '" bg_color="' . esc_attr($attributes['bgColor'] ?? '') . '" text_color="' . esc_attr($attributes['textColor'] ?? '') . '" button_color="' . esc_attr($attributes['buttonColor'] ?? '') . '" button_text_color="' . esc_attr($attributes['buttonTextColor'] ?? '') . '" primary_button_label="' . esc_attr($attributes['primaryButtonLabel'] ?? 'Scheda veicolo') . '" secondary_button_label="' . esc_attr($attributes['secondaryButtonLabel'] ?? 'Richiedi info') . '"]';
+            $shortcode = '[gestpark_vehicle_grid limit="' . $limit . '" columns="3" show="' . esc_attr($show) . '"' . $responsive_show . ' card_layout="' . esc_attr($card_layout) . '" primary_color="' . esc_attr($attributes['primaryColor'] ?? '') . '" accent_color="' . esc_attr($attributes['accentColor'] ?? '') . '" bg_color="' . esc_attr($attributes['bgColor'] ?? '') . '" text_color="' . esc_attr($attributes['textColor'] ?? '') . '" button_color="' . esc_attr($attributes['buttonColor'] ?? '') . '" button_text_color="' . esc_attr($attributes['buttonTextColor'] ?? '') . '" primary_button_label="' . esc_attr($attributes['primaryButtonLabel'] ?? 'Scheda veicolo') . '" secondary_button_label="' . esc_attr($attributes['secondaryButtonLabel'] ?? 'Richiedi info') . '"]';
         }
         return '<section ' . self::wrapper_attrs('gpo-single-block', $attributes) . '><div class="gpo-section-head"><div><span class="gpo-kicker">Approfondisci</span><h2>' . esc_html($title) . '</h2></div></div>' . do_shortcode($shortcode) . '</section>';
     }

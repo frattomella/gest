@@ -82,7 +82,218 @@
 
   function initBrandCarousel(shell){
     if (!shell || shell.dataset.brandBound === '1') return;
+    var carousel = qs('.gpo-brand-carousel', shell);
+    var viewport = qs('.gpo-brand-viewport', shell);
+    var track = qs('.gpo-brand-track', shell);
+    var runs = qsa('.gpo-brand-run', track);
+    var autoplay = carousel && carousel.dataset.autoplay === 'yes';
+    var prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var runWidth = 0;
+    var rafId = 0;
+    var lastFrame = 0;
+    var resumeTimer = 0;
+    var pauseUntil = 0;
+    var hoverPaused = false;
+    var focusPaused = false;
+    var dragging = false;
+    var dragMoved = false;
+    var dragStartX = 0;
+    var dragStartScroll = 0;
+    var activePointerId = null;
+    var suppressClick = false;
+    var speed = carousel ? parseInt(carousel.dataset.speed || '900', 10) : 900;
+    var pxPerSecond = Math.max(14, Math.min(42, 32000 / Math.max(speed, 260)));
+
+    if (!carousel || !viewport || !track || !runs.length) {
+      return;
+    }
+
     shell.dataset.brandBound = '1';
+    carousel.classList.add('is-enhanced');
+
+    function measure() {
+      runWidth = runs[0] ? runs[0].scrollWidth : 0;
+
+      if (!runWidth) {
+        return;
+      }
+
+      if (autoplay && runs.length > 1 && viewport.scrollLeft < runWidth * 0.2) {
+        viewport.scrollLeft = runWidth;
+      }
+    }
+
+    function normalizeLoopPosition() {
+      var maxScroll;
+
+      if (!autoplay || runs.length < 2 || !runWidth) {
+        return;
+      }
+
+      maxScroll = (runWidth * 2) - viewport.clientWidth - 2;
+
+      if (viewport.scrollLeft <= 1) {
+        viewport.scrollLeft += runWidth;
+      } else if (viewport.scrollLeft >= maxScroll) {
+        viewport.scrollLeft -= runWidth;
+      }
+    }
+
+    function isPaused(now) {
+      return prefersReducedMotion || hoverPaused || focusPaused || dragging || now < pauseUntil;
+    }
+
+    function stopLoop() {
+      if (rafId) {
+        window.cancelAnimationFrame(rafId);
+        rafId = 0;
+      }
+      lastFrame = 0;
+    }
+
+    function frame(timestamp) {
+      var delta;
+
+      if (!rafId) {
+        return;
+      }
+
+      if (!lastFrame) {
+        lastFrame = timestamp;
+      }
+
+      delta = timestamp - lastFrame;
+      lastFrame = timestamp;
+
+      if (autoplay && runs.length > 1 && !isPaused(timestamp)) {
+        viewport.scrollLeft += (pxPerSecond * delta) / 1000;
+        normalizeLoopPosition();
+      }
+
+      rafId = window.requestAnimationFrame(frame);
+    }
+
+    function startLoop() {
+      stopLoop();
+      measure();
+      if (!autoplay || prefersReducedMotion) {
+        return;
+      }
+      rafId = window.requestAnimationFrame(frame);
+    }
+
+    function queueResume(delay) {
+      window.clearTimeout(resumeTimer);
+      if (!autoplay || prefersReducedMotion) {
+        return;
+      }
+      pauseUntil = performance.now() + delay;
+      resumeTimer = window.setTimeout(function () {
+        pauseUntil = 0;
+      }, delay);
+    }
+
+    function beginDrag(event) {
+      if (event.pointerType === 'mouse' && event.button !== 0) {
+        return;
+      }
+
+      dragging = true;
+      dragMoved = false;
+      activePointerId = event.pointerId;
+      dragStartX = event.clientX;
+      dragStartScroll = viewport.scrollLeft;
+      viewport.classList.add('is-dragging');
+
+      if (viewport.setPointerCapture) {
+        viewport.setPointerCapture(event.pointerId);
+      }
+
+      queueResume(1600);
+    }
+
+    function moveDrag(event) {
+      var deltaX;
+
+      if (!dragging || activePointerId !== event.pointerId) {
+        return;
+      }
+
+      deltaX = event.clientX - dragStartX;
+
+      if (Math.abs(deltaX) > 4) {
+        dragMoved = true;
+        suppressClick = true;
+      }
+
+      viewport.scrollLeft = dragStartScroll - deltaX;
+      normalizeLoopPosition();
+
+      if (dragMoved) {
+        event.preventDefault();
+      }
+    }
+
+    function endDrag(event) {
+      if (!dragging || (event && activePointerId !== event.pointerId)) {
+        return;
+      }
+
+      dragging = false;
+      activePointerId = null;
+      viewport.classList.remove('is-dragging');
+      normalizeLoopPosition();
+      queueResume(1200);
+
+      if (dragMoved) {
+        window.setTimeout(function () {
+          suppressClick = false;
+        }, 220);
+      }
+    }
+
+    viewport.addEventListener('pointerdown', beginDrag);
+    viewport.addEventListener('pointermove', moveDrag);
+    viewport.addEventListener('pointerup', endDrag);
+    viewport.addEventListener('pointercancel', endDrag);
+    viewport.addEventListener('lostpointercapture', endDrag);
+    viewport.addEventListener('scroll', function () {
+      normalizeLoopPosition();
+      queueResume(900);
+    }, { passive: true });
+
+    viewport.addEventListener('mouseenter', function () {
+      hoverPaused = true;
+    });
+    viewport.addEventListener('mouseleave', function () {
+      hoverPaused = false;
+      queueResume(220);
+    });
+    viewport.addEventListener('focusin', function () {
+      focusPaused = true;
+    });
+    viewport.addEventListener('focusout', function () {
+      focusPaused = false;
+      queueResume(220);
+    });
+    viewport.addEventListener('click', function (event) {
+      if (!suppressClick) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      suppressClick = false;
+    }, true);
+
+    window.addEventListener('resize', function () {
+      measure();
+      normalizeLoopPosition();
+    });
+
+    measure();
+    normalizeLoopPosition();
+    startLoop();
   }
 
   function boot(){

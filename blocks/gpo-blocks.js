@@ -81,6 +81,17 @@
     return root || fallback || '';
   }
 
+  function resolvedCsvValue(props, attribute, fallbackAttribute) {
+    var direct = String(props.attributes[attribute] || '').trim();
+    if (direct) {
+      return direct;
+    }
+    if (fallbackAttribute) {
+      return String(props.attributes[fallbackAttribute] || '');
+    }
+    return direct;
+  }
+
   function disablePreviewInteractions(root) {
     if (!root) {
       return;
@@ -177,20 +188,28 @@
     ];
   }
 
-  function toggleGroup(props, title, attribute, options) {
+  function toggleGroup(props, title, attribute, options, fallbackAttribute) {
     return el(PanelBody, { title: title, initialOpen: false }, options.map(function (option) {
       const key = option[0];
       const label = option[1];
       return el(ToggleControl, {
         label: label,
-        checked: parseCsv(props.attributes[attribute]).indexOf(key) !== -1,
+        checked: parseCsv(resolvedCsvValue(props, attribute, fallbackAttribute)).indexOf(key) !== -1,
         onChange: function (enabled) {
           const update = {};
-          update[attribute] = toggleCsvValue(props.attributes[attribute], key, enabled);
+          update[attribute] = toggleCsvValue(resolvedCsvValue(props, attribute, fallbackAttribute), key, enabled);
           props.setAttributes(update);
         }
       });
     }));
+  }
+
+  function deviceToggleGroups(props) {
+    return [
+      toggleGroup(props, 'Campi visibili desktop', 'showDesktop', CARD_OPTIONS, 'show'),
+      toggleGroup(props, 'Campi visibili tablet', 'showTablet', CARD_OPTIONS, 'show'),
+      toggleGroup(props, 'Campi visibili mobile', 'showMobile', CARD_OPTIONS, 'show')
+    ];
   }
 
   function catalogInspector(props, includeFilters) {
@@ -231,9 +250,8 @@
         }),
         el(TextControl, { label: 'Testo bottone principale', value: props.attributes.primaryButtonLabel || 'Scheda veicolo', onChange: function (value) { props.setAttributes({ primaryButtonLabel: value }); } }),
         el(TextControl, { label: 'Testo link secondario', value: props.attributes.secondaryButtonLabel || 'Richiedi info', onChange: function (value) { props.setAttributes({ secondaryButtonLabel: value }); } })
-      ].concat(styleControls(props))),
-      toggleGroup(props, 'Campi visibili nella card', 'show', CARD_OPTIONS)
-    ].concat(includeFilters ? [toggleGroup(props, 'Filtri visibili', 'filterFields', FILTER_OPTIONS)] : []);
+      ].concat(styleControls(props)))
+    ].concat(deviceToggleGroups(props)).concat(includeFilters ? [toggleGroup(props, 'Filtri visibili', 'filterFields', FILTER_OPTIONS)] : []);
   }
 
   function cardDisplayInspector(props) {
@@ -261,16 +279,15 @@
         }),
         el(TextControl, { label: 'Testo bottone principale', value: props.attributes.primaryButtonLabel || 'Scheda veicolo', onChange: function (value) { props.setAttributes({ primaryButtonLabel: value }); } }),
         el(TextControl, { label: 'Testo link secondario', value: props.attributes.secondaryButtonLabel || 'Richiedi info', onChange: function (value) { props.setAttributes({ secondaryButtonLabel: value }); } })
-      ].concat(styleControls(props))),
-      toggleGroup(props, 'Campi visibili nella card', 'show', CARD_OPTIONS)
-    ];
+      ].concat(styleControls(props)))
+    ].concat(deviceToggleGroups(props));
   }
 
   blocks.registerBlockType('gestpark/vehicle-grid', {
     title: 'GestPark Griglia veicoli',
     icon: 'screenoptions',
     category: 'widgets',
-    attributes: { limit:{type:'number',default:6}, columns:{type:'number',default:3}, cardLayout:{type:'string',default:'default'}, show:{type:'string',default:'image,badge,brand,title,price,chips,year,mileage,body_type,transmission,engine_size,primary_button,secondary_button'}, filterFields:{type:'string',default:'search,condition,brand,fuel,body_type,transmission,year,min_price,max_price,max_mileage,sort'}, outerPaddingX:{type:'number',default:18}, sectionGap:{type:'number',default:24}, primaryColor:{type:'string',default:''}, accentColor:{type:'string',default:''}, bgColor:{type:'string',default:''}, textColor:{type:'string',default:''}, buttonColor:{type:'string',default:''}, buttonTextColor:{type:'string',default:''}, primaryButtonLabel:{type:'string',default:'Scheda veicolo'}, secondaryButtonLabel:{type:'string',default:'Richiedi info'} },
+    attributes: { limit:{type:'number',default:6}, columns:{type:'number',default:3}, cardLayout:{type:'string',default:'default'}, show:{type:'string',default:'image,badge,brand,title,price,chips,year,mileage,body_type,transmission,engine_size,primary_button,secondary_button'}, showDesktop:{type:'string',default:''}, showTablet:{type:'string',default:''}, showMobile:{type:'string',default:''}, filterFields:{type:'string',default:'search,condition,brand,fuel,body_type,transmission,year,min_price,max_price,max_mileage,sort'}, outerPaddingX:{type:'number',default:18}, sectionGap:{type:'number',default:24}, primaryColor:{type:'string',default:''}, accentColor:{type:'string',default:''}, bgColor:{type:'string',default:''}, textColor:{type:'string',default:''}, buttonColor:{type:'string',default:''}, buttonTextColor:{type:'string',default:''}, primaryButtonLabel:{type:'string',default:'Scheda veicolo'}, secondaryButtonLabel:{type:'string',default:'Richiedi info'} },
     edit: function (props) { return previewEdit(props, 'GestPark Griglia veicoli', 'Anteprima reale della griglia responsive del catalogo.', catalogInspector(props, true)); },
     save: function () { return null; }
   });
@@ -279,7 +296,7 @@
     title: 'GestPark Catalogo veicoli',
     icon: 'car',
     category: 'widgets',
-    attributes: { limit:{type:'number',default:12}, columns:{type:'number',default:3}, cardLayout:{type:'string',default:'default'}, show:{type:'string',default:'image,badge,brand,title,price,chips,year,mileage,body_type,transmission,engine_size,primary_button,secondary_button'}, filterFields:{type:'string',default:'search,condition,brand,fuel,body_type,transmission,year,min_price,max_price,max_mileage,sort'}, outerPaddingX:{type:'number',default:18}, sectionGap:{type:'number',default:24}, primaryColor:{type:'string',default:''}, accentColor:{type:'string',default:''}, bgColor:{type:'string',default:''}, textColor:{type:'string',default:''}, buttonColor:{type:'string',default:''}, buttonTextColor:{type:'string',default:''}, primaryButtonLabel:{type:'string',default:'Scheda veicolo'}, secondaryButtonLabel:{type:'string',default:'Richiedi info'} },
+    attributes: { limit:{type:'number',default:12}, columns:{type:'number',default:3}, cardLayout:{type:'string',default:'default'}, show:{type:'string',default:'image,badge,brand,title,price,chips,year,mileage,body_type,transmission,engine_size,primary_button,secondary_button'}, showDesktop:{type:'string',default:''}, showTablet:{type:'string',default:''}, showMobile:{type:'string',default:''}, filterFields:{type:'string',default:'search,condition,brand,fuel,body_type,transmission,year,min_price,max_price,max_mileage,sort'}, outerPaddingX:{type:'number',default:18}, sectionGap:{type:'number',default:24}, primaryColor:{type:'string',default:''}, accentColor:{type:'string',default:''}, bgColor:{type:'string',default:''}, textColor:{type:'string',default:''}, buttonColor:{type:'string',default:''}, buttonTextColor:{type:'string',default:''}, primaryButtonLabel:{type:'string',default:'Scheda veicolo'}, secondaryButtonLabel:{type:'string',default:'Richiedi info'} },
     edit: function (props) { return previewEdit(props, 'GestPark Catalogo veicoli', 'Anteprima reale del catalogo con filtri personalizzabili.', catalogInspector(props, true)); },
     save: function () { return null; }
   });
@@ -288,11 +305,13 @@
     title: 'GestPark Carosello vetrina',
     icon: 'images-alt2',
     category: 'widgets',
-    attributes: { show:{type:'string',default:'image,badge,brand,title,price,chips,primary_button,secondary_button'}, cardLayout:{type:'string',default:'default'}, autoplay:{type:'boolean',default:true}, interval:{type:'number',default:5000}, itemsPerPage:{type:'number',default:3}, outerPaddingX:{type:'number',default:18}, sectionGap:{type:'number',default:24}, primaryColor:{type:'string',default:''}, accentColor:{type:'string',default:''}, bgColor:{type:'string',default:''}, textColor:{type:'string',default:''}, buttonColor:{type:'string',default:''}, buttonTextColor:{type:'string',default:''}, primaryButtonLabel:{type:'string',default:'Scheda veicolo'}, secondaryButtonLabel:{type:'string',default:'Richiedi info'} },
+    attributes: { show:{type:'string',default:'image,badge,brand,title,price,chips,primary_button,secondary_button'}, showDesktop:{type:'string',default:''}, showTablet:{type:'string',default:''}, showMobile:{type:'string',default:''}, cardLayout:{type:'string',default:'default'}, autoplay:{type:'boolean',default:true}, interval:{type:'number',default:5000}, itemsPerPage:{type:'number',default:3}, showTitle:{type:'boolean',default:true}, sectionTitle:{type:'string',default:'Veicoli selezionati'}, outerPaddingX:{type:'number',default:18}, sectionGap:{type:'number',default:24}, primaryColor:{type:'string',default:''}, accentColor:{type:'string',default:''}, bgColor:{type:'string',default:''}, textColor:{type:'string',default:''}, buttonColor:{type:'string',default:''}, buttonTextColor:{type:'string',default:''}, primaryButtonLabel:{type:'string',default:'Scheda veicolo'}, secondaryButtonLabel:{type:'string',default:'Richiedi info'} },
     edit: function (props) {
       var controls = cardDisplayInspector(props);
       controls.unshift(
         el(PanelBody, { title:'Impostazioni carosello', initialOpen:true }, [
+          el(ToggleControl, { label:'Mostra titolo sezione', checked:props.attributes.showTitle !== false, onChange:function(v){ props.setAttributes({ showTitle:v }); } }),
+          props.attributes.showTitle !== false ? el(TextControl, { label:'Titolo sezione', value:props.attributes.sectionTitle || 'Veicoli selezionati', onChange:function(v){ props.setAttributes({ sectionTitle:v }); } }) : null,
           el(RangeControl, { label:'Veicoli visibili per pagina', value:props.attributes.itemsPerPage, min:1, max:4, onChange:function(v){ props.setAttributes({ itemsPerPage:v || 1 }); } }),
           el(ToggleControl, { label:'Scorrimento automatico', checked:props.attributes.autoplay, onChange:function(v){ props.setAttributes({ autoplay:v }); } }),
           el(RangeControl, { label:'Intervallo autoplay', value:props.attributes.interval, min:1500, max:10000, step:100, onChange:function(v){ props.setAttributes({ interval:v || 1500 }); } })
@@ -307,7 +326,7 @@
     title: 'GestPark Veicolo in evidenza',
     icon: 'star-filled',
     category: 'widgets',
-    attributes: { show:{type:'string',default:'image,badge,brand,title,price,chips,year,mileage,body_type,transmission,engine_size,primary_button,secondary_button'}, cardLayout:{type:'string',default:'default'}, outerPaddingX:{type:'number',default:18}, sectionGap:{type:'number',default:24}, primaryColor:{type:'string',default:''}, accentColor:{type:'string',default:''}, bgColor:{type:'string',default:''}, textColor:{type:'string',default:''}, buttonColor:{type:'string',default:''}, buttonTextColor:{type:'string',default:''}, primaryButtonLabel:{type:'string',default:'Scheda veicolo'}, secondaryButtonLabel:{type:'string',default:'Richiedi info'} },
+    attributes: { show:{type:'string',default:'image,badge,brand,title,price,chips,year,mileage,body_type,transmission,engine_size,primary_button,secondary_button'}, showDesktop:{type:'string',default:''}, showTablet:{type:'string',default:''}, showMobile:{type:'string',default:''}, cardLayout:{type:'string',default:'default'}, outerPaddingX:{type:'number',default:18}, sectionGap:{type:'number',default:24}, primaryColor:{type:'string',default:''}, accentColor:{type:'string',default:''}, bgColor:{type:'string',default:''}, textColor:{type:'string',default:''}, buttonColor:{type:'string',default:''}, buttonTextColor:{type:'string',default:''}, primaryButtonLabel:{type:'string',default:'Scheda veicolo'}, secondaryButtonLabel:{type:'string',default:'Richiedi info'} },
     edit: function (props) { return previewEdit(props, 'GestPark Veicolo in evidenza', 'Anteprima reale del veicolo in evidenza.', cardDisplayInspector(props)); },
     save: function () { return null; }
   });
@@ -396,7 +415,7 @@
     title: 'GestPark Carosello veicoli',
     icon: 'images-alt2',
     category: 'widgets',
-    attributes: { title:{type:'string',default:'Altri veicoli da vedere'}, source:{type:'string',default:'related_brand'}, limit:{type:'number',default:6}, show:{type:'string',default:'image,title,price,primary_button'}, cardLayout:{type:'string',default:'default'}, primaryColor:{type:'string',default:''}, accentColor:{type:'string',default:''}, bgColor:{type:'string',default:''}, textColor:{type:'string',default:''}, buttonColor:{type:'string',default:''}, buttonTextColor:{type:'string',default:''}, primaryButtonLabel:{type:'string',default:'Scheda veicolo'}, secondaryButtonLabel:{type:'string',default:'Richiedi info'} },
+    attributes: { title:{type:'string',default:'Altri veicoli da vedere'}, source:{type:'string',default:'related_brand'}, limit:{type:'number',default:6}, show:{type:'string',default:'image,title,price,primary_button'}, showDesktop:{type:'string',default:''}, showTablet:{type:'string',default:''}, showMobile:{type:'string',default:''}, cardLayout:{type:'string',default:'default'}, primaryColor:{type:'string',default:''}, accentColor:{type:'string',default:''}, bgColor:{type:'string',default:''}, textColor:{type:'string',default:''}, buttonColor:{type:'string',default:''}, buttonTextColor:{type:'string',default:''}, primaryButtonLabel:{type:'string',default:'Scheda veicolo'}, secondaryButtonLabel:{type:'string',default:'Richiedi info'} },
     edit: function (props) {
       return previewEdit(props, 'GestPark Carosello veicoli', 'Anteprima reale del carosello inserito dentro il template veicolo.', [
         el(PanelBody, { title:'Impostazioni carosello', initialOpen:true }, [
@@ -407,8 +426,7 @@
           el(TextControl, { label:'Testo bottone principale', value:props.attributes.primaryButtonLabel || 'Scheda veicolo', onChange:function(v){props.setAttributes({primaryButtonLabel:v});} }),
           el(TextControl, { label:'Testo link secondario', value:props.attributes.secondaryButtonLabel || 'Richiedi info', onChange:function(v){props.setAttributes({secondaryButtonLabel:v});} })
         ].concat(styleControls(props))),
-        toggleGroup(props, 'Campi visibili nella card', 'show', CARD_OPTIONS)
-      ]);
+      ].concat(deviceToggleGroups(props)));
     },
     save: function(){ return null; }
   });

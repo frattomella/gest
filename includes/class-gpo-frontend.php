@@ -322,6 +322,9 @@ class GPO_Frontend {
             'orderby' => 'date',
             'order' => 'DESC',
             'show' => '',
+            'show_desktop' => '',
+            'show_tablet' => '',
+            'show_mobile' => '',
             'card_layout' => 'default',
             'card_gap' => self::display_settings()['style']['card_gap'] ?? '24',
             'card_padding' => self::display_settings()['style']['card_padding'] ?? '22',
@@ -369,6 +372,9 @@ class GPO_Frontend {
         $atts = shortcode_atts([
             'layout' => 'hero',
             'show' => '',
+            'show_desktop' => '',
+            'show_tablet' => '',
+            'show_mobile' => '',
             'card_layout' => 'default',
             'card_gap' => self::display_settings()['style']['card_gap'] ?? '24',
             'card_padding' => self::display_settings()['style']['card_padding'] ?? '22',
@@ -411,8 +417,13 @@ class GPO_Frontend {
             'autoplay' => 'yes',
             'interval' => 5000,
             'show' => '',
+            'show_desktop' => '',
+            'show_tablet' => '',
+            'show_mobile' => '',
             'card_layout' => 'default',
             'items_per_page' => 3,
+            'show_title' => 'yes',
+            'section_title' => 'Veicoli selezionati',
             'card_gap' => self::display_settings()['style']['card_gap'] ?? '24',
             'card_padding' => self::display_settings()['style']['card_padding'] ?? '22',
             'content_max_width' => self::display_settings()['style']['content_max_width'] ?? '1280',
@@ -430,12 +441,21 @@ class GPO_Frontend {
         ], $atts, 'gestpark_featured_carousel');
         $display = self::resolve_card_display($atts);
         $items_per_page = max(1, min(4, absint($atts['items_per_page'] ?? 3)));
+        $show_title = ($atts['show_title'] ?? 'yes') !== 'no';
+        $section_title = trim((string) ($atts['section_title'] ?? 'Veicoli selezionati'));
+        if ($section_title === '') {
+            $section_title = 'Veicoli selezionati';
+        }
 
         $collection = self::featured_vehicle_collection(absint($atts['limit']));
         $ids = $collection['ids'];
         ob_start();
         echo '<div class="gpo-carousel-shell" style="' . esc_attr(self::wrapper_style($atts) . '--gpo-carousel-items-per-page:' . $items_per_page . ';') . '">';
-        echo '<div class="gpo-section-head"><div><span class="gpo-kicker">Vetrina</span><h2>Veicoli selezionati</h2></div><div class="gpo-carousel-nav"><button class="gpo-carousel-prev" type="button" aria-label="Precedente">' . self::icon_markup('chevron-left') . '</button><button class="gpo-carousel-next" type="button" aria-label="Successivo">' . self::icon_markup('chevron-right') . '</button></div></div>';
+        echo '<div class="gpo-section-head' . ($show_title ? '' : ' is-title-hidden') . '">';
+        if ($show_title) {
+            echo '<div><span class="gpo-kicker">Vetrina</span><h2>' . esc_html($section_title) . '</h2></div>';
+        }
+        echo '<div class="gpo-carousel-nav"><button class="gpo-carousel-prev" type="button" aria-label="Precedente">' . self::icon_markup('chevron-left') . '</button><button class="gpo-carousel-next" type="button" aria-label="Successivo">' . self::icon_markup('chevron-right') . '</button></div></div>';
         echo '<div class="gpo-carousel" data-gpo-carousel="1" data-autoplay="' . esc_attr($atts['autoplay']) . '" data-interval="' . absint($atts['interval']) . '" data-loop="yes"><div class="gpo-carousel-track">';
         if (!empty($ids)) {
             foreach ($ids as $post_id) {
@@ -487,6 +507,9 @@ class GPO_Frontend {
             'order' => $atts['order'],
             'filters' => 'yes',
             'show' => $atts['show'],
+            'show_desktop' => $atts['show_desktop'] ?? '',
+            'show_tablet' => $atts['show_tablet'] ?? '',
+            'show_mobile' => $atts['show_mobile'] ?? '',
             'card_layout' => $atts['card_layout'],
             'card_gap' => $atts['card_gap'],
             'card_padding' => $atts['card_padding'],
@@ -535,9 +558,15 @@ class GPO_Frontend {
         if (!empty($atts['show'])) {
             $visible = self::parse_show_string($atts['show']);
         }
+        $visible_desktop = self::device_visible_elements($atts, 'desktop', $visible);
+        $visible_tablet = self::device_visible_elements($atts, 'tablet', $visible);
+        $visible_mobile = self::device_visible_elements($atts, 'mobile', $visible);
         return [
             'layout' => sanitize_key($atts['card_layout'] ?? 'default'),
             'visible' => $visible,
+            'visible_desktop' => $visible_desktop,
+            'visible_tablet' => $visible_tablet,
+            'visible_mobile' => $visible_mobile,
             'hero' => !empty($atts['hero']),
             'primary_button_label' => sanitize_text_field($atts['primary_button_label'] ?? 'Scheda veicolo'),
             'secondary_button_label' => sanitize_text_field($atts['secondary_button_label'] ?? 'Richiedi info'),
@@ -566,8 +595,39 @@ class GPO_Frontend {
         return array_values(array_unique(array_map('sanitize_key', $items)));
     }
 
+    protected static function device_visible_elements($atts, $device, $fallback) {
+        $underscored = 'show_' . $device;
+        $camel = 'show' . ucfirst($device);
+        $raw = '';
+
+        if (isset($atts[$underscored])) {
+            $raw = (string) $atts[$underscored];
+        } elseif (isset($atts[$camel])) {
+            $raw = (string) $atts[$camel];
+        }
+
+        $parsed = self::parse_show_string($raw);
+        return !empty($parsed) ? $parsed : $fallback;
+    }
+
+    protected static function visibility_classes($display, $key) {
+        $desktop = !empty($display['visible_desktop']) ? $display['visible_desktop'] : ($display['visible'] ?? []);
+        $tablet = !empty($display['visible_tablet']) ? $display['visible_tablet'] : ($display['visible'] ?? []);
+        $mobile = !empty($display['visible_mobile']) ? $display['visible_mobile'] : ($display['visible'] ?? []);
+
+        return implode(' ', array_filter([
+            'gpo-device-field',
+            in_array($key, $desktop, true) ? 'gpo-show-desktop' : 'gpo-hide-desktop',
+            in_array($key, $tablet, true) ? 'gpo-show-tablet' : 'gpo-hide-tablet',
+            in_array($key, $mobile, true) ? 'gpo-show-mobile' : 'gpo-hide-mobile',
+        ]));
+    }
+
     protected static function is_visible($display, $key) {
-        return in_array($key, $display['visible'], true);
+        return in_array($key, $display['visible_desktop'] ?? [], true)
+            || in_array($key, $display['visible_tablet'] ?? [], true)
+            || in_array($key, $display['visible_mobile'] ?? [], true)
+            || in_array($key, $display['visible'] ?? [], true);
     }
 
     protected static function build_vehicle_query($atts = []) {
@@ -861,11 +921,11 @@ class GPO_Frontend {
         ];
 
         $meta = [
-            'year' => ['Anno', get_post_meta($post_id, '_gpo_year', true)],
-            'mileage' => ['KM', self::format_number(get_post_meta($post_id, '_gpo_mileage', true), ' km')],
-            'body_type' => ['Carrozzeria', get_post_meta($post_id, '_gpo_body_type', true)],
-            'transmission' => ['Cambio', get_post_meta($post_id, '_gpo_transmission', true)],
-            'engine_size' => ['Cilindrata', self::format_engine_size(get_post_meta($post_id, '_gpo_engine_size', true))],
+            'year' => ['label' => 'Anno', 'value' => get_post_meta($post_id, '_gpo_year', true), 'icon' => 'calendar'],
+            'mileage' => ['label' => 'KM', 'value' => self::format_number(get_post_meta($post_id, '_gpo_mileage', true), ' km'), 'icon' => 'road'],
+            'body_type' => ['label' => 'Carrozzeria', 'value' => get_post_meta($post_id, '_gpo_body_type', true), 'icon' => 'car'],
+            'transmission' => ['label' => 'Cambio', 'value' => get_post_meta($post_id, '_gpo_transmission', true), 'icon' => 'gear'],
+            'engine_size' => ['label' => 'Cilindrata', 'value' => self::format_engine_size(get_post_meta($post_id, '_gpo_engine_size', true)), 'icon' => 'engine'],
         ];
 
         $layout = $display['layout'] ?? 'default';
@@ -874,7 +934,7 @@ class GPO_Frontend {
         echo '<article class="gpo-card gpo-card-layout-' . esc_attr($layout) . ' ' . ($hero ? 'gpo-card-hero' : '') . '">';
 
         if (self::is_visible($display, 'image')) {
-            echo '<div class="gpo-card-media">';
+            echo '<div class="' . esc_attr('gpo-card-media ' . self::visibility_classes($display, 'image')) . '">';
             if (has_post_thumbnail($post_id)) {
                 echo '<a class="gpo-card-image" href="' . esc_url(get_permalink($post_id)) . '">' . get_the_post_thumbnail($post_id, 'large') . '</a>';
             } else {
@@ -899,14 +959,14 @@ class GPO_Frontend {
         echo '<div class="gpo-card-topline">';
         echo '<div>';
         if (self::is_visible($display, 'brand')) {
-            echo '<p class="gpo-card-brand">' . esc_html(trim(get_post_meta($post_id, '_gpo_brand', true) . ' ' . get_post_meta($post_id, '_gpo_model', true))) . '</p>';
+            echo '<p class="' . esc_attr('gpo-card-brand ' . self::visibility_classes($display, 'brand')) . '">' . esc_html(trim(get_post_meta($post_id, '_gpo_brand', true) . ' ' . get_post_meta($post_id, '_gpo_model', true))) . '</p>';
         }
         if (self::is_visible($display, 'title')) {
-            echo '<h3 class="gpo-card-title"><a href="' . esc_url(get_permalink($post_id)) . '">' . esc_html(get_the_title($post_id)) . '</a></h3>';
+            echo '<h3 class="' . esc_attr('gpo-card-title ' . self::visibility_classes($display, 'title')) . '"><a href="' . esc_url(get_permalink($post_id)) . '">' . esc_html(get_the_title($post_id)) . '</a></h3>';
         }
         echo '</div>';
         if (self::is_visible($display, 'price')) {
-            echo '<div class="gpo-price-box">';
+            echo '<div class="' . esc_attr('gpo-price-box ' . self::visibility_classes($display, 'price')) . '">';
             if ($promo_price && $price && $promo_price !== $price) {
                 echo '<span class="gpo-price-old">' . esc_html(self::format_price($price)) . '</span>';
             }
@@ -916,7 +976,7 @@ class GPO_Frontend {
         echo '</div>';
 
         if (self::is_visible($display, 'chips')) {
-            echo '<div class="gpo-chip-row">';
+            echo '<div class="' . esc_attr('gpo-chip-row ' . self::visibility_classes($display, 'chips')) . '">';
             foreach ($chips as $chip) {
                 if ($chip) {
                     echo '<span class="gpo-chip">' . esc_html($chip) . '</span>';
@@ -927,24 +987,27 @@ class GPO_Frontend {
 
         $has_meta = false;
         foreach ($meta as $meta_key => $meta_item) {
-            if (self::is_visible($display, $meta_key) && $meta_item[1] !== '') {
+            if (self::is_visible($display, $meta_key) && $meta_item['value'] !== '') {
                 $has_meta = true;
                 break;
             }
         }
         if ($has_meta) {
-            echo '<div class="gpo-meta-grid">';
+            echo '<div class="gpo-meta-grid gpo-card-meta-grid">';
             foreach ($meta as $meta_key => $meta_item) {
-                if (!self::is_visible($display, $meta_key) || $meta_item[1] === '') {
+                if (!self::is_visible($display, $meta_key) || $meta_item['value'] === '') {
                     continue;
                 }
-                echo '<div><strong>' . esc_html($meta_item[0]) . '</strong><span>' . esc_html($meta_item[1]) . '</span></div>';
+                echo '<div class="' . esc_attr('gpo-card-meta-item ' . self::visibility_classes($display, $meta_key)) . '">';
+                echo '<span class="gpo-card-meta-item__icon" aria-hidden="true">' . self::icon_markup($meta_item['icon']) . '</span>';
+                echo '<span class="gpo-card-meta-item__copy"><small>' . esc_html($meta_item['label']) . '</small><strong>' . esc_html($meta_item['value']) . '</strong></span>';
+                echo '</div>';
             }
             echo '</div>';
         }
 
         if (self::is_visible($display, 'specs') && !empty($specs)) {
-            echo '<ul class="gpo-spec-list">';
+            echo '<ul class="' . esc_attr('gpo-spec-list ' . self::visibility_classes($display, 'specs')) . '">';
             foreach (array_slice($specs, 0, 3) as $item) {
                 echo '<li>' . esc_html($item) . '</li>';
             }
@@ -954,10 +1017,10 @@ class GPO_Frontend {
         if (self::is_visible($display, 'primary_button') || self::is_visible($display, 'secondary_button')) {
             echo '<div class="gpo-card-actions">';
             if (self::is_visible($display, 'primary_button')) {
-                echo '<a class="gpo-button" href="' . esc_url(get_permalink($post_id)) . '">' . esc_html($display['primary_button_label'] ?? 'Scheda veicolo') . '</a>';
+                echo '<a class="' . esc_attr('gpo-button ' . self::visibility_classes($display, 'primary_button')) . '" href="' . esc_url(get_permalink($post_id)) . '">' . esc_html($display['primary_button_label'] ?? 'Scheda veicolo') . '</a>';
             }
             if (self::is_visible($display, 'secondary_button')) {
-                echo '<a class="gpo-link" href="' . esc_url(get_permalink($post_id)) . '">' . esc_html($display['secondary_button_label'] ?? 'Richiedi info') . '</a>';
+                echo '<a class="' . esc_attr('gpo-link ' . self::visibility_classes($display, 'secondary_button')) . '" href="' . esc_url(get_permalink($post_id)) . '">' . esc_html($display['secondary_button_label'] ?? 'Richiedi info') . '</a>';
             }
             echo '</div>';
         }
@@ -1555,6 +1618,26 @@ class GPO_Frontend {
             return '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
         }
 
+        if ($type === 'calendar') {
+            return '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"></rect><line x1="16" y1="3" x2="16" y2="7"></line><line x1="8" y1="3" x2="8" y2="7"></line><line x1="3" y1="11" x2="21" y2="11"></line></svg>';
+        }
+
+        if ($type === 'road') {
+            return '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6l4 18H5L9 3Z"></path><path d="M12 7v3"></path><path d="M12 13v3"></path></svg>';
+        }
+
+        if ($type === 'car') {
+            return '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 16l1.2-5a2 2 0 0 1 1.94-1.53h7.72A2 2 0 0 1 17.8 11L19 16"></path><path d="M4 16h16v3H4z"></path><circle cx="7.5" cy="19.5" r="1.5"></circle><circle cx="16.5" cy="19.5" r="1.5"></circle></svg>';
+        }
+
+        if ($type === 'gear') {
+            return '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V20a2 2 0 1 1-4 0v-.2a1 1 0 0 0-.7-.9 1 1 0 0 0-1.1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H4a2 2 0 1 1 0-4h.2a1 1 0 0 0 .9-.7 1 1 0 0 0-.2-1.1l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1 1 0 0 0 1.1.2H9a1 1 0 0 0 .6-.9V4a2 2 0 1 1 4 0v.2a1 1 0 0 0 .7.9 1 1 0 0 0 1.1-.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1 1 0 0 0-.2 1.1V9c0 .4.2.7.6.8H20a2 2 0 1 1 0 4h-.2a1 1 0 0 0-.9.7Z"></path></svg>';
+        }
+
+        if ($type === 'engine') {
+            return '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h3l2-2h6l2 2h3v6h-3l-2 2H9l-2-2H4z"></path><path d="M10 12h4"></path></svg>';
+        }
+
         if ($type === 'chevron-left') {
             return '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>';
         }
@@ -1684,11 +1767,12 @@ class GPO_Frontend {
 
         if (!empty($brand['has_local_logo'])) {
             $html .= '<span class="gpo-brand-item__visual"><img src="' . esc_url($brand['logo']) . '" alt="' . esc_attr($brand['name']) . '" loading="lazy" decoding="async" /></span>';
+        } else {
+            $html .= '<span class="gpo-brand-item__meta">';
+            $html .= '<strong class="gpo-brand-name">' . esc_html($brand['name']) . '</strong>';
+            $html .= '</span>';
         }
-
-        $html .= '<span class="gpo-brand-item__meta">';
-        $html .= '<strong class="gpo-brand-name">' . esc_html($brand['name']) . '</strong>';
-        $html .= '</span></a>';
+        $html .= '</a>';
 
         return $html;
     }
