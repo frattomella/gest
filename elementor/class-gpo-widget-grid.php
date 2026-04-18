@@ -17,7 +17,7 @@ class GPO_Elementor_Widget_Grid extends \Elementor\Widget_Base {
     }
 
     public function get_categories() {
-        return ['general'];
+        return [GPO_Elementor::widget_category()];
     }
 
     protected function register_controls() {

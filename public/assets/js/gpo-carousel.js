@@ -329,4 +329,12 @@
       window.setTimeout(boot, 80);
     });
   }
+
+  if (window.jQuery && window.elementorFrontend && window.elementorFrontend.hooks) {
+    window.jQuery(window).on('elementor/frontend/init', function () {
+      window.elementorFrontend.hooks.addAction('frontend/element_ready/global', function () {
+        window.setTimeout(boot, 40);
+      });
+    });
+  }
 })();

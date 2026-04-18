@@ -3,17 +3,17 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-class GPO_Elementor_Widget_Catalog extends \Elementor\Widget_Base {
+class GPO_Elementor_Widget_Featured extends \Elementor\Widget_Base {
     public function get_name() {
-        return 'gpo_vehicle_catalog';
+        return 'gpo_featured_vehicle';
     }
 
     public function get_title() {
-        return 'Gestpark - Catalogo con filtri';
+        return 'GestPark - Veicolo in evidenza';
     }
 
     public function get_icon() {
-        return 'eicon-search-results';
+        return 'eicon-star';
     }
 
     public function get_categories() {
@@ -26,33 +26,31 @@ class GPO_Elementor_Widget_Catalog extends \Elementor\Widget_Base {
             'tab' => \Elementor\Controls_Manager::TAB_CONTENT,
         ]);
 
-        $this->add_control('limit', [
-            'label' => 'Numero veicoli',
-            'type' => \Elementor\Controls_Manager::NUMBER,
-            'default' => 12,
+        $this->add_control('layout', [
+            'label' => 'Layout',
+            'type' => \Elementor\Controls_Manager::SELECT,
+            'default' => 'hero',
+            'options' => [
+                'hero' => 'Hero',
+                'default' => 'Default',
+            ],
         ]);
 
-        $this->add_control('columns', [
-            'label' => 'Colonne desktop',
+        $this->add_control('card_layout', [
+            'label' => 'Layout card',
             'type' => \Elementor\Controls_Manager::SELECT,
-            'default' => '3',
+            'default' => 'default',
             'options' => [
-                '2' => '2',
-                '3' => '3',
-                '4' => '4',
+                'default' => 'Default',
+                'compact' => 'Compact',
+                'minimal' => 'Minimal',
             ],
         ]);
 
         $this->add_control('show', [
             'label' => 'Elementi visibili card (CSV)',
             'type' => \Elementor\Controls_Manager::TEXT,
-            'placeholder' => 'image,title,price,primary_button',
-        ]);
-
-        $this->add_control('filter_fields', [
-            'label' => 'Campi filtro visibili (CSV)',
-            'type' => \Elementor\Controls_Manager::TEXT,
-            'placeholder' => 'search,brand,fuel,sort',
+            'placeholder' => 'image,badge,brand,title,price,chips,primary_button',
         ]);
 
         $this->add_control('outer_padding_x', [
@@ -73,6 +71,8 @@ class GPO_Elementor_Widget_Catalog extends \Elementor\Widget_Base {
     protected function render() {
         $settings = $this->get_settings_for_display();
         GPO_Elementor::decorate_widget_wrapper($this);
-        echo do_shortcode('[gestpark_vehicle_catalog limit="' . absint($settings['limit']) . '" columns="' . absint($settings['columns']) . '" show="' . esc_attr($settings['show']) . '" filter_fields="' . esc_attr($settings['filter_fields']) . '" outer_padding_x="' . absint($settings['outer_padding_x']) . '" section_gap="' . absint($settings['section_gap']) . '"]');
+        echo do_shortcode(
+            '[gestpark_featured_vehicle layout="' . esc_attr($settings['layout']) . '" card_layout="' . esc_attr($settings['card_layout']) . '" show="' . esc_attr($settings['show']) . '" outer_padding_x="' . absint($settings['outer_padding_x']) . '" section_gap="' . absint($settings['section_gap']) . '"]'
+        );
     }
 }
