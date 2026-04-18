@@ -3152,6 +3152,10 @@ body.gpo-lightbox-open {
   pointer-events: none;
 }
 
+.gpo-carousel-slide .gpo-card[data-gpo-card-url] {
+  cursor: pointer;
+}
+
 @media (max-width: 720px) {
   .gpo-card-meta-grid {
     gap: 6px;
@@ -3179,6 +3183,29 @@ body.gpo-lightbox-open {
   overflow: hidden;
   gap: 0 !important;
   align-items: stretch;
+}
+
+.gpo-empty-state--editor {
+  display: grid;
+  gap: 8px;
+  min-height: 180px;
+  align-items: center;
+  justify-items: start;
+  padding: 24px;
+}
+
+.gpo-empty-state--editor h3,
+.gpo-empty-state--editor p {
+  margin: 0;
+}
+
+.gpo-empty-state--loading {
+  opacity: 0.9;
+}
+
+.gpo-empty-state--error {
+  border-color: rgba(239, 68, 68, 0.18);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(254, 242, 242, 0.92));
 }
 
 .gpo-brand-viewport {

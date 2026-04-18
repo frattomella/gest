@@ -150,11 +150,24 @@
         el(Disabled, {}, el(ServerSideRender, {
           block: props.name,
           attributes: props.attributes,
+          httpMethod: 'POST',
+          LoadingResponsePlaceholder: function () {
+            return el('div', { className: 'gpo-empty-state gpo-empty-state--editor gpo-empty-state--loading' }, [
+              el('h3', {}, 'Caricamento anteprima'),
+              el('p', {}, 'Stiamo generando la preview reale del componente GestPark.')
+            ]);
+          },
           EmptyResponsePlaceholder: function(){
-            return el(Notice, { status: 'warning', isDismissible: false }, 'Nessuna anteprima disponibile. Importa almeno un veicolo reale oppure controlla il blocco.');
+            return el('div', { className: 'gpo-empty-state gpo-empty-state--editor' }, [
+              el('h3', {}, 'Anteprima non disponibile'),
+              el('p', {}, 'Importa almeno un veicolo reale oppure verifica la configurazione del blocco.')
+            ]);
           },
           ErrorResponsePlaceholder: function(obj){
-            return el(Notice, { status: 'error', isDismissible: false }, "Errore nell'anteprima del blocco GestPark. " + (obj && obj.response && obj.response.errorMsg ? obj.response.errorMsg : 'Controlla la configurazione del plugin.'));
+            return el('div', { className: 'gpo-empty-state gpo-empty-state--editor gpo-empty-state--error' }, [
+              el('h3', {}, 'Anteprima temporaneamente non disponibile'),
+              el('p', {}, obj && obj.response && obj.response.errorMsg ? obj.response.errorMsg : 'Controlla la configurazione del plugin e la connessione ParkPlatform.')
+            ]);
           }
         }))
       ])

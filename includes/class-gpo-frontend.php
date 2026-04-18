@@ -918,6 +918,7 @@ class GPO_Frontend {
         $current_price = $promo_price ?: $price;
         $badge = get_post_meta($post_id, '_gpo_badge', true);
         $is_featured = get_post_meta($post_id, '_gpo_featured', true) === '1';
+        $permalink = get_permalink($post_id);
         $specs = array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', (string) get_post_meta($post_id, '_gpo_specs', true))));
         $chips = [
             get_post_meta($post_id, '_gpo_condition', true),
@@ -936,14 +937,14 @@ class GPO_Frontend {
         $layout = $display['layout'] ?? 'default';
         $hero = !empty($display['hero']);
 
-        echo '<article class="gpo-card gpo-card-layout-' . esc_attr($layout) . ' ' . ($hero ? 'gpo-card-hero' : '') . '">';
+        echo '<article class="gpo-card gpo-card-layout-' . esc_attr($layout) . ' ' . ($hero ? 'gpo-card-hero' : '') . '" data-gpo-card-url="' . esc_url($permalink) . '">';
 
         if (self::is_visible($display, 'image')) {
             echo '<div class="' . esc_attr('gpo-card-media ' . self::visibility_classes($display, 'image')) . '">';
             if (has_post_thumbnail($post_id)) {
-                echo '<a class="gpo-card-image" href="' . esc_url(get_permalink($post_id)) . '">' . get_the_post_thumbnail($post_id, 'large') . '</a>';
+                echo '<a class="gpo-card-image" href="' . esc_url($permalink) . '">' . get_the_post_thumbnail($post_id, 'large') . '</a>';
             } else {
-                echo '<a class="gpo-card-image gpo-card-image-placeholder" href="' . esc_url(get_permalink($post_id)) . '">' . self::fallback_vehicle_image_markup('gpo-fallback-image') . '</a>';
+                echo '<a class="gpo-card-image gpo-card-image-placeholder" href="' . esc_url($permalink) . '">' . self::fallback_vehicle_image_markup('gpo-fallback-image') . '</a>';
             }
             if (self::is_visible($display, 'badge')) {
                 echo '<div class="gpo-card-overlay">';
@@ -967,7 +968,7 @@ class GPO_Frontend {
             echo '<p class="' . esc_attr('gpo-card-brand ' . self::visibility_classes($display, 'brand')) . '">' . esc_html(trim(get_post_meta($post_id, '_gpo_brand', true) . ' ' . get_post_meta($post_id, '_gpo_model', true))) . '</p>';
         }
         if (self::is_visible($display, 'title')) {
-            echo '<h3 class="' . esc_attr('gpo-card-title ' . self::visibility_classes($display, 'title')) . '"><a href="' . esc_url(get_permalink($post_id)) . '">' . esc_html(get_the_title($post_id)) . '</a></h3>';
+            echo '<h3 class="' . esc_attr('gpo-card-title ' . self::visibility_classes($display, 'title')) . '"><a href="' . esc_url($permalink) . '">' . esc_html(get_the_title($post_id)) . '</a></h3>';
         }
         echo '</div>';
         if (self::is_visible($display, 'price')) {
@@ -1021,7 +1022,7 @@ class GPO_Frontend {
 
         if (self::is_visible($display, 'primary_button')) {
             echo '<div class="gpo-card-actions">';
-            echo '<a class="' . esc_attr('gpo-button ' . self::visibility_classes($display, 'primary_button')) . '" href="' . esc_url(get_permalink($post_id)) . '">' . esc_html($display['primary_button_label'] ?? 'Scheda veicolo') . '</a>';
+            echo '<a class="' . esc_attr('gpo-button ' . self::visibility_classes($display, 'primary_button')) . '" href="' . esc_url($permalink) . '">' . esc_html($display['primary_button_label'] ?? 'Scheda veicolo') . '</a>';
             echo '</div>';
         }
         echo '</div></article>';

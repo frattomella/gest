@@ -3,7 +3,26 @@ if (!defined('ABSPATH')) {
     exit;
 }
 wp_enqueue_style('gpo-public');
-get_header();
+$is_block_theme = function_exists('wp_is_block_theme') && wp_is_block_theme();
+
+if ($is_block_theme) {
+    ?><!doctype html>
+    <html <?php language_attributes(); ?>>
+    <head>
+        <meta charset="<?php bloginfo('charset'); ?>">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <?php wp_head(); ?>
+    </head>
+    <body <?php body_class(); ?>>
+    <?php
+    wp_body_open();
+    echo '<div class="wp-site-blocks">';
+    if (function_exists('block_template_part')) {
+        block_template_part('header');
+    }
+} else {
+    get_header();
+}
 $post_id = get_the_ID();
 
 $display = GPO_Frontend::single_display();
@@ -138,4 +157,17 @@ $show = function ($key) use ($visible) {
         </aside>
     </section>
 </div>
-<?php get_footer();
+<?php
+if ($is_block_theme) {
+    if (function_exists('block_template_part')) {
+        block_template_part('footer');
+    }
+    echo '</div>';
+    wp_footer();
+    ?>
+    </body>
+    </html>
+    <?php
+} else {
+    get_footer();
+}

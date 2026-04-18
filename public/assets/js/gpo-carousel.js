@@ -258,11 +258,6 @@
       dragStartScroll = track.scrollLeft;
       dragging = true;
       dragMoved = false;
-      track.classList.add('is-dragging');
-
-      if (track.setPointerCapture) {
-        track.setPointerCapture(event.pointerId);
-      }
 
       stop();
     });
@@ -277,8 +272,12 @@
       delta = event.clientX - dragStartX;
 
       if (Math.abs(delta) > 6) {
+        if (!dragMoved && track.setPointerCapture) {
+          track.setPointerCapture(event.pointerId);
+        }
         dragMoved = true;
         suppressClick = true;
+        track.classList.add('is-dragging');
       }
 
       track.scrollLeft = dragStartScroll - delta;
@@ -304,6 +303,7 @@
         }, 220);
       } else {
         syncIndex();
+        suppressClick = false;
       }
 
       restart();
@@ -332,6 +332,16 @@
 
     track.addEventListener('click', function (event) {
       if (!suppressClick) {
+        var card = event.target.closest('.gpo-card[data-gpo-card-url]');
+        var interactive = event.target.closest('a, button, input, select, textarea, label, summary');
+
+        if (card && !interactive) {
+          var url = card.getAttribute('data-gpo-card-url');
+          if (url) {
+            window.location.href = url;
+          }
+        }
+
         return;
       }
 
