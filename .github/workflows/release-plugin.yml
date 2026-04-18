@@ -2,11 +2,80 @@ name: Release Plugin
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
+  workflow_dispatch:
+
+concurrency:
+  group: release-plugin-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  build-release:
+  release-from-main:
+    if: github.ref == 'refs/heads/main' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump plugin version
+        id: bump
+        shell: bash
+        run: |
+          current_version=$(grep -m1 '^ \* Version:' gestpark-online.php | sed 's/^.*Version: //')
+          IFS='.' read -r major minor patch <<< "$current_version"
+          next_version="$major.$minor.$((patch + 1))"
+
+          sed -i "s/^ \* Version: .*/ * Version: $next_version/" gestpark-online.php
+          sed -i "s/^define('GPO_VERSION', '.*');/define('GPO_VERSION', '$next_version');/" gestpark-online.php
+          sed -i "s/^Stable tag: .*/Stable tag: $next_version/" readme.txt
+
+          echo "version=$next_version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$next_version" >> "$GITHUB_OUTPUT"
+
+      - name: Commit and tag release
+        run: |
+          git add gestpark-online.php readme.txt
+          git commit -m "Release ${{ steps.bump.outputs.tag }}"
+          git tag -a "${{ steps.bump.outputs.tag }}" -m "Release ${{ steps.bump.outputs.tag }}"
+          git push origin HEAD:main
+          git push origin "${{ steps.bump.outputs.tag }}"
+
+      - name: Prepare plugin package
+        run: |
+          mkdir -p dist/gestpark-online
+          rsync -av ./ dist/gestpark-online/ \
+            --exclude ".git" \
+            --exclude ".github" \
+            --exclude "node_modules" \
+            --exclude ".DS_Store" \
+            --exclude "testwrite"
+          cd dist
+          zip -r gestpark-online.zip gestpark-online
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.bump.outputs.tag }}
+          name: ${{ steps.bump.outputs.tag }}
+          files: dist/gestpark-online.zip
+          generate_release_notes: true
+
+  release-from-tag:
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
 
     permissions:

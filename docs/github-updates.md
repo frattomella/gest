@@ -26,19 +26,24 @@ Il file `.github/workflows/release-plugin.yml` e gia incluso nel plugin.
 
 Funziona cosi:
 
-- quando fai push di un tag come `v0.2.5`
-- GitHub Actions crea automaticamente `gestpark-online.zip`
-- la release GitHub riceve quell asset
-- WordPress lo usa come pacchetto di aggiornamento
+- quando fai push su `main`
+- GitHub Actions incrementa automaticamente la patch version del plugin
+- aggiorna `gestpark-online.php` e `readme.txt`
+- crea un commit release e un tag come `v0.2.12`
+- genera `gestpark-online.zip`
+- pubblica la release GitHub
+- WordPress usa quella release come pacchetto di aggiornamento
 
 ## 4. Flusso release consigliato
 
-1. Aggiorna `Version` e `GPO_VERSION` nel plugin.
+1. Modifica il plugin localmente.
 2. Fai commit delle modifiche.
-3. Crea un tag Git, ad esempio `v0.2.5`.
-4. Fai push di branch e tag su GitHub.
-5. Attendi la release automatica.
+3. Fai push su `main`.
+4. Attendi 1-2 minuti che GitHub Actions completi la release automatica.
+5. Esegui un `git pull` locale, perche GitHub avra aggiunto un commit release con la nuova versione.
 6. In WordPress usa `GestPark Online > Aggiornamenti > Forza controllo aggiornamenti`.
+
+Il vecchio flusso manuale con tag `v*` continua comunque a funzionare se vuoi pubblicare una release a mano.
 
 ## 5. Sviluppo locale senza zip
 
@@ -72,3 +77,5 @@ Esempio:
 - plugin installato `0.2.5`
 - nuova release GitHub `v0.2.6`
 - WordPress mostra l aggiornamento
+
+Con il workflow automatico questo passaggio succede da solo a ogni push su `main`, quindi non devi piu ricordarti bump versione, tag e zip manuale.
