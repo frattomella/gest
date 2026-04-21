@@ -243,7 +243,9 @@ class GPO_CPT {
                 echo esc_html(get_post_meta($post_id, '_gpo_condition', true));
                 break;
             case 'featured':
-                $manual_ids = class_exists('GPO_Admin') ? GPO_Admin::manual_showcase_vehicle_ids() : [];
+                $manual_ids = class_exists('GPO_Admin') && method_exists('GPO_Admin', 'manual_showcase_vehicle_ids')
+                    ? GPO_Admin::manual_showcase_vehicle_ids()
+                    : [];
                 $checked = in_array((int) $post_id, $manual_ids, true) || get_post_meta($post_id, '_gpo_featured', true) === '1';
                 echo '<label class="gpo-list-toggle ' . ($checked ? 'is-active' : '') . '">';
                 echo '<input type="checkbox" class="gpo-showcase-toggle" data-post-id="' . esc_attr((string) $post_id) . '" ' . checked($checked, true, false) . ' />';

@@ -604,10 +604,17 @@ class GPO_Admin {
             $price = trim((string) get_post_meta($post->ID, '_gpo_price', true));
             $condition = trim((string) get_post_meta($post->ID, '_gpo_condition', true));
             $label = $brand ? $brand . ' · ' . $post->post_title : $post->post_title;
+            $formatted_price = '';
+            if ($price !== '') {
+                $formatted_price = class_exists('GPO_Frontend') && method_exists('GPO_Frontend', 'format_price_public')
+                    ? GPO_Frontend::format_price_public((float) $price)
+                    : '€ ' . number_format_i18n((float) $price, 0);
+            }
+
             $meta = array_values(array_filter([
                 $year,
                 $condition,
-                $price !== '' ? GPO_Frontend::format_price((float) $price) : '',
+                $formatted_price,
             ]));
 
             $records[] = [
