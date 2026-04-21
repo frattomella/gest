@@ -105,6 +105,7 @@ class GPO_CPT {
             'year' => 'Anno',
             'price' => 'Prezzo',
             'fuel' => 'Alimentazione',
+            'neopatentati' => 'Neopatentati',
             'mileage' => 'Chilometraggio',
             'body_type' => 'Carrozzeria',
             'transmission' => 'Cambio',
@@ -141,6 +142,8 @@ class GPO_CPT {
             if ($key === 'gallery_urls') {
                 echo '<textarea style="width:100%;min-height:90px;" id="gpo_' . esc_attr($key) . '" name="gpo_meta[' . esc_attr($key) . ']">' . esc_textarea($value) . '</textarea>';
                 echo '<p class="description">Inserisci un URL per riga. Questo campo viene usato anche in fase di test senza import automatico immagini.</p>';
+            } elseif ($key === 'neopatentati') {
+                echo '<label><input type="checkbox" id="gpo_' . esc_attr($key) . '" name="gpo_meta[' . esc_attr($key) . ']" value="1" ' . checked($value, '1', false) . ' /> Veicolo adatto a neopatentati</label>';
             } else {
                 $type = in_array($key, ['price', 'price_promo'], true) ? 'number' : 'text';
                 echo '<input style="width:100%;" type="' . esc_attr($type) . '" id="gpo_' . esc_attr($key) . '" name="gpo_meta[' . esc_attr($key) . ']" value="' . esc_attr($value) . '" />';
@@ -200,7 +203,11 @@ class GPO_CPT {
 
         foreach ($fields as $key => $label) {
             $value = isset($meta_values[$key]) ? $meta_values[$key] : '';
-            update_post_meta($post_id, '_gpo_' . $key, is_array($value) ? array_map('sanitize_text_field', $value) : sanitize_textarea_field($value));
+            if ($key === 'neopatentati') {
+                update_post_meta($post_id, '_gpo_' . $key, !empty($value) ? '1' : '0');
+            } else {
+                update_post_meta($post_id, '_gpo_' . $key, is_array($value) ? array_map('sanitize_text_field', $value) : sanitize_textarea_field($value));
+            }
             update_post_meta($post_id, '_gpo_lock_' . $key, isset($locks[$key]) ? '1' : '0');
         }
 

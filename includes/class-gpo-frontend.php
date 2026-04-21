@@ -124,8 +124,7 @@ class GPO_Frontend {
             'title',
             'price',
             'chips',
-            'year',
-            'mileage',
+            'neopatentati',
             'body_type',
             'transmission',
             'engine_size',
@@ -638,6 +637,100 @@ class GPO_Frontend {
         return array_values(array_unique(array_map('sanitize_key', $items)));
     }
 
+    protected static function truthy_value($value) {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (is_numeric($value)) {
+            return (int) $value === 1;
+        }
+
+        $normalized = strtolower(trim(remove_accents((string) $value)));
+        return in_array($normalized, ['1', 'true', 'yes', 'si', 'on'], true);
+    }
+
+    public static function is_neopatentati_vehicle($post_id = 0, $data = []) {
+        $value = '';
+
+        if (isset($data['neopatentati']) && $data['neopatentati'] !== '') {
+            $value = $data['neopatentati'];
+        } elseif (isset($data['neo_patentati']) && $data['neo_patentati'] !== '') {
+            $value = $data['neo_patentati'];
+        }
+
+        $post_id = absint($post_id);
+        if ($value === '' && $post_id) {
+            $value = get_post_meta($post_id, '_gpo_neopatentati', true);
+        }
+        if ($value === '' && $post_id) {
+            $value = get_post_meta($post_id, '_gpo_neo_patentati', true);
+        }
+
+        return self::truthy_value($value);
+    }
+
+    protected static function quick_info_items($post_id, $data = []) {
+        $data = is_array($data) ? $data : [];
+
+        $condition = $data['condition'] ?? get_post_meta($post_id, '_gpo_condition', true);
+        $year = $data['year'] ?? get_post_meta($post_id, '_gpo_year', true);
+        $mileage_raw = $data['mileage'] ?? get_post_meta($post_id, '_gpo_mileage', true);
+
+        return array_values(array_filter([
+            [
+                'key' => 'condition',
+                'label' => 'Condizione',
+                'value' => $condition,
+                'icon' => 'car',
+            ],
+            [
+                'key' => 'year',
+                'label' => 'Anno',
+                'value' => $year,
+                'icon' => 'calendar',
+            ],
+            [
+                'key' => 'mileage',
+                'label' => 'KM',
+                'value' => self::format_number($mileage_raw, ' km'),
+                'icon' => 'road',
+            ],
+        ], function ($item) {
+            return !empty($item['value']);
+        }));
+    }
+
+    public static function quick_info_panel_markup($post_id, $class = 'gpo-quick-info-panel', $item_classes = [], $data = []) {
+        $items = self::quick_info_items($post_id, $data);
+        if (empty($items)) {
+            return '';
+        }
+
+        $html = '<div class="' . esc_attr(trim($class)) . '">';
+        foreach ($items as $item) {
+            $item_class = $item_classes[$item['key']] ?? '';
+            $html .= '<span class="' . esc_attr(trim('gpo-quick-info-panel__item ' . $item_class)) . '">';
+            $html .= '<span class="gpo-quick-info-panel__icon" aria-hidden="true">' . self::icon_markup($item['icon']) . '</span>';
+            $html .= '<span class="gpo-quick-info-panel__copy">';
+            $html .= '<small>' . esc_html($item['label']) . '</small>';
+            $html .= '<strong>' . esc_html($item['value']) . '</strong>';
+            $html .= '</span>';
+            $html .= '</span>';
+        }
+        $html .= '</div>';
+
+        return $html;
+    }
+
+    public static function neopatentati_badge_markup($post_id, $class = 'gpo-neo-badge', $data = []) {
+        if (!self::is_neopatentati_vehicle($post_id, $data)) {
+            return '';
+        }
+
+        return '<span class="' . esc_attr(trim($class)) . '"><span class="gpo-neo-badge__icon" aria-hidden="true">' . self::icon_markup('check-circle') . '</span><span>Neopatentati</span></span>';
+    }
+
     protected static function device_visible_elements($atts, $device, $fallback) {
         $underscored = 'show_' . $device;
         $camel = 'show' . ucfirst($device);
@@ -951,26 +1044,22 @@ class GPO_Frontend {
     }
 
     public static function render_card($post_id, $display = []) {
-        $price = get_post_meta($post_id, '_gpo_price', true);
-        $promotion = self::promotion_context($post_id);
-        $promo_price = $promotion['discounted_price'] ?? get_post_meta($post_id, '_gpo_price_promo', true);
-        $current_price = $promo_price ?: $price;
-        $badge = get_post_meta($post_id, '_gpo_badge', true);
+        $data = self::vehicle_data($post_id);
+        $price = $data['price'] ?? get_post_meta($post_id, '_gpo_price', true);
+        $promotion = $data['promotion'] ?? self::promotion_context($post_id);
+        $promo_price = $data['promo_price'] ?? ($promotion['discounted_price'] ?? get_post_meta($post_id, '_gpo_price_promo', true));
+        $current_price = $data['current_price'] ?? ($promo_price ?: $price);
+        $badge = $data['badge'] ?? get_post_meta($post_id, '_gpo_badge', true);
         $is_featured = get_post_meta($post_id, '_gpo_featured', true) === '1';
         $permalink = get_permalink($post_id);
         $specs = array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', (string) get_post_meta($post_id, '_gpo_specs', true))));
-        $chips = [
-            get_post_meta($post_id, '_gpo_condition', true),
-            get_post_meta($post_id, '_gpo_fuel', true),
-            get_post_meta($post_id, '_gpo_transmission', true),
-        ];
 
         $meta = [
-            'year' => ['label' => 'Anno', 'value' => get_post_meta($post_id, '_gpo_year', true), 'icon' => 'calendar'],
-            'mileage' => ['label' => 'KM', 'value' => self::format_number(get_post_meta($post_id, '_gpo_mileage', true), ' km'), 'icon' => 'road'],
-            'body_type' => ['label' => 'Carrozzeria', 'value' => get_post_meta($post_id, '_gpo_body_type', true), 'icon' => 'car'],
-            'transmission' => ['label' => 'Cambio', 'value' => get_post_meta($post_id, '_gpo_transmission', true), 'icon' => 'gear'],
-            'engine_size' => ['label' => 'Cilindrata', 'value' => self::format_engine_size(get_post_meta($post_id, '_gpo_engine_size', true)), 'icon' => 'engine'],
+            'year' => ['label' => 'Anno', 'value' => $data['year'] ?? get_post_meta($post_id, '_gpo_year', true), 'icon' => 'calendar'],
+            'mileage' => ['label' => 'KM', 'value' => self::format_number($data['mileage'] ?? get_post_meta($post_id, '_gpo_mileage', true), ' km'), 'icon' => 'road'],
+            'body_type' => ['label' => 'Carrozzeria', 'value' => $data['body_type'] ?? get_post_meta($post_id, '_gpo_body_type', true), 'icon' => 'car'],
+            'transmission' => ['label' => 'Cambio', 'value' => $data['transmission'] ?? get_post_meta($post_id, '_gpo_transmission', true), 'icon' => 'gear'],
+            'engine_size' => ['label' => 'Cilindrata', 'value' => self::format_engine_size($data['engine_size'] ?? get_post_meta($post_id, '_gpo_engine_size', true)), 'icon' => 'engine'],
         ];
 
         $layout = $display['layout'] ?? 'default';
@@ -1026,17 +1115,21 @@ class GPO_Frontend {
         echo '</div>';
 
         if (self::is_visible($display, 'chips')) {
-            echo '<div class="' . esc_attr('gpo-chip-row ' . self::visibility_classes($display, 'chips')) . '">';
-            foreach ($chips as $chip) {
-                if ($chip) {
-                    echo '<span class="gpo-chip">' . esc_html($chip) . '</span>';
-                }
-            }
-            echo '</div>';
+            echo self::quick_info_panel_markup($post_id, 'gpo-quick-info-panel ' . self::visibility_classes($display, 'chips'), [
+                'year' => self::visibility_classes($display, 'year'),
+                'mileage' => self::visibility_classes($display, 'mileage'),
+            ], $data);
+        }
+
+        if (self::is_visible($display, 'neopatentati')) {
+            echo self::neopatentati_badge_markup($post_id, 'gpo-neo-badge ' . self::visibility_classes($display, 'neopatentati'), $data);
         }
 
         $has_meta = false;
         foreach ($meta as $meta_key => $meta_item) {
+            if (self::is_visible($display, 'chips') && in_array($meta_key, ['year', 'mileage'], true)) {
+                continue;
+            }
             if (self::is_visible($display, $meta_key) && $meta_item['value'] !== '') {
                 $has_meta = true;
                 break;
@@ -1045,6 +1138,9 @@ class GPO_Frontend {
         if ($has_meta) {
             echo '<div class="gpo-card-meta-grid">';
             foreach ($meta as $meta_key => $meta_item) {
+                if (self::is_visible($display, 'chips') && in_array($meta_key, ['year', 'mileage'], true)) {
+                    continue;
+                }
                 if (!self::is_visible($display, $meta_key) || $meta_item['value'] === '') {
                     continue;
                 }
@@ -1252,6 +1348,7 @@ class GPO_Frontend {
         foreach (GPO_CPT::fields() as $key => $label) {
             $data[$key] = get_post_meta($post_id, '_gpo_' . $key, true);
         }
+        $data['neopatentati'] = self::is_neopatentati_vehicle($post_id, $data);
         $data['badge'] = get_post_meta($post_id, '_gpo_badge', true);
         $data['price'] = get_post_meta($post_id, '_gpo_price', true);
         $data['promotion'] = self::promotion_context($post_id);
@@ -1398,6 +1495,7 @@ class GPO_Frontend {
             'condition' => ['Condizione', get_post_meta($post_id, '_gpo_condition', true)],
             'year' => ['Anno', get_post_meta($post_id, '_gpo_year', true)],
             'fuel' => ['Alimentazione', get_post_meta($post_id, '_gpo_fuel', true)],
+            'neopatentati' => ['Neopatentati', self::is_neopatentati_vehicle($post_id) ? 'Si' : ''],
             'mileage' => ['Chilometraggio', get_post_meta($post_id, '_gpo_mileage', true) ? number_format_i18n((float) get_post_meta($post_id, '_gpo_mileage', true), 0) . ' km' : ''],
             'body_type' => ['Carrozzeria', get_post_meta($post_id, '_gpo_body_type', true)],
             'transmission' => ['Cambio', get_post_meta($post_id, '_gpo_transmission', true)],
@@ -1757,6 +1855,10 @@ class GPO_Frontend {
             return '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h3l2-2h6l2 2h3v6h-3l-2 2H9l-2-2H4z"></path><path d="M10 12h4"></path></svg>';
         }
 
+        if ($type === 'check-circle') {
+            return '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="m8.5 12.2 2.3 2.3 4.7-5.1"></path></svg>';
+        }
+
         if ($type === 'chevron-left') {
             return '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>';
         }
@@ -2020,6 +2122,7 @@ class GPO_Frontend {
                 'originalPrice' => !empty($data['promotion']['formatted_original']) ? $data['promotion']['formatted_original'] : '',
                 'promoBadge' => !empty($data['promotion']['badge']) ? $data['promotion']['badge'] : '',
                 'promoText' => !empty($data['promotion']['promo_text']) ? $data['promotion']['promo_text'] : '',
+                'neopatentati' => !empty($data['neopatentati']),
                 'brand' => $data['brand'] ?? '',
                 'subtitle' => $subtitle,
                 'thumb' => self::vehicle_thumbnail_url($id, 'thumbnail'),

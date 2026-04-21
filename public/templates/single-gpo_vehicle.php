@@ -39,11 +39,10 @@ $badge = $vehicle['badge'] ?? get_post_meta($post_id, '_gpo_badge', true);
 $price = $vehicle['price'] ?? get_post_meta($post_id, '_gpo_price', true);
 $promo_price = $vehicle['promo_price'] ?? get_post_meta($post_id, '_gpo_price_promo', true);
 $current_price = $vehicle['current_price'] ?? ($promo_price ?: $price);
+$neo_badge = GPO_Frontend::neopatentati_badge_markup($post_id, 'gpo-neo-badge gpo-neo-badge--single', $vehicle);
+$quick_panel = GPO_Frontend::quick_info_panel_markup($post_id, 'gpo-quick-info-panel gpo-quick-info-panel--single', [], $vehicle);
 $meta = [
-    'Condizione' => get_post_meta($post_id, '_gpo_condition', true),
-    'Anno' => get_post_meta($post_id, '_gpo_year', true),
     'Alimentazione' => get_post_meta($post_id, '_gpo_fuel', true),
-    'Chilometraggio' => get_post_meta($post_id, '_gpo_mileage', true) ? number_format_i18n((float) get_post_meta($post_id, '_gpo_mileage', true), 0) . ' km' : '',
     'Carrozzeria' => get_post_meta($post_id, '_gpo_body_type', true),
     'Cambio' => get_post_meta($post_id, '_gpo_transmission', true),
     'Cilindrata' => get_post_meta($post_id, '_gpo_engine_size', true) ? get_post_meta($post_id, '_gpo_engine_size', true) . ' cc' : '',
@@ -57,6 +56,8 @@ $show = function ($key) use ($visible) {
     return in_array($key, $visible, true);
 };
 ?>
+<main id="primary" class="site-main gpo-theme-main">
+<div class="gpo-page-shell">
 <div class="gpo-single-wrap gpo-single-layout-<?php echo esc_attr($layout); ?>">
     <?php echo GPO_Frontend::back_button_markup($post_id); ?>
     <section class="gpo-single-hero">
@@ -93,13 +94,12 @@ $show = function ($key) use ($visible) {
                             <span class="gpo-promo-copy"><?php echo esc_html($promotion['promo_text'] ?: $promotion['discount_label']); ?></span>
                         <?php endif; ?>
                     </div>
-                    <div class="gpo-spec-pill-list">
-                        <?php foreach (['Condizione' => $meta['Condizione'], 'Alimentazione' => $meta['Alimentazione'], 'Cambio' => $meta['Cambio']] as $value) : ?>
-                            <?php if ($value) : ?>
-                                <span class="gpo-chip"><?php echo esc_html($value); ?></span>
-                            <?php endif; ?>
-                        <?php endforeach; ?>
-                    </div>
+                    <?php if ($quick_panel || $neo_badge) : ?>
+                        <div class="gpo-single-summary__highlights">
+                            <?php echo $quick_panel; ?>
+                            <?php echo $neo_badge; ?>
+                        </div>
+                    <?php endif; ?>
                 </div>
 
                 <div class="gpo-meta-grid">
@@ -169,6 +169,8 @@ $show = function ($key) use ($visible) {
         </aside>
     </section>
 </div>
+</div>
+</main>
 <?php
 if ($is_block_theme) {
     if (function_exists('block_template_part')) {

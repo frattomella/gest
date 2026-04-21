@@ -400,7 +400,7 @@ class GPO_Blocks {
                 'title' => ['type' => 'string', 'default' => 'Altri veicoli da vedere'],
                 'source' => ['type' => 'string', 'default' => 'related_brand'],
                 'limit' => ['type' => 'number', 'default' => 6],
-                'show' => ['type' => 'string', 'default' => 'image,title,price,primary_button'],
+                'show' => ['type' => 'string', 'default' => 'image,title,price,chips,neopatentati,primary_button'],
                 'showDesktop' => ['type' => 'string', 'default' => ''],
                 'showTablet' => ['type' => 'string', 'default' => ''],
                 'showMobile' => ['type' => 'string', 'default' => ''],
@@ -551,15 +551,12 @@ class GPO_Blocks {
                             <strong><?php echo esc_html(GPO_Frontend::format_price_public($data['current_price'])); ?></strong>
                         </div>
                         <?php if (!empty($attributes['showChips'])) : ?>
-                            <div class="gpo-spec-pill-list">
-                                <?php foreach ([$data['condition'], $data['fuel'], $data['transmission']] as $chip) : ?>
-                                    <?php if ($chip) : ?><span class="gpo-chip"><?php echo esc_html($chip); ?></span><?php endif; ?>
-                                <?php endforeach; ?>
-                            </div>
+                            <?php echo GPO_Frontend::quick_info_panel_markup($post_id, 'gpo-quick-info-panel gpo-quick-info-panel--hero', [], $data); ?>
                         <?php endif; ?>
                     </div>
+                    <?php echo GPO_Frontend::neopatentati_badge_markup($post_id, 'gpo-neo-badge gpo-neo-badge--hero', $data); ?>
                     <?php if (!empty($attributes['showMeta'])) : ?>
-                        <?php echo GPO_Frontend::specs_grid_markup($post_id, ['condition','year','fuel','mileage','body_type','transmission','engine_size'], 'grid'); ?>
+                        <?php echo GPO_Frontend::specs_grid_markup($post_id, ['condition','fuel','neopatentati','body_type','transmission','engine_size'], 'grid'); ?>
                     <?php endif; ?>
                     <?php if (!empty($attributes['showLeadForm'])) : ?>
                         <?php
