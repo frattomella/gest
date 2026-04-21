@@ -36,6 +36,7 @@ class GPO_Frontend {
         $css = ':root{' .
             '--gpo-primary:' . esc_attr($style['primary_color'] ?? '#111827') . ';' .
             '--gpo-accent:' . esc_attr($style['accent_color'] ?? '#dc2626') . ';' .
+            '--gpo-promo-color:' . esc_attr(class_exists('GPO_Engagement') ? GPO_Engagement::promo_color() : '#dc2626') . ';' .
             '--gpo-bg:' . esc_attr($style['card_bg'] ?? '#ffffff') . ';' .
             '--gpo-radius:' . esc_attr($style['radius'] ?? '16px') . ';' .
             '--gpo-title-font:' . esc_attr($style['title_font'] ?? 'inherit') . ';' .
@@ -74,6 +75,45 @@ class GPO_Frontend {
         }
 
         return $settings;
+    }
+
+    public static function component_settings($key = null) {
+        $settings = self::display_settings();
+        $components = isset($settings['components']) && is_array($settings['components'])
+            ? $settings['components']
+            : [];
+
+        if ($key === null) {
+            return $components;
+        }
+
+        return isset($components[$key]) && is_array($components[$key]) ? $components[$key] : [];
+    }
+
+    public static function brand_library() {
+        $brands = [];
+        foreach (self::brand_registry_local() as $key => $entry) {
+            $brands[] = [
+                'key' => $key,
+                'name' => $entry['name'],
+                'logo' => self::brand_logo_url_local($entry['name']),
+                'has_local_logo' => self::brand_logo_has_local_asset($entry['name']),
+            ];
+        }
+
+        usort($brands, function ($left, $right) {
+            return strnatcasecmp($left['name'], $right['name']);
+        });
+
+        return $brands;
+    }
+
+    public static function promotion_context($post_id) {
+        if (!class_exists('GPO_Engagement')) {
+            return null;
+        }
+
+        return GPO_Engagement::promotion_for_vehicle($post_id);
     }
 
     protected static function default_card_elements() {
@@ -394,15 +434,14 @@ class GPO_Frontend {
         ], $atts, 'gestpark_featured_vehicle');
         $display = self::resolve_card_display($atts);
 
-        $collection = self::featured_vehicle_collection(1);
-        $ids = $collection['ids'];
+        $featured_id = self::active_featured_vehicle_id();
         ob_start();
-        if (!empty($ids)) {
+        if (!empty($featured_id)) {
             echo '<div class="gpo-featured-single" style="' . esc_attr(self::wrapper_style($atts)) . '">';
             if ($atts['layout'] === 'hero') {
                 $display['hero'] = true;
             }
-            self::render_card($ids[0], $display);
+            self::render_card($featured_id, $display);
             echo '</div>';
         } else {
             echo self::empty_state_markup(
@@ -450,8 +489,7 @@ class GPO_Frontend {
             $section_title = 'Veicoli selezionati';
         }
 
-        $collection = self::featured_vehicle_collection(absint($atts['limit']));
-        $ids = $collection['ids'];
+        $ids = self::active_showcase_vehicle_ids(absint($atts['limit']));
         ob_start();
         echo '<div class="gpo-carousel-shell" style="' . esc_attr(self::wrapper_style($atts) . '--gpo-carousel-items-per-page:' . $items_per_page . ';') . '">';
         echo '<div class="gpo-section-head' . ($show_title ? '' : ' is-title-hidden') . '">';
@@ -914,7 +952,8 @@ class GPO_Frontend {
 
     public static function render_card($post_id, $display = []) {
         $price = get_post_meta($post_id, '_gpo_price', true);
-        $promo_price = get_post_meta($post_id, '_gpo_price_promo', true);
+        $promotion = self::promotion_context($post_id);
+        $promo_price = $promotion['discounted_price'] ?? get_post_meta($post_id, '_gpo_price_promo', true);
         $current_price = $promo_price ?: $price;
         $badge = get_post_meta($post_id, '_gpo_badge', true);
         $is_featured = get_post_meta($post_id, '_gpo_featured', true) === '1';
@@ -953,8 +992,8 @@ class GPO_Frontend {
                 } elseif ($is_featured) {
                     echo '<span class="gpo-badge">In vetrina</span>';
                 }
-                if ($promo_price && $price) {
-                    echo '<span class="gpo-badge gpo-badge-soft">Promo attiva</span>';
+                if ($promotion) {
+                    echo '<span class="gpo-badge gpo-badge--promo">' . esc_html($promotion['badge']) . '</span>';
                 }
                 echo '</div>';
             }
@@ -972,11 +1011,16 @@ class GPO_Frontend {
         }
         echo '</div>';
         if (self::is_visible($display, 'price')) {
-            echo '<div class="' . esc_attr('gpo-price-box ' . self::visibility_classes($display, 'price')) . '">';
+            echo '<div class="' . esc_attr('gpo-price-box ' . ($promotion ? 'is-promoted ' : '') . self::visibility_classes($display, 'price')) . '">';
             if ($promo_price && $price && $promo_price !== $price) {
                 echo '<span class="gpo-price-old">' . esc_html(self::format_price($price)) . '</span>';
             }
-            echo '<strong class="gpo-price-current">' . esc_html(self::format_price($current_price)) . '</strong>';
+            echo '<strong class="gpo-price-current' . ($promotion ? ' gpo-price-current--promo' : '') . '">' . esc_html(self::format_price($current_price)) . '</strong>';
+            if ($promotion && !empty($promotion['promo_text'])) {
+                echo '<span class="gpo-promo-copy">' . esc_html($promotion['promo_text']) . '</span>';
+            } elseif ($promotion) {
+                echo '<span class="gpo-promo-copy">' . esc_html($promotion['discount_label']) . '</span>';
+            }
             echo '</div>';
         }
         echo '</div>';
@@ -1028,19 +1072,72 @@ class GPO_Frontend {
         echo '</div></article>';
     }
 
-    protected static function featured_vehicle_collection($limit = 12) {
-        $ids = self::get_current_featured_ids($limit);
-        if (!empty($ids)) {
-            return [
-                'ids' => $ids,
-                'source' => 'featured',
-            ];
+    public static function active_featured_vehicle_id() {
+        $component = self::component_settings('featured_vehicle');
+        $queue = isset($component['queue']) && is_array($component['queue']) ? $component['queue'] : [];
+
+        foreach ($queue as $row) {
+            $vehicle_id = absint($row['vehicle_id'] ?? 0);
+            if ($vehicle_id > 0 && self::schedule_has_window($row) && GPO_Engagement::window_is_active($row['start_date'] ?? '', $row['start_time'] ?? '', $row['end_date'] ?? '', $row['end_time'] ?? '')) {
+                return $vehicle_id;
+            }
         }
 
-        return [
-            'ids' => self::latest_real_vehicle_ids($limit),
-            'source' => 'latest',
-        ];
+        $base_vehicle = absint($component['vehicle_id'] ?? 0);
+        if ($base_vehicle > 0 && GPO_Engagement::window_is_active($component['start_date'] ?? '', $component['start_time'] ?? '', $component['end_date'] ?? '', $component['end_time'] ?? '')) {
+            return $base_vehicle;
+        }
+
+        foreach ($queue as $row) {
+            $vehicle_id = absint($row['vehicle_id'] ?? 0);
+            if ($vehicle_id > 0 && !self::schedule_has_window($row)) {
+                return $vehicle_id;
+            }
+        }
+
+        $legacy = self::get_current_featured_ids(1);
+        if (!empty($legacy)) {
+            return absint($legacy[0]);
+        }
+
+        $latest = self::latest_real_vehicle_ids(1);
+        return !empty($latest) ? absint($latest[0]) : 0;
+    }
+
+    public static function active_showcase_vehicle_ids($limit = 12) {
+        $limit = max(1, absint($limit));
+        $component = self::component_settings('showcase_carousel');
+        $queue = isset($component['queue']) && is_array($component['queue']) ? $component['queue'] : [];
+
+        foreach ($queue as $row) {
+            $vehicle_ids = array_values(array_filter(array_map('absint', (array) ($row['vehicle_ids'] ?? []))));
+            if (!empty($vehicle_ids) && self::schedule_has_window($row) && GPO_Engagement::window_is_active($row['start_date'] ?? '', $row['start_time'] ?? '', $row['end_date'] ?? '', $row['end_time'] ?? '')) {
+                return array_slice($vehicle_ids, 0, $limit);
+            }
+        }
+
+        $base_ids = array_values(array_filter(array_map('absint', (array) ($component['vehicle_ids'] ?? []))));
+        if (!empty($base_ids) && GPO_Engagement::window_is_active($component['start_date'] ?? '', $component['start_time'] ?? '', $component['end_date'] ?? '', $component['end_time'] ?? '')) {
+            return array_slice($base_ids, 0, $limit);
+        }
+
+        foreach ($queue as $row) {
+            $vehicle_ids = array_values(array_filter(array_map('absint', (array) ($row['vehicle_ids'] ?? []))));
+            if (!empty($vehicle_ids) && !self::schedule_has_window($row)) {
+                return array_slice($vehicle_ids, 0, $limit);
+            }
+        }
+
+        $legacy = self::get_current_featured_ids($limit);
+        if (!empty($legacy)) {
+            return $legacy;
+        }
+
+        return self::latest_real_vehicle_ids($limit);
+    }
+
+    protected static function schedule_has_window($row) {
+        return !empty($row['start_date']) || !empty($row['start_time']) || !empty($row['end_date']) || !empty($row['end_time']);
     }
 
     protected static function get_current_featured_ids($limit = 12) {
@@ -1157,7 +1254,8 @@ class GPO_Frontend {
         }
         $data['badge'] = get_post_meta($post_id, '_gpo_badge', true);
         $data['price'] = get_post_meta($post_id, '_gpo_price', true);
-        $data['promo_price'] = get_post_meta($post_id, '_gpo_price_promo', true);
+        $data['promotion'] = self::promotion_context($post_id);
+        $data['promo_price'] = $data['promotion']['discounted_price'] ?? get_post_meta($post_id, '_gpo_price_promo', true);
         $data['current_price'] = $data['promo_price'] ?: $data['price'];
         return $data;
     }
@@ -1603,6 +1701,37 @@ class GPO_Frontend {
         return array_values($brands);
     }
 
+    protected static function configured_brand_carousel_items() {
+        $component = self::component_settings('brand_banner');
+        $mode = sanitize_key((string) ($component['mode'] ?? 'inventory'));
+
+        if ($mode === 'all') {
+            return self::brand_library();
+        }
+
+        if ($mode === 'manual') {
+            $selected = array_values(array_filter(array_map('sanitize_title', (array) ($component['selected_brands'] ?? []))));
+            if (empty($selected)) {
+                return [];
+            }
+
+            $library = [];
+            foreach (self::brand_library() as $brand) {
+                $library[$brand['key']] = $brand;
+            }
+
+            $items = [];
+            foreach ($selected as $key) {
+                if (!empty($library[$key])) {
+                    $items[] = $library[$key];
+                }
+            }
+            return $items;
+        }
+
+        return self::brand_inventory_summary();
+    }
+
     protected static function icon_markup($type) {
         if ($type === 'clear') {
             return '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
@@ -1784,7 +1913,7 @@ class GPO_Frontend {
             'text_color' => '',
         ], $atts, 'gestpark_brand_carousel');
 
-        $brands = self::brand_inventory_summary();
+        $brands = self::configured_brand_carousel_items();
         if (empty($brands)) {
             return '<div class="gpo-empty-state"><p>Nessuna marca disponibile.</p></div>';
         }
@@ -1888,6 +2017,9 @@ class GPO_Frontend {
                 'title' => get_the_title(),
                 'url' => get_permalink(),
                 'price' => self::format_price_public($data['current_price'] ?? ''),
+                'originalPrice' => !empty($data['promotion']['formatted_original']) ? $data['promotion']['formatted_original'] : '',
+                'promoBadge' => !empty($data['promotion']['badge']) ? $data['promotion']['badge'] : '',
+                'promoText' => !empty($data['promotion']['promo_text']) ? $data['promotion']['promo_text'] : '',
                 'brand' => $data['brand'] ?? '',
                 'subtitle' => $subtitle,
                 'thumb' => self::vehicle_thumbnail_url($id, 'thumbnail'),

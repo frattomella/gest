@@ -1,10 +1,12 @@
 document.addEventListener('DOMContentLoaded', function () {
     var apiShell = document.querySelector('.gpo-api-shell');
-    if (!apiShell) {
-        return;
-    }
+    var brandModeField = document.querySelector('.gpo-brand-mode-field select');
+    var brandPicker = document.querySelector('.gpo-brand-picker');
 
     function updateModeState() {
+        if (!apiShell) {
+            return;
+        }
         var checkedMode = apiShell.querySelector('input[name="gpo_settings[api][connection_mode]"]:checked');
         var manualFormat = apiShell.querySelector('select[name="gpo_settings[api][manual_format]"]');
         var mode = checkedMode ? checkedMode.value : 'gestpark_auto';
@@ -19,6 +21,37 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    apiShell.addEventListener('change', updateModeState);
-    updateModeState();
+    function updateBrandMode() {
+        if (!brandPicker || !brandModeField) {
+            return;
+        }
+
+        brandPicker.dataset.brandMode = brandModeField.value || 'inventory';
+    }
+
+    function updatePromoTargets() {
+        document.querySelectorAll('.gpo-promo-rule').forEach(function (rule) {
+            var select = rule.querySelector('select[name*="[target_type]"]');
+            if (!select) {
+                return;
+            }
+
+            rule.dataset.ruleTarget = select.value || 'vehicle';
+        });
+    }
+
+    if (apiShell) {
+        apiShell.addEventListener('change', updateModeState);
+        updateModeState();
+    }
+    if (brandModeField) {
+        brandModeField.addEventListener('change', updateBrandMode);
+        updateBrandMode();
+    }
+    document.addEventListener('change', function (event) {
+        if (event.target && String(event.target.name || '').indexOf('[target_type]') !== -1) {
+            updatePromoTargets();
+        }
+    });
+    updatePromoTargets();
 });

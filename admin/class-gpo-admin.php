@@ -12,7 +12,6 @@ class GPO_Admin {
         add_action('admin_post_gpo_disconnect_parkplatform', [__CLASS__, 'handle_disconnect_parkplatform']);
         add_action('admin_post_gpo_run_sync', [__CLASS__, 'handle_run_sync']);
         add_action('admin_post_gpo_clear_logs', [__CLASS__, 'handle_clear_logs']);
-        add_action('admin_post_gpo_save_showcase', [__CLASS__, 'handle_save_showcase']);
         add_action('admin_post_gpo_github_refresh', [__CLASS__, 'handle_github_refresh']);
     }
 
@@ -45,6 +44,8 @@ class GPO_Admin {
                 'release_asset' => 'gestpark-online.zip',
                 'access_token' => '',
             ],
+            'components' => self::default_component_settings(),
+            'engagement' => GPO_Engagement::default_settings(),
             'style' => [
                 'primary_color' => '#111827',
                 'accent_color' => '#12b981',
@@ -112,7 +113,8 @@ class GPO_Admin {
         add_submenu_page('gestpark-online', 'Dashboard', 'Dashboard', 'manage_options', 'gestpark-online', [__CLASS__, 'dashboard_page']);
         add_submenu_page('gestpark-online', 'Veicoli', 'Veicoli', 'edit_posts', 'edit.php?post_type=gpo_vehicle');
         add_submenu_page('gestpark-online', 'Connessioni API', 'Connessioni API', 'manage_options', 'gpo-api', [__CLASS__, 'api_page']);
-        add_submenu_page('gestpark-online', 'Vetrina', 'Vetrina', 'manage_options', 'gpo-showcase', [__CLASS__, 'showcase_page']);
+        add_submenu_page('gestpark-online', 'Configurazione componenti', 'Configurazione componenti', 'manage_options', 'gpo-components', [__CLASS__, 'components_page']);
+        add_submenu_page('gestpark-online', 'Engagement', 'Engagement', 'manage_options', 'gpo-engagement', [__CLASS__, 'engagement_page']);
         add_submenu_page('gestpark-online', 'Log e diagnostica', 'Log e diagnostica', 'manage_options', 'gpo-logs', [__CLASS__, 'logs_page']);
         add_submenu_page('gestpark-online', 'Guida rapida', 'Guida rapida', 'manage_options', 'gpo-guide', [__CLASS__, 'guide_page']);
     }
@@ -205,6 +207,19 @@ class GPO_Admin {
             }
         }
 
+        if (array_key_exists('components', $input)) {
+            $output['components'] = self::sanitize_components(
+                $input['components'] ?? [],
+                $defaults['components']
+            );
+        }
+
+        if (array_key_exists('engagement', $input)) {
+            $engagement = is_array($input['engagement']) ? $input['engagement'] : [];
+            $output['engagement']['promo_color'] = sanitize_hex_color((string) ($engagement['promo_color'] ?? '')) ?: $defaults['engagement']['promo_color'];
+            $output['engagement']['rules'] = GPO_Engagement::sanitize_rules($engagement['rules'] ?? []);
+        }
+
         if (!empty($input['style']) && is_array($input['style'])) {
             foreach (['primary_color', 'accent_color', 'card_bg', 'radius', 'title_font', 'body_font', 'card_layout', 'single_layout', 'single_template_id', 'card_gap', 'card_padding', 'content_max_width', 'outer_margin_y', 'outer_padding_x', 'section_gap', 'filter_columns'] as $key) {
                 if (isset($input['style'][$key])) {
@@ -248,6 +263,166 @@ class GPO_Admin {
         return trim($value);
     }
 
+    protected static function default_component_settings() {
+        return [
+            'featured_vehicle' => [
+                'vehicle_id' => 0,
+                'start_date' => '',
+                'start_time' => '',
+                'end_date' => '',
+                'end_time' => '',
+                'queue' => [],
+            ],
+            'search_bar' => [
+                'notes' => '',
+            ],
+            'brand_banner' => [
+                'mode' => 'inventory',
+                'selected_brands' => [],
+            ],
+            'catalog_filters' => [
+                'notes' => '',
+            ],
+            'showcase_carousel' => [
+                'vehicle_ids' => [],
+                'start_date' => '',
+                'start_time' => '',
+                'end_date' => '',
+                'end_time' => '',
+                'queue' => [],
+            ],
+            'vehicle_carousel' => [
+                'notes' => '',
+            ],
+            'vehicle_grid' => [
+                'notes' => '',
+            ],
+        ];
+    }
+
+    protected static function sanitize_date($value) {
+        $value = sanitize_text_field((string) $value);
+        return preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) ? $value : '';
+    }
+
+    protected static function sanitize_time($value) {
+        $value = sanitize_text_field((string) $value);
+        return preg_match('/^\d{2}:\d{2}$/', $value) ? $value : '';
+    }
+
+    protected static function sanitize_vehicle_ids($items) {
+        return array_values(array_filter(array_map('absint', (array) $items)));
+    }
+
+    protected static function sanitize_brand_keys($items) {
+        return array_values(array_filter(array_map(function ($value) {
+            $value = strtolower(remove_accents((string) $value));
+            $value = str_replace(['&', '.', "'"], ' ', $value);
+            $value = preg_replace('/\s+/', '-', trim($value));
+            return sanitize_title($value);
+        }, (array) $items)));
+    }
+
+    protected static function sanitize_featured_queue($rows) {
+        $rows = is_array($rows) ? $rows : [];
+        $sanitized = [];
+
+        foreach ($rows as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+
+            $vehicle_id = absint($row['vehicle_id'] ?? 0);
+            if ($vehicle_id < 1) {
+                continue;
+            }
+
+            $sanitized[] = [
+                'order' => max(1, absint($row['order'] ?? count($sanitized) + 1)),
+                'vehicle_id' => $vehicle_id,
+                'label' => sanitize_text_field((string) ($row['label'] ?? '')),
+                'start_date' => self::sanitize_date($row['start_date'] ?? ''),
+                'start_time' => self::sanitize_time($row['start_time'] ?? ''),
+                'end_date' => self::sanitize_date($row['end_date'] ?? ''),
+                'end_time' => self::sanitize_time($row['end_time'] ?? ''),
+            ];
+        }
+
+        usort($sanitized, function ($left, $right) {
+            return ($left['order'] ?? 0) <=> ($right['order'] ?? 0);
+        });
+
+        return $sanitized;
+    }
+
+    protected static function sanitize_showcase_queue($rows) {
+        $rows = is_array($rows) ? $rows : [];
+        $sanitized = [];
+
+        foreach ($rows as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+
+            $vehicle_ids = self::sanitize_vehicle_ids($row['vehicle_ids'] ?? []);
+            if (empty($vehicle_ids)) {
+                continue;
+            }
+
+            $sanitized[] = [
+                'order' => max(1, absint($row['order'] ?? count($sanitized) + 1)),
+                'label' => sanitize_text_field((string) ($row['label'] ?? '')),
+                'vehicle_ids' => $vehicle_ids,
+                'start_date' => self::sanitize_date($row['start_date'] ?? ''),
+                'start_time' => self::sanitize_time($row['start_time'] ?? ''),
+                'end_date' => self::sanitize_date($row['end_date'] ?? ''),
+                'end_time' => self::sanitize_time($row['end_time'] ?? ''),
+            ];
+        }
+
+        usort($sanitized, function ($left, $right) {
+            return ($left['order'] ?? 0) <=> ($right['order'] ?? 0);
+        });
+
+        return $sanitized;
+    }
+
+    protected static function sanitize_components($input, $defaults) {
+        $input = is_array($input) ? $input : [];
+        $output = $defaults;
+
+        $featured = isset($input['featured_vehicle']) && is_array($input['featured_vehicle']) ? $input['featured_vehicle'] : [];
+        $output['featured_vehicle']['vehicle_id'] = absint($featured['vehicle_id'] ?? 0);
+        $output['featured_vehicle']['start_date'] = self::sanitize_date($featured['start_date'] ?? '');
+        $output['featured_vehicle']['start_time'] = self::sanitize_time($featured['start_time'] ?? '');
+        $output['featured_vehicle']['end_date'] = self::sanitize_date($featured['end_date'] ?? '');
+        $output['featured_vehicle']['end_time'] = self::sanitize_time($featured['end_time'] ?? '');
+        $output['featured_vehicle']['queue'] = self::sanitize_featured_queue($featured['queue'] ?? []);
+
+        $brand_banner = isset($input['brand_banner']) && is_array($input['brand_banner']) ? $input['brand_banner'] : [];
+        $mode = sanitize_key((string) ($brand_banner['mode'] ?? 'inventory'));
+        if (!in_array($mode, ['inventory', 'all', 'manual'], true)) {
+            $mode = 'inventory';
+        }
+        $output['brand_banner']['mode'] = $mode;
+        $output['brand_banner']['selected_brands'] = self::sanitize_brand_keys($brand_banner['selected_brands'] ?? []);
+
+        $showcase = isset($input['showcase_carousel']) && is_array($input['showcase_carousel']) ? $input['showcase_carousel'] : [];
+        $output['showcase_carousel']['vehicle_ids'] = self::sanitize_vehicle_ids($showcase['vehicle_ids'] ?? []);
+        $output['showcase_carousel']['start_date'] = self::sanitize_date($showcase['start_date'] ?? '');
+        $output['showcase_carousel']['start_time'] = self::sanitize_time($showcase['start_time'] ?? '');
+        $output['showcase_carousel']['end_date'] = self::sanitize_date($showcase['end_date'] ?? '');
+        $output['showcase_carousel']['end_time'] = self::sanitize_time($showcase['end_time'] ?? '');
+        $output['showcase_carousel']['queue'] = self::sanitize_showcase_queue($showcase['queue'] ?? []);
+
+        foreach (['search_bar', 'catalog_filters', 'vehicle_carousel', 'vehicle_grid'] as $key) {
+            $current = isset($input[$key]) && is_array($input[$key]) ? $input[$key] : [];
+            $output[$key]['notes'] = sanitize_text_field((string) ($current['notes'] ?? ''));
+        }
+
+        return $output;
+    }
+
     protected static function get_settings() {
         $settings = get_option('gpo_settings', []);
         $settings = array_replace_recursive(self::default_settings(), is_array($settings) ? $settings : []);
@@ -264,7 +439,8 @@ class GPO_Admin {
         return [
             'dashboard' => ['label' => 'Dashboard', 'url' => admin_url('admin.php?page=gestpark-online')],
             'api' => ['label' => 'Connessioni', 'url' => admin_url('admin.php?page=gpo-api')],
-            'showcase' => ['label' => 'Vetrina', 'url' => admin_url('admin.php?page=gpo-showcase')],
+            'components' => ['label' => 'Componenti', 'url' => admin_url('admin.php?page=gpo-components')],
+            'engagement' => ['label' => 'Engagement', 'url' => admin_url('admin.php?page=gpo-engagement')],
             'vehicles' => ['label' => 'Veicoli', 'url' => admin_url('edit.php?post_type=gpo_vehicle')],
             'logs' => ['label' => 'Log', 'url' => admin_url('admin.php?page=gpo-logs')],
             'guide' => ['label' => 'Guida', 'url' => admin_url('admin.php?page=gpo-guide')],
@@ -363,19 +539,81 @@ class GPO_Admin {
         echo '</label>';
     }
 
+    protected static function vehicle_options() {
+        $posts = get_posts([
+            'post_type' => 'gpo_vehicle',
+            'post_status' => ['publish', 'draft'],
+            'posts_per_page' => 200,
+            'orderby' => 'date',
+            'order' => 'DESC',
+        ]);
+
+        $options = [0 => 'Nessun veicolo selezionato'];
+        foreach ($posts as $post) {
+            $brand = trim((string) get_post_meta($post->ID, '_gpo_brand', true));
+            $label = $brand ? $brand . ' · ' . $post->post_title : $post->post_title;
+            $options[(int) $post->ID] = $label;
+        }
+
+        return $options;
+    }
+
+    protected static function brand_options() {
+        $brands = class_exists('GPO_Frontend') && method_exists('GPO_Frontend', 'brand_library')
+            ? GPO_Frontend::brand_library()
+            : [];
+
+        $options = [];
+        foreach ($brands as $brand) {
+            $options[$brand['key']] = $brand['name'];
+        }
+
+        return $options;
+    }
+
+    protected static function datetime_row_markup($prefix, $values = []) {
+        $values = wp_parse_args(is_array($values) ? $values : [], [
+            'start_date' => '',
+            'start_time' => '',
+            'end_date' => '',
+            'end_time' => '',
+        ]);
+
+        echo '<div class="gpo-field-grid gpo-field-grid--quad">';
+        echo '<label class="gpo-field"><span class="gpo-field__label">Data inizio</span><input type="date" name="' . esc_attr($prefix . '[start_date]') . '" value="' . esc_attr($values['start_date']) . '" /></label>';
+        echo '<label class="gpo-field"><span class="gpo-field__label">Ora inizio</span><input type="time" name="' . esc_attr($prefix . '[start_time]') . '" value="' . esc_attr($values['start_time']) . '" /></label>';
+        echo '<label class="gpo-field"><span class="gpo-field__label">Data fine</span><input type="date" name="' . esc_attr($prefix . '[end_date]') . '" value="' . esc_attr($values['end_date']) . '" /></label>';
+        echo '<label class="gpo-field"><span class="gpo-field__label">Ora fine</span><input type="time" name="' . esc_attr($prefix . '[end_time]') . '" value="' . esc_attr($values['end_time']) . '" /></label>';
+        echo '</div>';
+    }
+
+    protected static function component_section_start($key, $title, $description, $summary = '') {
+        echo '<details class="gpo-admin-accordion gpo-component-section" data-section="' . esc_attr($key) . '"' . ($key === 'featured_vehicle' ? ' open' : '') . '>';
+        echo '<summary class="gpo-admin-accordion__summary">';
+        echo '<div class="gpo-admin-accordion__copy">';
+        echo '<h2>' . esc_html($title) . '</h2>';
+        echo '<p>' . esc_html($description) . '</p>';
+        echo '</div>';
+        if ($summary !== '') {
+            echo '<span class="gpo-status-pill">' . esc_html($summary) . '</span>';
+        }
+        echo '</summary>';
+        echo '<div class="gpo-admin-accordion__content">';
+    }
+
+    protected static function component_section_end() {
+        echo '</div></details>';
+    }
+
     public static function dashboard_page() {
         $stats = wp_count_posts('gpo_vehicle');
         $last_sync = get_option('gpo_last_sync_result', []);
         $settings = self::get_settings();
         $parkplatform = self::parkplatform_state($settings['api']);
         $updates = self::plugin_update_state();
-        $featured = new WP_Query([
-            'post_type' => 'gpo_vehicle',
-            'posts_per_page' => -1,
-            'fields' => 'ids',
-            'meta_key' => '_gpo_featured',
-            'meta_value' => '1',
-        ]);
+        $featured_ids = method_exists('GPO_Frontend', 'active_showcase_vehicle_ids')
+            ? GPO_Frontend::active_showcase_vehicle_ids(24)
+            : [];
 
         self::render_page_start(
             'dashboard',
@@ -383,6 +621,7 @@ class GPO_Admin {
             'Controlla connessione ParkPlatform, stato inventario e aggiornamenti plugin da un unico pannello pulito.',
             [
                 ['label' => 'Sincronizza adesso', 'url' => admin_url('admin-post.php?action=gpo_run_sync&_wpnonce=' . wp_create_nonce('gpo_run_sync'))],
+                ['label' => 'Configura componenti', 'url' => admin_url('admin.php?page=gpo-components'), 'variant' => 'secondary'],
                 ['label' => 'Apri connessione API', 'url' => admin_url('admin.php?page=gpo-api'), 'variant' => 'secondary'],
             ],
             [$parkplatform['badge_label'], 'Versione ' . GPO_VERSION]
@@ -392,7 +631,7 @@ class GPO_Admin {
 
         echo '<section class="gpo-kpi-grid">';
         self::metric_card('Veicoli pubblicati', (int) ($stats->publish ?? 0), 'Archivio disponibile sul sito');
-        self::metric_card('Veicoli in vetrina', count($featured->posts), 'Selezionati per showcase e caroselli');
+        self::metric_card('Veicoli in vetrina', count($featured_ids), 'Selezionati per showcase e caroselli');
         self::metric_card('Ultima sincronizzazione', !empty($last_sync['time']) ? $last_sync['time'] : 'Mai', 'Ultimo import eseguito');
         self::metric_card('Aggiornamento plugin', $updates['headline'], $updates['description']);
         echo '</section>';
@@ -444,7 +683,8 @@ class GPO_Admin {
         echo '<p>Ultimo sync: <strong>' . esc_html(!empty($last_sync['time']) ? $last_sync['time'] : 'Mai eseguito') . '</strong></p>';
         echo '<p>Sorgente dati: <strong>' . esc_html(!empty($last_sync['source']) ? strtoupper((string) $last_sync['source']) : 'N.D.') . '</strong></p>';
         echo '<div class="gpo-inline-actions">';
-        echo '<a class="button button-secondary" href="' . esc_url(admin_url('admin.php?page=gpo-showcase')) . '">Apri vetrina</a>';
+        echo '<a class="button button-secondary" href="' . esc_url(admin_url('admin.php?page=gpo-components')) . '">Configurazione componenti</a>';
+        echo '<a class="button button-secondary" href="' . esc_url(admin_url('admin.php?page=gpo-engagement')) . '">Apri Engagement</a>';
         echo '<a class="button button-secondary" href="' . esc_url(admin_url('admin.php?page=gpo-logs')) . '">Apri log e diagnostica</a>';
         echo '</div>';
         echo '</article>';
@@ -974,6 +1214,408 @@ class GPO_Admin {
         self::render_page_end();
     }
 
+    public static function components_page() {
+        $settings = self::get_settings();
+        $components = isset($settings['components']) && is_array($settings['components']) ? $settings['components'] : self::default_component_settings();
+        $vehicle_options = self::vehicle_options();
+        $brand_options = self::brand_options();
+        $featured_queue_rows = max(3, count($components['featured_vehicle']['queue'] ?? []) + 1);
+        $showcase_queue_rows = max(3, count($components['showcase_carousel']['queue'] ?? []) + 1);
+
+        $featured_summary = !empty($components['featured_vehicle']['vehicle_id']) && isset($vehicle_options[$components['featured_vehicle']['vehicle_id']])
+            ? $vehicle_options[$components['featured_vehicle']['vehicle_id']]
+            : 'Fallback automatico';
+        $brand_mode_labels = [
+            'inventory' => 'Solo marchi in stock',
+            'all' => 'Tutti i marchi generali',
+            'manual' => 'Marchi scelti manualmente',
+        ];
+        $brand_summary = $brand_mode_labels[$components['brand_banner']['mode'] ?? 'inventory'] ?? 'Solo marchi in stock';
+        $showcase_summary = !empty($components['showcase_carousel']['vehicle_ids'])
+            ? count((array) $components['showcase_carousel']['vehicle_ids']) . ' veicoli attivi'
+            : 'Fallback automatico';
+
+        self::render_page_start(
+            'components',
+            'Configurazione componenti',
+            'Gestisci da un unico pannello i sette componenti principali del plugin, le pianificazioni future e i marchi da mostrare nelle sezioni pubbliche del sito.',
+            [
+                ['label' => 'Apri Engagement', 'url' => admin_url('admin.php?page=gpo-engagement')],
+                ['label' => 'Sincronizza adesso', 'url' => admin_url('admin-post.php?action=gpo_run_sync&_wpnonce=' . wp_create_nonce('gpo_run_sync')), 'variant' => 'secondary'],
+            ],
+            ['7 componenti centrali', 'Programmazione vetrina']
+        );
+        self::admin_notices_from_query();
+
+        echo '<form class="gpo-api-shell" method="post" action="options.php">';
+        settings_fields('gpo_api_group');
+
+        self::component_section_start(
+            'featured_vehicle',
+            'Veicolo in evidenza',
+            'Configura il veicolo principale da mettere in risalto sul sito e pianifica eventuali sostituzioni future.',
+            $featured_summary
+        );
+        echo '<div class="gpo-field-grid">';
+        self::render_setting_field([
+            'label' => 'Veicolo principale',
+            'name' => 'gpo_settings[components][featured_vehicle][vehicle_id]',
+            'value' => $components['featured_vehicle']['vehicle_id'] ?? 0,
+            'type' => 'select',
+            'options' => $vehicle_options,
+            'description' => 'Se non imposti nulla, il plugin usera il miglior fallback disponibile in automatico.',
+        ]);
+        echo '<div class="gpo-surface gpo-surface--accent gpo-surface--compact">';
+        echo '<div class="gpo-surface__eyebrow">Logica runtime</div>';
+        echo '<h2>Rotazione automatica</h2>';
+        echo '<p>Quando la finestra del veicolo attuale termina, il plugin verifica la coda programmata in ordine crescente e promuove automaticamente il primo slot attivo.</p>';
+        echo '</div>';
+        echo '</div>';
+        self::datetime_row_markup('gpo_settings[components][featured_vehicle]', $components['featured_vehicle']);
+
+        echo '<div class="gpo-admin-rule-list">';
+        echo '<h3>Coda futura veicoli in evidenza</h3>';
+        echo '<p class="gpo-field__description">Usa lordine per definire la priorita di subentro. Compila solo le righe che ti servono.</p>';
+        for ($i = 0; $i < $featured_queue_rows; $i++) {
+            $row = $components['featured_vehicle']['queue'][$i] ?? [];
+            echo '<div class="gpo-admin-rule-card">';
+            echo '<div class="gpo-field-grid gpo-field-grid--triple">';
+            self::render_setting_field([
+                'label' => 'Ordine',
+                'name' => 'gpo_settings[components][featured_vehicle][queue][' . $i . '][order]',
+                'value' => $row['order'] ?? ($i + 1),
+                'description' => 'Valore minore = priorita piu alta.',
+            ]);
+            self::render_setting_field([
+                'label' => 'Etichetta interna',
+                'name' => 'gpo_settings[components][featured_vehicle][queue][' . $i . '][label]',
+                'value' => $row['label'] ?? '',
+                'description' => 'Solo per uso interno in dashboard.',
+                'placeholder' => 'Es. Weekend usato certificato',
+            ]);
+            self::render_setting_field([
+                'label' => 'Veicolo',
+                'name' => 'gpo_settings[components][featured_vehicle][queue][' . $i . '][vehicle_id]',
+                'value' => $row['vehicle_id'] ?? 0,
+                'type' => 'select',
+                'options' => $vehicle_options,
+                'description' => 'Seleziona il veicolo che subentrera in evidenza.',
+            ]);
+            echo '</div>';
+            self::datetime_row_markup('gpo_settings[components][featured_vehicle][queue][' . $i . ']', $row);
+            echo '</div>';
+        }
+        echo '</div>';
+        self::component_section_end();
+
+        self::component_section_start(
+            'search_bar',
+            'Search bar',
+            'Configura il comportamento del componente di ricerca veicoli inseribile nelle pagine del sito.',
+            'Struttura pronta'
+        );
+        echo '<div class="gpo-surface gpo-surface--accent gpo-surface--compact">';
+        echo '<div class="gpo-surface__eyebrow">Roadmap componente</div>';
+        echo '<h2>Base pronta per estensioni</h2>';
+        echo '<p>La barra di ricerca usa gia il motore live del plugin. In questa iterazione la sezione resta volutamente minimale per lasciare la personalizzazione visuale ai blocchi Gutenberg.</p>';
+        echo '</div>';
+        self::component_section_end();
+
+        self::component_section_start(
+            'brand_banner',
+            'Banner marchi',
+            'Configura quali marchi mostrare nel banner orizzontale e come presentarli all utente.',
+            $brand_summary
+        );
+        echo '<div class="gpo-field-grid">';
+        self::render_setting_field([
+            'label' => 'Modalita marchi',
+            'name' => 'gpo_settings[components][brand_banner][mode]',
+            'value' => $components['brand_banner']['mode'] ?? 'inventory',
+            'type' => 'select',
+            'options' => [
+                'inventory' => 'Mostra solo i marchi presenti nel parco auto disponibile',
+                'all' => 'Mostra tutti i marchi generali del plugin',
+                'manual' => 'Mostra solo i marchi selezionati manualmente',
+            ],
+            'description' => 'La modalita manuale usa la libreria generale marchi del plugin, non solo quelli gia presenti nei veicoli.',
+            'classes' => 'gpo-brand-mode-field',
+        ]);
+        echo '<div class="gpo-surface gpo-surface--accent gpo-surface--compact">';
+        echo '<div class="gpo-surface__eyebrow">Brand registry</div>';
+        echo '<h2>Libreria marchi condivisa</h2>';
+        echo '<p>I marchi vengono letti dal registry locale del plugin. Se scegli Tutti, mostriamo lintera libreria; se scegli Manuale, usi la stessa libreria con una selezione esplicita.</p>';
+        echo '</div>';
+        echo '</div>';
+        echo '<div class="gpo-brand-picker" data-brand-mode="' . esc_attr($components['brand_banner']['mode'] ?? 'inventory') . '">';
+        echo '<div class="gpo-brand-picker__manual">';
+        echo '<h3>Marchi selezionati manualmente</h3>';
+        echo '<div class="gpo-checkbox-grid">';
+        foreach ($brand_options as $key => $label) {
+            $checked = in_array($key, (array) ($components['brand_banner']['selected_brands'] ?? []), true);
+            echo '<label class="gpo-checkbox-card"><input type="checkbox" name="gpo_settings[components][brand_banner][selected_brands][]" value="' . esc_attr($key) . '" ' . checked($checked, true, false) . ' /> <span>' . esc_html($label) . '</span></label>';
+        }
+        echo '</div>';
+        echo '</div>';
+        echo '</div>';
+        self::component_section_end();
+
+        self::component_section_start(
+            'catalog_filters',
+            'Catalogo veicoli con filtri',
+            'Configura il catalogo veicoli con pannello filtri e risultati consultabili nelle pagine del sito.',
+            'Struttura pronta'
+        );
+        echo '<div class="gpo-surface gpo-surface--accent gpo-surface--compact"><div class="gpo-surface__eyebrow">Gestione dal blocco</div><h2>Configurazione editor-first</h2><p>Il layout, i campi visibili e la disposizione del catalogo restano gestiti principalmente dai blocchi Gutenberg. Questa sezione e pronta per configurazioni centrali future.</p></div>';
+        self::component_section_end();
+
+        self::component_section_start(
+            'showcase_carousel',
+            'Carosello vetrina',
+            'Gestisci i veicoli da mostrare nella vetrina dinamica e pianifica le future rotazioni.',
+            $showcase_summary
+        );
+        echo '<div class="gpo-field-grid">';
+        echo '<label class="gpo-field"><span class="gpo-field__label">Veicoli attivi in vetrina</span>';
+        echo '<select multiple size="8" name="gpo_settings[components][showcase_carousel][vehicle_ids][]" class="gpo-multi-select">';
+        foreach ($vehicle_options as $vehicle_id => $label) {
+            if ($vehicle_id === 0) {
+                continue;
+            }
+            echo '<option value="' . esc_attr((string) $vehicle_id) . '" ' . selected(in_array($vehicle_id, (array) ($components['showcase_carousel']['vehicle_ids'] ?? []), true), true, false) . '>' . esc_html($label) . '</option>';
+        }
+        echo '</select><span class="gpo-field__description">Seleziona i veicoli da mostrare nella vetrina attuale. Se non selezioni nulla, il plugin usera il fallback automatico.</span></label>';
+        echo '<div class="gpo-surface gpo-surface--accent gpo-surface--compact">';
+        echo '<div class="gpo-surface__eyebrow">Rotazione future</div>';
+        echo '<h2>Coda multi-veicolo</h2>';
+        echo '<p>Ogni slot puo contenere un gruppo di veicoli diverso. Quando lo slot precedente termina, il carosello passa al primo gruppo futuro attivo in ordine.</p>';
+        echo '</div>';
+        echo '</div>';
+        self::datetime_row_markup('gpo_settings[components][showcase_carousel]', $components['showcase_carousel']);
+
+        echo '<div class="gpo-admin-rule-list">';
+        echo '<h3>Coda futura carosello vetrina</h3>';
+        echo '<p class="gpo-field__description">Ogni slot puo avere un proprio gruppo di veicoli e una propria finestra temporale.</p>';
+        for ($i = 0; $i < $showcase_queue_rows; $i++) {
+            $row = $components['showcase_carousel']['queue'][$i] ?? [];
+            echo '<div class="gpo-admin-rule-card">';
+            echo '<div class="gpo-field-grid gpo-field-grid--triple">';
+            self::render_setting_field([
+                'label' => 'Ordine',
+                'name' => 'gpo_settings[components][showcase_carousel][queue][' . $i . '][order]',
+                'value' => $row['order'] ?? ($i + 1),
+                'description' => 'Valore minore = priorita piu alta.',
+            ]);
+            self::render_setting_field([
+                'label' => 'Etichetta interna',
+                'name' => 'gpo_settings[components][showcase_carousel][queue][' . $i . '][label]',
+                'value' => $row['label'] ?? '',
+                'description' => 'Nome operativo dello slot.',
+                'placeholder' => 'Es. Promo fine mese',
+            ]);
+            echo '<div class="gpo-field"><span class="gpo-field__label">Veicoli dello slot</span><select multiple size="8" name="gpo_settings[components][showcase_carousel][queue][' . $i . '][vehicle_ids][]" class="gpo-multi-select">';
+            foreach ($vehicle_options as $vehicle_id => $label) {
+                if ($vehicle_id === 0) {
+                    continue;
+                }
+                echo '<option value="' . esc_attr((string) $vehicle_id) . '" ' . selected(in_array($vehicle_id, (array) ($row['vehicle_ids'] ?? []), true), true, false) . '>' . esc_html($label) . '</option>';
+            }
+            echo '</select><span class="gpo-field__description">Il carosello mostrerà questi veicoli quando lo slot sarà attivo.</span></div>';
+            echo '</div>';
+            self::datetime_row_markup('gpo_settings[components][showcase_carousel][queue][' . $i . ']', $row);
+            echo '</div>';
+        }
+        echo '</div>';
+        self::component_section_end();
+
+        self::component_section_start(
+            'vehicle_carousel',
+            'Carosello veicoli',
+            'Configura il carosello veicoli utilizzabile nelle pagine del sito per mostrare selezioni dinamiche.',
+            'Struttura pronta'
+        );
+        echo '<div class="gpo-surface gpo-surface--accent gpo-surface--compact"><div class="gpo-surface__eyebrow">Componente dinamico</div><h2>Configurazione centralizzata pronta</h2><p>Questa sezione resta volutamente leggera in attesa di regole piu avanzate di selezione, priorita e playlist veicoli per singolo blocco.</p></div>';
+        self::component_section_end();
+
+        self::component_section_start(
+            'vehicle_grid',
+            'Griglia veicoli',
+            'Configura la griglia veicoli per la visualizzazione ordinata delle card all interno delle pagine.',
+            'Struttura pronta'
+        );
+        echo '<div class="gpo-surface gpo-surface--accent gpo-surface--compact"><div class="gpo-surface__eyebrow">Uso editoriale</div><h2>Base pronta</h2><p>La resa visuale e i campi visibili continuano a vivere nei blocchi Gutenberg. Qui prepariamo il punto centrale per futuri override di comportamento globale.</p></div>';
+        self::component_section_end();
+
+        echo '<div class="gpo-form-submit">';
+        submit_button('Salva configurazione componenti', 'primary', 'submit', false);
+        echo '</div>';
+        echo '</form>';
+        self::render_page_end();
+    }
+
+    public static function engagement_page() {
+        $settings = self::get_settings();
+        $engagement = isset($settings['engagement']) && is_array($settings['engagement']) ? $settings['engagement'] : GPO_Engagement::default_settings();
+        $vehicle_options = self::vehicle_options();
+        $brand_options = self::brand_options();
+        $rules = isset($engagement['rules']) && is_array($engagement['rules']) ? array_values($engagement['rules']) : [];
+        $rule_rows = max(3, count($rules) + 1);
+
+        self::render_page_start(
+            'engagement',
+            'Engagement',
+            'Gestisci promo commerciali e scontistiche informative da mostrare sui veicoli del sito con regole pianificate, colore globale e priorità centralizzata.',
+            [
+                ['label' => 'Apri configurazione componenti', 'url' => admin_url('admin.php?page=gpo-components')],
+                ['label' => 'Sincronizza adesso', 'url' => admin_url('admin-post.php?action=gpo_run_sync&_wpnonce=' . wp_create_nonce('gpo_run_sync')), 'variant' => 'secondary'],
+            ],
+            ['Promo programmate', 'Colore globale promo']
+        );
+        self::admin_notices_from_query();
+
+        echo '<form class="gpo-api-shell" method="post" action="options.php">';
+        settings_fields('gpo_api_group');
+
+        echo '<section class="gpo-surface-grid gpo-surface-grid--connections">';
+        echo '<article class="gpo-surface">';
+        echo '<div class="gpo-surface__eyebrow">Colore promozionale</div>';
+        echo '<h2>Identità visiva promo</h2>';
+        echo '<p>Questo colore governa badge, prezzo scontato, evidenze promo e richiami commerciali in tutto il frontend del plugin.</p>';
+        echo '<label class="gpo-field gpo-field--color">';
+        echo '<span class="gpo-field__label">Colore globale promo</span>';
+        echo '<input type="color" name="gpo_settings[engagement][promo_color]" value="' . esc_attr($engagement['promo_color'] ?? '#dc2626') . '" class="gpo-color-field" />';
+        echo '<span class="gpo-field__description">Colore di default: rosso. Viene applicato a badge, prezzi evidenziati e testi promo.</span>';
+        echo '</label>';
+        echo '</article>';
+        echo '<article class="gpo-surface gpo-surface--accent">';
+        echo '<div class="gpo-surface__eyebrow">Priorità applicazione</div>';
+        echo '<h2>Ordine di precedenza promo</h2>';
+        echo '<ol class="gpo-flow-list">';
+        echo '<li>Promo veicolo singolo</li>';
+        echo '<li>Promo su veicoli selezionati</li>';
+        echo '<li>Promo per marca</li>';
+        echo '</ol>';
+        echo '<p>Se due promo hanno la stessa priorita, prevale quella salvata piu in alto nella lista.</p>';
+        echo '</article>';
+        echo '</section>';
+
+        echo '<section class="gpo-admin-rule-list">';
+        echo '<h2 class="gpo-page-subtitle">Regole promozionali</h2>';
+        echo '<p class="gpo-field__description">Puoi creare promo per singolo veicolo, per gruppi selezionati oppure per una o piu marche. Le promo sono solo informative e commerciali: non attivano alcun acquisto online.</p>';
+
+        for ($i = 0; $i < $rule_rows; $i++) {
+            $rule = $rules[$i] ?? [
+                'id' => '',
+                'title' => '',
+                'target_type' => 'vehicle',
+                'vehicle_id' => 0,
+                'vehicle_ids' => [],
+                'brands' => [],
+                'discount_type' => 'fixed',
+                'value' => '',
+                'start_date' => '',
+                'start_time' => '',
+                'end_date' => '',
+                'end_time' => '',
+                'promo_text' => '',
+                'active' => 1,
+            ];
+            echo '<div class="gpo-admin-rule-card gpo-promo-rule" data-rule-target="' . esc_attr($rule['target_type']) . '">';
+            echo '<input type="hidden" name="gpo_settings[engagement][rules][' . $i . '][id]" value="' . esc_attr($rule['id']) . '" />';
+            echo '<div class="gpo-field-grid gpo-field-grid--triple">';
+            self::render_setting_field([
+                'label' => 'Titolo promo',
+                'name' => 'gpo_settings[engagement][rules][' . $i . '][title]',
+                'value' => $rule['title'] ?? '',
+                'description' => 'Es. Spring Days, Promo pronta consegna, Sconto brand.',
+                'placeholder' => 'Titolo promo',
+            ]);
+            self::render_setting_field([
+                'label' => 'Target promo',
+                'name' => 'gpo_settings[engagement][rules][' . $i . '][target_type]',
+                'value' => $rule['target_type'] ?? 'vehicle',
+                'type' => 'select',
+                'options' => [
+                    'vehicle' => 'Veicolo singolo',
+                    'vehicles' => 'Veicoli selezionati',
+                    'brands' => 'Marche selezionate',
+                ],
+                'description' => 'Definisce come il motore promo abbina la regola ai veicoli.',
+            ]);
+            self::render_setting_field([
+                'label' => 'Tipo sconto',
+                'name' => 'gpo_settings[engagement][rules][' . $i . '][discount_type]',
+                'value' => $rule['discount_type'] ?? 'fixed',
+                'type' => 'select',
+                'options' => [
+                    'fixed' => 'Importo fisso',
+                    'percent' => 'Percentuale',
+                ],
+                'description' => 'Lo sconto viene applicato solo a fini di comunicazione e vetrina.',
+            ]);
+            echo '</div>';
+
+            echo '<div class="gpo-field-grid gpo-field-grid--triple">';
+            self::render_setting_field([
+                'label' => 'Valore sconto',
+                'name' => 'gpo_settings[engagement][rules][' . $i . '][value]',
+                'value' => $rule['value'] ?? '',
+                'description' => 'Inserisci il valore numerico. Se percentuale, indica solo il numero senza simbolo %.',
+                'placeholder' => '1000 oppure 12',
+            ]);
+            self::render_setting_field([
+                'label' => 'Testo promo breve',
+                'name' => 'gpo_settings[engagement][rules][' . $i . '][promo_text]',
+                'value' => $rule['promo_text'] ?? '',
+                'description' => 'Testo breve mostrato come richiamo commerciale in card e scheda veicolo.',
+                'placeholder' => 'Prezzo promo fino a fine mese',
+            ]);
+            self::render_setting_field([
+                'label' => 'Attiva promo',
+                'name' => 'gpo_settings[engagement][rules][' . $i . '][active]',
+                'value' => !empty($rule['active']),
+                'type' => 'checkbox',
+                'description' => 'Le promo disattive restano salvate ma non vengono applicate.',
+            ]);
+            echo '</div>';
+
+            echo '<div class="gpo-field-grid gpo-field-grid--target">';
+            self::render_setting_field([
+                'label' => 'Veicolo singolo',
+                'name' => 'gpo_settings[engagement][rules][' . $i . '][vehicle_id]',
+                'value' => $rule['vehicle_id'] ?? 0,
+                'type' => 'select',
+                'options' => $vehicle_options,
+                'description' => 'Usato quando il target e Veicolo singolo.',
+                'classes' => 'gpo-rule-target gpo-rule-target--vehicle',
+            ]);
+            echo '<label class="gpo-field gpo-rule-target gpo-rule-target--vehicles"><span class="gpo-field__label">Veicoli selezionati</span><select multiple size="8" name="gpo_settings[engagement][rules][' . $i . '][vehicle_ids][]" class="gpo-multi-select">';
+            foreach ($vehicle_options as $vehicle_id => $label) {
+                if ($vehicle_id === 0) {
+                    continue;
+                }
+                echo '<option value="' . esc_attr((string) $vehicle_id) . '" ' . selected(in_array($vehicle_id, (array) ($rule['vehicle_ids'] ?? []), true), true, false) . '>' . esc_html($label) . '</option>';
+            }
+            echo '</select><span class="gpo-field__description">Usato quando il target e Veicoli selezionati.</span></label>';
+            echo '<label class="gpo-field gpo-rule-target gpo-rule-target--brands"><span class="gpo-field__label">Marche selezionate</span><select multiple size="8" name="gpo_settings[engagement][rules][' . $i . '][brands][]" class="gpo-multi-select">';
+            foreach ($brand_options as $brand_key => $brand_label) {
+                echo '<option value="' . esc_attr($brand_key) . '" ' . selected(in_array($brand_key, (array) ($rule['brands'] ?? []), true), true, false) . '>' . esc_html($brand_label) . '</option>';
+            }
+            echo '</select><span class="gpo-field__description">Usato quando il target e Marche selezionate.</span></label>';
+            echo '</div>';
+
+            self::datetime_row_markup('gpo_settings[engagement][rules][' . $i . ']', $rule);
+            echo '</div>';
+        }
+
+        echo '</section>';
+        echo '<div class="gpo-form-submit">';
+        submit_button('Salva Engagement', 'primary', 'submit', false);
+        echo '</div>';
+        echo '</form>';
+        self::render_page_end();
+    }
+
 
     public static function logs_page() {
         $logs = GPO_Logger::all();
@@ -995,7 +1637,8 @@ class GPO_Admin {
         echo '<ol>';
         echo '<li>Collega il tuo account in <strong>Connessioni API</strong> con email e password ParkPlatform.</li>';
         echo '<li>Esegui <strong>Test connessione</strong> e poi <strong>Sincronizza adesso</strong>.</li>';
-        echo '<li>Apri <strong>Veicoli</strong> per verificare i dati importati e scegliere cosa mettere in vetrina.</li>';
+        echo '<li>Apri <strong>Configurazione componenti</strong> per definire veicolo in evidenza, carosello vetrina e banner marchi.</li>';
+        echo '<li>Usa <strong>Engagement</strong> per pianificare promo, badge e prezzi barrati informativi.</li>';
         echo '<li>Costruisci cataloghi e componenti direttamente dal WordPress Editor con i blocchi GestPark.</li>';
         echo '<li>Controlla dalla <strong>Dashboard</strong> lo stato ParkPlatform e gli aggiornamenti plugin.</li>';
         echo '</ol>';

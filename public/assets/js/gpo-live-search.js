@@ -35,10 +35,16 @@
           ? '<span class="gpo-search-result-thumb"><img src="' + escapeHtml(item.thumb) + '" alt="' + escapeHtml(item.title) + '" loading="lazy" /></span>'
           : '<span class="gpo-search-result-thumb"></span>';
         var subtitle = item.subtitle || item.brand || '';
+        var promoBadge = item.promoBadge ? '<span class="gpo-search-result-badge">' + escapeHtml(item.promoBadge) + '</span>' : '';
+        var priceMarkup = '<span class="gpo-search-result-price">' + escapeHtml(item.price || '') + '</span>';
+        if (item.originalPrice && item.originalPrice !== item.price) {
+          priceMarkup = '<span class="gpo-search-result-price-stack"><small>' + escapeHtml(item.originalPrice) + '</small><strong>' + escapeHtml(item.price || '') + '</strong></span>';
+        }
+        var promoText = item.promoText ? '<small class="gpo-search-result-promo">' + escapeHtml(item.promoText) + '</small>' : '';
         return '<a class="gpo-search-result" href="'+ escapeHtml(item.url) +'">' +
           thumb +
-          '<span class="gpo-search-result-main"><strong>'+ escapeHtml(item.title) +'</strong><small>'+ escapeHtml(subtitle) +'</small></span>' +
-          '<span class="gpo-search-result-price">'+ escapeHtml(item.price || '') +'</span>' +
+          '<span class="gpo-search-result-main">' + promoBadge + '<strong>'+ escapeHtml(item.title) +'</strong><small>'+ escapeHtml(subtitle) +'</small>' + promoText + '</span>' +
+          priceMarkup +
         '</a>';
       }).join('');
       results.hidden = false;

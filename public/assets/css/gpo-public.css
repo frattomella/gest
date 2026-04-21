@@ -3170,6 +3170,98 @@ body.gpo-lightbox-open {
   }
 }
 
+.gpo-badge--promo {
+  background: var(--gpo-promo-color);
+  color: #fff;
+  box-shadow: 0 12px 26px color-mix(in srgb, var(--gpo-promo-color) 28%, rgba(15, 23, 42, 0.08));
+}
+
+.gpo-price-box.is-promoted .gpo-price-current,
+.gpo-price-current--promo,
+.gpo-search-result-price-stack strong,
+.gpo-search-result-price--promo {
+  color: var(--gpo-promo-color);
+}
+
+.gpo-promo-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  color: var(--gpo-promo-color);
+  font-weight: 700;
+}
+
+.gpo-promo-copy::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--gpo-promo-color);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--gpo-promo-color) 14%, transparent);
+}
+
+.gpo-single-summary__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.gpo-search-result-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--gpo-promo-color) 12%, #fff);
+  color: var(--gpo-promo-color);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.gpo-search-result-price-stack {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  white-space: nowrap;
+  padding-left: 8px;
+}
+
+.gpo-search-result-price-stack small {
+  color: #94a3b8;
+  text-decoration: line-through;
+  font-size: 0.74rem;
+  line-height: 1;
+}
+
+.gpo-search-result-price-stack strong {
+  font-size: 0.95rem;
+  line-height: 1.05;
+}
+
+.gpo-search-result-promo {
+  color: var(--gpo-promo-color);
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+@media (max-width: 640px) {
+  .gpo-single-summary__badges {
+    justify-content: flex-start;
+  }
+
+  .gpo-search-result-price-stack {
+    align-items: flex-start;
+    padding-left: 0;
+  }
+}
+
 /* Final brand marquee overrides */
 
 .gpo-brand-nav,

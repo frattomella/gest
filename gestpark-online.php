@@ -41,6 +41,7 @@ require_once GPO_PLUGIN_DIR . 'includes/class-gpo-api-client.php';
 require_once GPO_PLUGIN_DIR . 'includes/class-gpo-image-manager.php';
 require_once GPO_PLUGIN_DIR . 'includes/class-gpo-sync-manager.php';
 require_once GPO_PLUGIN_DIR . 'includes/class-gpo-github-updater.php';
+require_once GPO_PLUGIN_DIR . 'includes/class-gpo-engagement.php';
 require_once GPO_PLUGIN_DIR . 'includes/class-gpo-frontend.php';
 require_once GPO_PLUGIN_DIR . 'includes/class-gpo-blocks.php';
 require_once GPO_PLUGIN_DIR . 'admin/class-gpo-admin.php';

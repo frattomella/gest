@@ -85,6 +85,7 @@ class GPO_Blocks {
         $css = ':root{' .
             '--gpo-primary:' . esc_attr($style['primary_color'] ?? '#111827') . ';' .
             '--gpo-accent:' . esc_attr($style['accent_color'] ?? '#dc2626') . ';' .
+            '--gpo-promo-color:' . esc_attr(class_exists('GPO_Engagement') ? GPO_Engagement::promo_color() : '#dc2626') . ';' .
             '--gpo-bg:' . esc_attr($style['card_bg'] ?? '#ffffff') . ';' .
             '--gpo-radius:' . esc_attr($style['radius'] ?? '16px') . ';' .
             '--gpo-title-font:' . esc_attr($style['title_font'] ?? 'inherit') . ';' .
