@@ -16,19 +16,19 @@ class GPO_CPT {
     public static function register_post_types() {
         register_post_type('gpo_vehicle', [
             'labels' => [
-                'name'          => 'Veicoli',
+                'name' => 'Veicoli',
                 'singular_name' => 'Veicolo',
-                'add_new_item'  => 'Aggiungi veicolo',
-                'edit_item'     => 'Modifica veicolo',
-                'menu_name'     => 'Veicoli',
+                'add_new_item' => 'Aggiungi veicolo',
+                'edit_item' => 'Modifica veicolo',
+                'menu_name' => 'Veicoli',
             ],
-            'public'       => true,
+            'public' => true,
             'show_in_menu' => false,
             'show_in_rest' => true,
-            'supports'     => ['title', 'editor', 'thumbnail', 'excerpt'],
-            'has_archive'  => true,
-            'rewrite'      => ['slug' => 'veicoli'],
-            'menu_icon'    => 'dashicons-car',
+            'supports' => ['title', 'editor', 'thumbnail', 'excerpt'],
+            'has_archive' => true,
+            'rewrite' => ['slug' => 'veicoli'],
+            'menu_icon' => 'dashicons-car',
         ]);
 
         register_post_type('gpo_template', [
@@ -83,8 +83,8 @@ class GPO_CPT {
     }
 
     public static function render_template_help_metabox($post) {
-        echo '<p>Questo template viene modificato con l’editor di WordPress e può essere assegnato come scheda generale del veicolo dal pannello <strong>gestpark online → Aspetto</strong>.</p>';
-        echo '<p>All’interno dell’editor puoi spostare liberamente box, colonne, gruppi, caroselli e qualsiasi blocco Gutenberg. I blocchi GestPark leggono i dati del veicolo corrente in modo dinamico.</p>';
+        echo '<p>Questo template viene modificato con l editor di WordPress e puo essere assegnato come scheda generale del veicolo dal pannello <strong>gestpark online</strong>.</p>';
+        echo '<p>All interno dell editor puoi spostare liberamente box, colonne, gruppi, caroselli e qualsiasi blocco Gutenberg. I blocchi GestPark leggono i dati del veicolo corrente in modo dinamico.</p>';
         echo '<p><strong>Suggerimento:</strong> usa i blocchi GestPark Hero, Scheda tecnica, Accessori, Contatto e Carosello per costruire un layout completamente personalizzato e responsive.</p>';
         if (class_exists('GPO_Frontend')) {
             $preview_url = GPO_Frontend::template_preview_vehicle_link($post->ID);
@@ -101,30 +101,30 @@ class GPO_CPT {
 
     public static function fields() {
         return [
-            'condition'     => 'Condizione',
-            'year'          => 'Anno',
-            'price'         => 'Prezzo',
-            'fuel'          => 'Alimentazione',
-            'mileage'       => 'Chilometraggio',
-            'body_type'     => 'Carrozzeria',
-            'transmission'  => 'Cambio',
-            'engine_size'   => 'Cilindrata',
-            'brand'         => 'Marca',
-            'model'         => 'Modello',
-            'version'       => 'Versione',
-            'power'         => 'Potenza',
-            'color'         => 'Colore',
-            'doors'         => 'Porte',
-            'seats'         => 'Posti',
-            'plate'         => 'Targa',
-            'vin'           => 'Telaio',
-            'location'      => 'Sede',
-            'status'        => 'Stato veicolo',
-            'price_promo'   => 'Prezzo promo',
-            'promo_start'   => 'Inizio promo',
-            'promo_end'     => 'Fine promo',
-            'external_id'   => 'ID esterno',
-            'gallery_urls'  => 'URL galleria',
+            'condition' => 'Condizione',
+            'year' => 'Anno',
+            'price' => 'Prezzo',
+            'fuel' => 'Alimentazione',
+            'mileage' => 'Chilometraggio',
+            'body_type' => 'Carrozzeria',
+            'transmission' => 'Cambio',
+            'engine_size' => 'Cilindrata',
+            'brand' => 'Marca',
+            'model' => 'Modello',
+            'version' => 'Versione',
+            'power' => 'Potenza',
+            'color' => 'Colore',
+            'doors' => 'Porte',
+            'seats' => 'Posti',
+            'plate' => 'Targa',
+            'vin' => 'Telaio',
+            'location' => 'Sede',
+            'status' => 'Stato veicolo',
+            'price_promo' => 'Prezzo promo',
+            'promo_start' => 'Inizio promo',
+            'promo_end' => 'Fine promo',
+            'external_id' => 'ID esterno',
+            'gallery_urls' => 'URL galleria',
         ];
     }
 
@@ -134,7 +134,7 @@ class GPO_CPT {
         echo '<table class="form-table"><tbody>';
         foreach ($fields as $key => $label) {
             $value = get_post_meta($post->ID, '_gpo_' . $key, true);
-            $lock  = get_post_meta($post->ID, '_gpo_lock_' . $key, true);
+            $lock = get_post_meta($post->ID, '_gpo_lock_' . $key, true);
             echo '<tr>';
             echo '<th><label for="gpo_' . esc_attr($key) . '">' . esc_html($label) . '</label></th>';
             echo '<td>';
@@ -142,7 +142,7 @@ class GPO_CPT {
                 echo '<textarea style="width:100%;min-height:90px;" id="gpo_' . esc_attr($key) . '" name="gpo_meta[' . esc_attr($key) . ']">' . esc_textarea($value) . '</textarea>';
                 echo '<p class="description">Inserisci un URL per riga. Questo campo viene usato anche in fase di test senza import automatico immagini.</p>';
             } else {
-                $type = in_array($key, ['price', 'price_promo']) ? 'number' : 'text';
+                $type = in_array($key, ['price', 'price_promo'], true) ? 'number' : 'text';
                 echo '<input style="width:100%;" type="' . esc_attr($type) . '" id="gpo_' . esc_attr($key) . '" name="gpo_meta[' . esc_attr($key) . ']" value="' . esc_attr($value) . '" />';
             }
             if (!in_array($key, ['external_id', 'gallery_urls'], true)) {
@@ -156,9 +156,9 @@ class GPO_CPT {
 
     public static function render_notes_metabox($post) {
         $internal_notes = get_post_meta($post->ID, '_gpo_internal_notes', true);
-        $public_notes   = get_post_meta($post->ID, '_gpo_public_notes', true);
-        $specs          = get_post_meta($post->ID, '_gpo_specs', true);
-        $accessories    = get_post_meta($post->ID, '_gpo_accessories', true);
+        $public_notes = get_post_meta($post->ID, '_gpo_public_notes', true);
+        $specs = get_post_meta($post->ID, '_gpo_specs', true);
+        $accessories = get_post_meta($post->ID, '_gpo_accessories', true);
 
         echo '<p><strong>Note interne</strong></p>';
         echo '<textarea style="width:100%;min-height:90px;" name="gpo_internal_notes">' . esc_textarea($internal_notes) . '</textarea>';
@@ -171,11 +171,11 @@ class GPO_CPT {
     }
 
     public static function render_showcase_metabox($post) {
-        $featured      = get_post_meta($post->ID, '_gpo_featured', true);
+        $featured = get_post_meta($post->ID, '_gpo_featured', true);
         $featured_from = get_post_meta($post->ID, '_gpo_featured_from', true);
-        $featured_to   = get_post_meta($post->ID, '_gpo_featured_to', true);
+        $featured_to = get_post_meta($post->ID, '_gpo_featured_to', true);
         $featured_order = get_post_meta($post->ID, '_gpo_featured_order', true);
-        $badge         = get_post_meta($post->ID, '_gpo_badge', true);
+        $badge = get_post_meta($post->ID, '_gpo_badge', true);
         echo '<p><label><input type="checkbox" name="gpo_featured" value="1" ' . checked($featured, '1', false) . ' /> Veicolo in vetrina</label></p>';
         echo '<p><label>Data inizio vetrina<br><input type="datetime-local" name="gpo_featured_from" value="' . esc_attr($featured_from) . '" /></label></p>';
         echo '<p><label>Data fine vetrina<br><input type="datetime-local" name="gpo_featured_to" value="' . esc_attr($featured_to) . '" /></label></p>';
@@ -223,7 +223,7 @@ class GPO_CPT {
         $new['year'] = 'Anno';
         $new['price'] = 'Prezzo';
         $new['condition'] = 'Condizione';
-        $new['featured'] = 'Vetrina';
+        $new['featured'] = 'In vetrina';
         $new['date'] = 'Data';
         return $new;
     }
@@ -243,7 +243,13 @@ class GPO_CPT {
                 echo esc_html(get_post_meta($post_id, '_gpo_condition', true));
                 break;
             case 'featured':
-                echo get_post_meta($post_id, '_gpo_featured', true) === '1' ? 'Sì' : 'No';
+                $manual_ids = class_exists('GPO_Admin') ? GPO_Admin::manual_showcase_vehicle_ids() : [];
+                $checked = in_array((int) $post_id, $manual_ids, true) || get_post_meta($post_id, '_gpo_featured', true) === '1';
+                echo '<label class="gpo-list-toggle ' . ($checked ? 'is-active' : '') . '">';
+                echo '<input type="checkbox" class="gpo-showcase-toggle" data-post-id="' . esc_attr((string) $post_id) . '" ' . checked($checked, true, false) . ' />';
+                echo '<span class="gpo-list-toggle__ui" aria-hidden="true"></span>';
+                echo '<span class="gpo-list-toggle__text">' . esc_html($checked ? 'In vetrina' : 'Fuori vetrina') . '</span>';
+                echo '</label>';
                 break;
         }
     }
