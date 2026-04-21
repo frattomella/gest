@@ -1075,7 +1075,6 @@ body .post-content > .gpo-block.alignfull {
     border-radius: 22px;
   }
 }
-
 /* April 2026 responsive card visibility, compact meta and touch marquee refinements */
 
 @media (min-width: 1181px) {
@@ -3286,24 +3285,30 @@ body.gpo-lightbox-open {
 
 .gpo-quick-info-panel {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 132px), 1fr));
+  gap: 10px;
   width: 100%;
-  padding: 10px;
-  border-radius: 18px;
+  max-width: 100%;
+  padding: 12px;
+  border-radius: 20px;
   border: 1px solid rgba(203, 213, 225, 0.9);
   background: linear-gradient(180deg, rgba(248, 250, 252, 0.96) 0%, rgba(241, 245, 249, 0.94) 100%);
+  box-sizing: border-box;
+  align-items: stretch;
 }
 
 .gpo-quick-info-panel__item {
-  display: flex !important;
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 10px;
   min-width: 0;
+  max-width: 100%;
   padding: 10px 12px;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(226, 232, 240, 0.92);
+  box-sizing: border-box;
 }
 
 .gpo-quick-info-panel__icon,
@@ -3335,6 +3340,10 @@ body.gpo-lightbox-open {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: #64748b;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .gpo-quick-info-panel__copy strong {
@@ -3342,6 +3351,9 @@ body.gpo-lightbox-open {
   line-height: 1.18;
   font-weight: 800;
   color: var(--gpo-local-text, var(--gpo-primary));
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .gpo-neo-badge {
@@ -3369,6 +3381,19 @@ body.gpo-lightbox-open {
   align-self: flex-start;
 }
 
+.gpo-card-body .gpo-quick-info-panel__item {
+  padding: 10px 11px;
+}
+
+.gpo-card-body .gpo-quick-info-panel__icon {
+  width: 28px;
+  height: 28px;
+}
+
+.gpo-card-body .gpo-quick-info-panel__copy strong {
+  font-size: clamp(0.84rem, 0.78rem + 0.16vw, 0.92rem);
+}
+
 .gpo-quick-info-panel--hero,
 .gpo-quick-info-panel--single {
   background: transparent;
@@ -3379,6 +3404,11 @@ body.gpo-lightbox-open {
   display: grid;
   gap: 12px;
   width: 100%;
+}
+
+.gpo-single-contact-section {
+  display: grid;
+  gap: 0;
 }
 
 .gpo-theme-main {
@@ -3463,10 +3493,24 @@ body.gpo-lightbox-open {
   margin-top: 0;
 }
 
+.gpo-brand-carousel.is-enhanced .gpo-brand-item {
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
+}
+
 @media (max-width: 1180px) {
   .single-gpo_vehicle .gpo-single-summary,
   .single-gpo_vehicle .gpo-template-shell .gpo-template-hero__content {
     position: static;
+  }
+
+  .single-gpo_vehicle .gpo-single-layout-reversed .gpo-single-gallery-panel {
+    order: 1;
+  }
+
+  .single-gpo_vehicle .gpo-single-layout-reversed .gpo-single-summary {
+    order: 2;
   }
 
   .gpo-quick-info-panel {
@@ -3477,16 +3521,159 @@ body.gpo-lightbox-open {
 @media (max-width: 720px) {
   .gpo-quick-info-panel {
     grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .gpo-quick-info-panel__item {
+    padding: 10px;
+  }
+
+  .gpo-quick-info-panel__copy small {
+    font-size: 0.62rem;
+  }
+
+  .gpo-quick-info-panel__copy strong {
+    font-size: 0.88rem;
   }
 
   .single-gpo_vehicle .gpo-page-shell {
     padding-left: 12px;
     padding-right: 12px;
+    width: 100%;
+    max-width: none;
+  }
+
+  .single-gpo_vehicle .gpo-single-wrap,
+  .single-gpo_vehicle .gpo-template-shell {
+    gap: 18px;
+  }
+
+  .single-gpo_vehicle .gpo-single-hero,
+  .single-gpo_vehicle .gpo-content-grid,
+  .single-gpo_vehicle .gpo-single-layout-reversed .gpo-single-hero {
+    grid-template-columns: 1fr !important;
+    gap: 18px;
+  }
+
+  .single-gpo_vehicle .gpo-single-gallery-panel,
+  .single-gpo_vehicle .gpo-single-summary,
+  .single-gpo_vehicle .gpo-content-block,
+  .single-gpo_vehicle .gpo-side-card,
+  .single-gpo_vehicle .gpo-inline-lead-card,
+  .single-gpo_vehicle .gpo-template-shell .gpo-template-hero__content {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+  }
+
+  .single-gpo_vehicle .gpo-single-gallery-panel {
+    order: 1;
+    padding: 14px;
+  }
+
+  .single-gpo_vehicle .gpo-single-summary,
+  .single-gpo_vehicle .gpo-template-shell .gpo-template-hero__content {
+    order: 2;
+    position: static !important;
+    top: auto;
+    padding: 18px;
+    gap: 18px;
+  }
+
+  .single-gpo_vehicle .gpo-content-grid {
+    order: 3;
+  }
+
+  .single-gpo_vehicle .gpo-single-contact-section {
+    order: 4;
+  }
+
+  .single-gpo_vehicle .gpo-main-stack,
+  .single-gpo_vehicle .gpo-side-stack {
+    gap: 16px;
+  }
+
+  .single-gpo_vehicle .gpo-side-stack {
+    position: static;
+    top: auto;
+  }
+
+  .single-gpo_vehicle .gpo-single-price-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .single-gpo_vehicle .gpo-single-summary__highlights {
+    gap: 10px;
   }
 
   .single-gpo_vehicle .gpo-single-summary h1,
   .single-gpo_vehicle .gpo-template-shell .gpo-template-hero__content h1 {
     max-width: none;
+    font-size: clamp(1.45rem, 1.18rem + 1.8vw, 2rem);
+  }
+
+  .single-gpo_vehicle .gpo-single-stage {
+    grid-template-columns: 40px minmax(0, 1fr) 40px;
+    gap: 8px;
+  }
+
+  .single-gpo_vehicle .gpo-single-main img,
+  .single-gpo_vehicle .gpo-single-main--fallback .gpo-fallback-image,
+  .single-gpo_vehicle .gpo-template-shell .gpo-single-main img,
+  .single-gpo_vehicle .gpo-template-shell .gpo-single-main--fallback .gpo-fallback-image {
+    aspect-ratio: 4 / 3;
+  }
+
+  .single-gpo_vehicle .gpo-single-thumbs {
+    gap: 8px;
+    grid-auto-columns: 72px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .single-gpo_vehicle .gpo-single-thumbs::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .gpo-quick-info-panel__copy small {
+    font-size: 0.6rem;
+  }
+
+  .gpo-quick-info-panel__copy strong {
+    font-size: 0.86rem;
+  }
+
+  .single-gpo_vehicle .gpo-single-gallery-panel,
+  .single-gpo_vehicle .gpo-single-summary,
+  .single-gpo_vehicle .gpo-content-block,
+  .single-gpo_vehicle .gpo-side-card,
+  .single-gpo_vehicle .gpo-inline-lead-card,
+  .single-gpo_vehicle .gpo-template-shell .gpo-template-hero__content {
+    padding: 16px;
+    border-radius: 20px;
+  }
+
+  .single-gpo_vehicle .gpo-single-stage {
+    grid-template-columns: 36px minmax(0, 1fr) 36px;
+    gap: 6px;
+  }
+
+  .single-gpo_vehicle .gpo-single-stage__nav {
+    width: 36px;
+    height: 36px;
+  }
+
+  .single-gpo_vehicle .gpo-single-summary__badges {
+    justify-content: flex-start;
+  }
+
+  .single-gpo_vehicle .gpo-inline-lead-card .gpo-lead-grid {
+    grid-template-columns: 1fr;
   }
 }
 

@@ -1973,6 +1973,7 @@ class GPO_Frontend {
             'class' => $classes,
             'href' => esc_url($url),
             'aria-label' => esc_attr($brand['name']),
+            'draggable' => 'false',
         ];
 
         if ($duplicate) {
@@ -1987,7 +1988,7 @@ class GPO_Frontend {
         $html .= '>';
 
         if (!empty($brand['has_local_logo'])) {
-            $html .= '<span class="gpo-brand-item__visual"><img src="' . esc_url($brand['logo']) . '" alt="' . esc_attr($brand['name']) . '" loading="lazy" decoding="async" /></span>';
+            $html .= '<span class="gpo-brand-item__visual"><img src="' . esc_url($brand['logo']) . '" alt="' . esc_attr($brand['name']) . '" loading="lazy" decoding="async" draggable="false" /></span>';
         } else {
             $html .= '<span class="gpo-brand-item__meta">';
             $html .= '<strong class="gpo-brand-name">' . esc_html($brand['name']) . '</strong>';

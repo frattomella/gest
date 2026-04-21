@@ -55,6 +55,15 @@ $meta = [
 $show = function ($key) use ($visible) {
     return in_array($key, $visible, true);
 };
+$contact_markup = '';
+if ($show('contact_box')) {
+    $contact_markup = GPO_Frontend::lead_form_markup($post_id, [
+        'title' => 'Richiedi informazioni',
+        'text' => 'Compila il modulo per ricevere disponibilita, valutazione permuta e proposta commerciale personalizzata su questo veicolo.',
+        'button_label' => 'Invia richiesta',
+        'wrapper_class' => 'gpo-inline-lead-card',
+    ]);
+}
 ?>
 <main id="primary" class="site-main gpo-theme-main">
 <div class="gpo-page-shell">
@@ -108,17 +117,6 @@ $show = function ($key) use ($visible) {
                         <div><strong><?php echo esc_html($label); ?></strong><span><?php echo esc_html($value); ?></span></div>
                     <?php endforeach; ?>
                 </div>
-
-                <?php if ($show('contact_box')) : ?>
-                    <?php
-                    echo GPO_Frontend::lead_form_markup($post_id, [
-                        'title' => 'Richiedi informazioni',
-                        'text' => 'Compila il modulo per ricevere disponibilita, valutazione permuta e proposta commerciale personalizzata su questo veicolo.',
-                        'button_label' => 'Invia richiesta',
-                        'wrapper_class' => 'gpo-inline-lead-card',
-                    ]);
-                    ?>
-                <?php endif; ?>
             </div>
         <?php endif; ?>
     </section>
@@ -168,6 +166,12 @@ $show = function ($key) use ($visible) {
             <?php endif; ?>
         </aside>
     </section>
+
+    <?php if ($contact_markup) : ?>
+        <section class="gpo-single-contact-section">
+            <?php echo $contact_markup; ?>
+        </section>
+    <?php endif; ?>
 </div>
 </div>
 </main>

@@ -207,7 +207,11 @@
     }
 
     function beginDrag(event) {
-      if (event.pointerType === 'mouse' && event.button !== 0) {
+      if (event.pointerType === 'mouse') {
+        return;
+      }
+
+      if (typeof event.button === 'number' && event.button !== 0) {
         return;
       }
 
