@@ -1081,6 +1081,10 @@ body .post-content > .gpo-block.alignfull {
 .gpo-vehicle-search-shell {
   display: flex !important;
   align-items: center !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
   padding-top: 0 !important;
   padding-bottom: 0 !important;
   min-height: 0 !important;
@@ -1091,6 +1095,22 @@ body .post-content > .gpo-block.alignfull {
   align-items: center !important;
   width: min(100%, var(--gpo-search-width)) !important;
   margin: 0 !important;
+  min-height: 0 !important;
+}
+
+.wp-block-gestpark-vehicle-search,
+.gpo-block-vehicle-search {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  min-height: 0 !important;
+  line-height: 0;
+}
+
+.wp-block-gestpark-vehicle-search .gpo-search-results,
+.gpo-block-vehicle-search .gpo-search-results {
+  line-height: 1.4;
 }
 
 .gpo-brand-carousel.is-enhanced .gpo-brand-viewport,
@@ -2216,6 +2236,12 @@ body.gpo-lightbox-open {
   border-color: rgba(239, 68, 68, 0.22);
 }
 
+.gpo-lead-notice.is-warning {
+  background: rgba(245, 158, 11, 0.1);
+  color: #92400e;
+  border-color: rgba(245, 158, 11, 0.24);
+}
+
 .gpo-lead-notice p {
   margin: 0;
 }
@@ -2224,6 +2250,19 @@ body.gpo-lightbox-open {
   display: grid;
   gap: 16px;
   margin-top: 18px;
+}
+
+.gpo-lead-form__fieldset {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.gpo-lead-form__fieldset[disabled] {
+  opacity: 0.62;
 }
 
 .gpo-lead-grid {
@@ -2287,6 +2326,12 @@ body.gpo-lightbox-open {
 
 .gpo-lead-submit {
   width: 100%;
+}
+
+.gpo-lead-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+  box-shadow: none;
 }
 
 .gpo-carousel-track {

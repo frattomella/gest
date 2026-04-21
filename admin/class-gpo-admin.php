@@ -308,6 +308,9 @@ class GPO_Admin {
                 'end_time' => '',
                 'queue' => [],
             ],
+            'lead_requests' => [
+                'recipient_email' => '',
+            ],
             'vehicle_carousel' => [
                 'notes' => '',
             ],
@@ -432,6 +435,9 @@ class GPO_Admin {
         $output['showcase_carousel']['end_time'] = self::sanitize_time($showcase['end_time'] ?? '');
         $output['showcase_carousel']['queue'] = self::sanitize_showcase_queue($showcase['queue'] ?? []);
 
+        $lead_requests = isset($input['lead_requests']) && is_array($input['lead_requests']) ? $input['lead_requests'] : [];
+        $output['lead_requests']['recipient_email'] = sanitize_email((string) ($lead_requests['recipient_email'] ?? ''));
+
         foreach (['search_bar', 'catalog_filters', 'vehicle_carousel', 'vehicle_grid'] as $key) {
             $current = isset($input[$key]) && is_array($input[$key]) ? $input[$key] : [];
             $output[$key]['notes'] = sanitize_text_field((string) ($current['notes'] ?? ''));
@@ -545,7 +551,7 @@ class GPO_Admin {
             echo '<span>' . esc_html($args['description']) . '</span>';
             echo '</span>';
         } else {
-            $input_type = $args['type'] === 'password' ? 'password' : 'text';
+            $input_type = in_array($args['type'], ['text', 'password', 'email', 'url', 'number'], true) ? $args['type'] : 'text';
             echo '<input type="' . esc_attr($input_type) . '" name="' . esc_attr($args['name']) . '" value="' . esc_attr((string) $args['value']) . '" placeholder="' . esc_attr($args['placeholder']) . '" />';
         }
 
@@ -554,6 +560,18 @@ class GPO_Admin {
         }
 
         echo '</label>';
+    }
+
+    protected static function configured_lead_email() {
+        $raw_settings = get_option('gpo_settings', []);
+        $raw_settings = is_array($raw_settings) ? $raw_settings : [];
+
+        $lead_request_settings = $raw_settings['components']['lead_requests'] ?? null;
+        if (is_array($lead_request_settings) && array_key_exists('recipient_email', $lead_request_settings)) {
+            return sanitize_email((string) ($lead_request_settings['recipient_email'] ?? ''));
+        }
+
+        return sanitize_email((string) ($raw_settings['style']['lead_email'] ?? ''));
     }
 
     protected static function vehicle_options() {
@@ -1489,7 +1507,8 @@ class GPO_Admin {
 
     public static function components_page() {
         $settings = self::get_settings();
-        $components = isset($settings['components']) && is_array($settings['components']) ? $settings['components'] : self::default_component_settings();
+        $components = isset($settings['components']) && is_array($settings['components']) ? $settings['components'] : [];
+        $components = wp_parse_args($components, self::default_component_settings());
         $vehicle_options = self::vehicle_options();
         $brand_options = self::brand_options();
         $featured_queue_rows = max(3, count($components['featured_vehicle']['queue'] ?? []) + 1);
@@ -1892,9 +1911,11 @@ class GPO_Admin {
 
     public static function components_hub_page() {
         $settings = self::get_settings();
-        $components = isset($settings['components']) && is_array($settings['components']) ? $settings['components'] : self::default_component_settings();
+        $components = isset($settings['components']) && is_array($settings['components']) ? $settings['components'] : [];
+        $components = wp_parse_args($components, self::default_component_settings());
         $vehicle_records = self::vehicle_records();
         $brand_options = self::brand_options();
+        $lead_email = self::configured_lead_email();
         $featured_map = array_column($vehicle_records, 'label', 'id');
         $featured_summary = !empty($components['featured_vehicle']['vehicle_id']) && isset($featured_map[$components['featured_vehicle']['vehicle_id']]) ? $featured_map[$components['featured_vehicle']['vehicle_id']] : 'Fallback automatico';
         $brand_mode_labels = [
@@ -1904,6 +1925,7 @@ class GPO_Admin {
         ];
         $brand_summary = $brand_mode_labels[$components['brand_banner']['mode'] ?? 'inventory'] ?? 'Solo marchi in stock';
         $showcase_summary = !empty($components['showcase_carousel']['vehicle_ids']) ? count((array) $components['showcase_carousel']['vehicle_ids']) . ' veicoli in vetrina' : 'Fallback automatico';
+        $lead_summary = $lead_email ? 'Configurata' : 'Non configurata';
 
         self::render_page_start(
             'components',
@@ -2015,6 +2037,23 @@ class GPO_Admin {
         echo '</div>';
         self::component_section_end();
 
+        self::component_section_start('lead_requests', 'Richieste informazioni', 'Configura l indirizzo email al quale ricevere le richieste inviate dai visitatori dalle schede veicolo.', $lead_summary);
+        echo '<div class="gpo-surface-grid gpo-surface-grid--connections">';
+        echo '<div class="gpo-surface gpo-surface--compact">';
+        echo '<div class="gpo-surface__eyebrow">Recapito commerciale</div><h2>Email destinataria</h2>';
+        self::render_setting_field([
+            'label' => 'Email destinataria',
+            'name' => 'gpo_settings[components][lead_requests][recipient_email]',
+            'value' => $components['lead_requests']['recipient_email'] ?? '',
+            'type' => 'email',
+            'placeholder' => 'contatti@concessionaria.it',
+            'description' => 'Le richieste inviate dalle schede veicolo verranno recapitate a questo indirizzo.',
+        ]);
+        echo '</div>';
+        echo '<div class="gpo-surface gpo-surface--accent gpo-surface--compact"><div class="gpo-surface__eyebrow">Stato attuale</div><h2>' . esc_html($lead_email ? 'Richieste attive' : 'Richieste non attive') . '</h2><p>' . esc_html($lead_email ? 'Il modulo di contatto delle schede veicolo è pronto a recapitare le richieste al destinatario configurato.' : 'Imposta un indirizzo email per attivare l invio delle richieste informative provenienti dal sito.') . '</p></div>';
+        echo '</div>';
+        self::component_section_end();
+
         echo '<div class="gpo-form-submit">';
         submit_button('Salva configurazione componenti', 'primary', 'submit', false);
         echo '</div>';
@@ -2056,7 +2095,7 @@ class GPO_Admin {
                 self::render_promo_rule_card($i, $rule, $vehicle_records, $brand_options);
             }
         } else {
-            echo '<div class="gpo-empty-state"><strong>Nessuna promo attiva o salvata</strong><span>Inizia con una nuova promo e scegli se applicarla a un veicolo, a un gruppo o a una marca.</span></div>';
+            echo '<div class="gpo-empty-state"><strong>Nessuna promozione configurata</strong><span>Crea una nuova regola e scegli se applicarla a un veicolo, a un gruppo oppure a una marca.</span></div>';
         }
         echo '</div>';
         echo '<template id="gpo-promo-template">';

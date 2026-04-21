@@ -180,13 +180,19 @@ class GPO_Frontend {
     }
 
     protected static function lead_email() {
-        $settings = self::display_settings();
-        $email = sanitize_email((string) ($settings['style']['lead_email'] ?? ''));
-        if ($email) {
-            return $email;
+        $raw_settings = get_option('gpo_settings', []);
+        $raw_settings = is_array($raw_settings) ? $raw_settings : [];
+
+        $lead_request_settings = $raw_settings['components']['lead_requests'] ?? null;
+        if (is_array($lead_request_settings) && array_key_exists('recipient_email', $lead_request_settings)) {
+            return sanitize_email((string) ($lead_request_settings['recipient_email'] ?? ''));
         }
 
-        return sanitize_email((string) get_option('admin_email'));
+        return sanitize_email((string) ($raw_settings['style']['lead_email'] ?? ''));
+    }
+
+    protected static function has_configured_lead_email() {
+        return self::lead_email() !== '';
     }
 
     protected static function lead_success_message() {
@@ -222,6 +228,19 @@ class GPO_Frontend {
 
         $class = $status === 'success' ? 'is-success' : 'is-error';
         return '<div class="gpo-lead-notice ' . esc_attr($class) . '" role="status"><p>' . esc_html($message) . '</p></div>';
+    }
+
+    protected static function promotion_copy_text($promotion) {
+        if (!is_array($promotion)) {
+            return '';
+        }
+
+        $text = trim((string) ($promotion['promo_text'] ?? ''));
+        if ($text !== '' && strtolower(remove_accents($text)) === 'promo attiva') {
+            $text = '';
+        }
+
+        return $text;
     }
 
     protected static function preferred_menu_location() {
@@ -291,6 +310,7 @@ class GPO_Frontend {
     public static function lead_form_markup($post_id, $args = []) {
         $post_id = absint($post_id);
         $post_title = $post_id ? get_the_title($post_id) : '';
+        $can_submit = self::has_configured_lead_email();
         $defaults = [
             'title' => 'Richiedi informazioni',
             'text' => 'Compila il modulo per ricevere disponibilità, proposta commerciale e ulteriori dettagli su questo veicolo.',
@@ -309,11 +329,15 @@ class GPO_Frontend {
         echo '<h3>' . esc_html($args['title']) . '</h3>';
         echo '<p>' . esc_html($args['text']) . '</p>';
         echo self::lead_notice_markup();
+        if (!$can_submit) {
+            echo '<div class="gpo-lead-notice is-warning" role="status"><p>Le richieste online non sono ancora attive. Configura un indirizzo email destinatario in GestPark Online per iniziare a ricevere contatti dalle schede veicolo.</p></div>';
+        }
         echo '<form class="gpo-lead-form" action="' . esc_url(admin_url('admin-post.php')) . '" method="post">';
         echo '<input type="hidden" name="action" value="gpo_vehicle_lead" />';
         echo '<input type="hidden" name="post_id" value="' . esc_attr((string) $post_id) . '" />';
         echo '<input type="hidden" name="redirect_to" value="' . esc_url($redirect_url) . '" />';
         wp_nonce_field('gpo_vehicle_lead_' . $post_id, 'gpo_vehicle_lead_nonce');
+        echo '<fieldset class="gpo-lead-form__fieldset"' . ($can_submit ? '' : ' disabled aria-disabled="true"') . '>';
         echo '<div class="gpo-lead-grid">';
         echo '<label><span>Nome</span><input type="text" name="gpo_lead[first_name]" required autocomplete="given-name" /></label>';
         echo '<label><span>Cognome</span><input type="text" name="gpo_lead[last_name]" required autocomplete="family-name" /></label>';
@@ -322,7 +346,8 @@ class GPO_Frontend {
         echo '</div>';
         echo '<label class="gpo-lead-message"><span>Richiesta</span><textarea name="gpo_lead[message]" rows="5" required placeholder="Vorrei ricevere maggiori informazioni su ' . esc_attr($post_title ?: 'questo veicolo') . '."></textarea></label>';
         echo '<label class="gpo-lead-honeypot" aria-hidden="true"><span>Lascia vuoto</span><input type="text" name="gpo_lead[company]" tabindex="-1" autocomplete="off" /></label>';
-        echo '<button class="gpo-button gpo-lead-submit" type="submit">' . esc_html($args['button_label']) . '</button>';
+        echo '<button class="gpo-button gpo-lead-submit" type="submit"' . ($can_submit ? '' : ' disabled') . '>' . esc_html($args['button_label']) . '</button>';
+        echo '</fieldset>';
         echo '</form>';
         echo '</aside>';
         return ob_get_clean();
@@ -361,25 +386,35 @@ class GPO_Frontend {
         }
 
         $recipient = self::lead_email();
+        if ($recipient === '') {
+            wp_safe_redirect(add_query_arg([
+                'gpo_lead' => 'error',
+                'gpo_lead_message' => 'Le richieste online non sono ancora attive. Configura un indirizzo email destinatario in GestPark Online e riprova.',
+            ], $redirect));
+            exit;
+        }
+
         $vehicle_title = $post_id ? get_the_title($post_id) : 'Veicolo';
         $vehicle_url = $post_id ? get_permalink($post_id) : '';
-        $subject = sprintf('Nuova richiesta veicolo: %s', wp_specialchars_decode((string) $vehicle_title, ENT_QUOTES));
-        $body = "Nuova richiesta dal sito web\n\n";
-        $body .= "Veicolo: " . $vehicle_title . "\n";
+        $subject = sprintf('Richiesta informazioni - %s', wp_specialchars_decode((string) $vehicle_title, ENT_QUOTES));
+        $body = "Nuova richiesta informazioni dal sito web\n\n";
+        $body .= "Veicolo\n";
+        $body .= "Titolo: " . $vehicle_title . "\n";
         if ($vehicle_url) {
-            $body .= "URL veicolo: " . $vehicle_url . "\n";
+            $body .= "Scheda: " . $vehicle_url . "\n";
         }
+        $body .= "\nContatto\n";
         $body .= "Nome: " . trim($first_name . ' ' . $last_name) . "\n";
         $body .= "Email: " . $email . "\n";
-        $body .= "Cellulare: " . $phone . "\n\n";
-        $body .= "Richiesta:\n" . $message . "\n";
+        $body .= "Cellulare: " . $phone . "\n";
+        $body .= "\nMessaggio\n" . $message . "\n";
 
         $headers = ['Content-Type: text/plain; charset=UTF-8', 'Reply-To: ' . trim($first_name . ' ' . $last_name) . ' <' . $email . '>'];
         $sent = wp_mail($recipient, $subject, $body, $headers);
 
         wp_safe_redirect(add_query_arg([
             'gpo_lead' => $sent ? 'success' : 'error',
-            'gpo_lead_message' => $sent ? self::lead_success_message() : 'Invio email non riuscito. Controlla la configurazione del destinatario nel plugin.',
+            'gpo_lead_message' => $sent ? self::lead_success_message() : 'Non e stato possibile inoltrare la richiesta. Verifica la configurazione dell indirizzo destinatario e riprova.',
         ], $redirect));
         exit;
     }
@@ -439,7 +474,7 @@ class GPO_Frontend {
                 self::render_card(get_the_ID(), $display);
             }
         } else {
-            echo '<div class="gpo-empty-state"><h3>Nessun veicolo disponibile</h3><p>Modifica i filtri oppure aggiungi nuovi veicoli dal plugin.</p></div>';
+            echo '<div class="gpo-empty-state"><h3>Nessun veicolo disponibile</h3><p>Non sono presenti veicoli che corrispondono ai filtri selezionati. Aggiorna i criteri di ricerca oppure verifica l inventario pubblicato.</p></div>';
         }
         echo '</div></div>';
         wp_reset_postdata();
@@ -483,7 +518,7 @@ class GPO_Frontend {
         } else {
             echo self::empty_state_markup(
                 'Nessun veicolo disponibile',
-                'Sincronizza almeno un veicolo reale da ParkPlatform oppure seleziona una vetrina attiva.'
+                'Non sono presenti veicoli in evidenza al momento. Verifica la connessione dati o aggiorna l inventario pubblicato.'
             );
         }
         return ob_get_clean();
@@ -544,7 +579,7 @@ class GPO_Frontend {
         } else {
             echo self::empty_state_markup(
                 'Nessun veicolo disponibile',
-                'Sincronizza almeno un veicolo reale da ParkPlatform oppure seleziona una vetrina attiva.'
+                'Non sono presenti veicoli in vetrina al momento. Verifica la connessione dati o aggiorna l inventario pubblicato.'
             );
         }
         echo '</div><div class="gpo-carousel-dots" aria-hidden="true"></div></div></div>';
@@ -1196,8 +1231,9 @@ class GPO_Frontend {
                 echo '<span class="gpo-price-old">' . esc_html(self::format_price($price)) . '</span>';
             }
             echo '<strong class="gpo-price-current' . ($promotion ? ' gpo-price-current--promo' : '') . '">' . esc_html(self::format_price($current_price)) . '</strong>';
-            if ($promotion && !empty($promotion['promo_text'])) {
-                echo '<span class="gpo-promo-copy">' . esc_html($promotion['promo_text']) . '</span>';
+            $promo_copy = self::promotion_copy_text($promotion);
+            if ($promotion && $promo_copy !== '') {
+                echo '<span class="gpo-promo-copy">' . esc_html($promo_copy) . '</span>';
             } elseif ($promotion) {
                 echo '<span class="gpo-promo-copy">' . esc_html($promotion['discount_label']) . '</span>';
             }
@@ -2168,7 +2204,7 @@ class GPO_Frontend {
             'bg_color' => $atts['bg_color'],
             'text_color' => $atts['text_color'],
             'button_color' => $atts['button_color'],
-        ]) . '--gpo-search-width:' . max(20, min(100, absint($atts['width']))) . '%;--gpo-search-radius:' . max(36, absint($atts['radius'])) . 'px;';
+        ]) . '--gpo-search-width:' . max(20, min(100, absint($atts['width']))) . '%;--gpo-search-radius:' . max(36, absint($atts['radius'])) . 'px;--gpo-shell-margin-y:0px;--gpo-shell-padding-x:0px;';
         ob_start();
         echo '<div class="gpo-vehicle-search-shell" style="' . esc_attr($style) . '">';
         echo '<form class="gpo-vehicle-search" data-target-url="' . esc_url($target_url) . '" data-catalog-ref="' . esc_attr($atts['catalog_ref']) . '" action="' . esc_url($target_url) . '" method="get" autocomplete="off">';
@@ -2214,7 +2250,7 @@ class GPO_Frontend {
                 'price' => self::format_price_public($data['current_price'] ?? ''),
                 'originalPrice' => !empty($data['promotion']['formatted_original']) ? $data['promotion']['formatted_original'] : '',
                 'promoBadge' => !empty($data['promotion']['badge']) ? $data['promotion']['badge'] : '',
-                'promoText' => !empty($data['promotion']['promo_text']) ? $data['promotion']['promo_text'] : '',
+                'promoText' => self::promotion_copy_text($data['promotion'] ?? []),
                 'neopatentati' => !empty($data['neopatentati']),
                 'brand' => $data['brand'] ?? '',
                 'subtitle' => $subtitle,

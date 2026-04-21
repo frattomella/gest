@@ -125,6 +125,12 @@
   box-sizing: border-box;
 }
 
+.editor-styles-wrapper .wp-block[data-type="gestpark/vehicle-search"] .gpo-vehicle-search-shell {
+  margin: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
 .editor-styles-wrapper .wp-block[data-type^="gestpark/"].alignwide .gpo-editor-frame {
   max-width: min(100%, var(--gpo-content-max-width));
 }

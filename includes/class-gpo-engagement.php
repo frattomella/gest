@@ -133,7 +133,7 @@ class GPO_Engagement {
             'rule_id' => $rule['id'],
             'priority' => self::rule_priority($rule),
             'target_type' => $rule['target_type'],
-            'title' => $title !== '' ? $title : 'Promo attiva',
+            'title' => $title,
             'badge' => $badge,
             'promo_text' => trim((string) $rule['promo_text']),
             'original_price' => $original_price,
