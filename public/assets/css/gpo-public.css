@@ -1075,6 +1075,146 @@ body .post-content > .gpo-block.alignfull {
     border-radius: 22px;
   }
 }
+
+/* Final April 2026 overrides */
+
+.gpo-vehicle-search-shell {
+  display: flex !important;
+  align-items: center !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  min-height: 0 !important;
+}
+
+.gpo-vehicle-search-shell .gpo-vehicle-search {
+  display: flex !important;
+  align-items: center !important;
+  width: min(100%, var(--gpo-search-width)) !important;
+  margin: 0 !important;
+}
+
+.gpo-brand-carousel.is-enhanced .gpo-brand-viewport,
+.gpo-brand-carousel.is-enhanced .gpo-brand-track,
+.gpo-brand-carousel.is-enhanced .gpo-brand-item {
+  pointer-events: auto !important;
+}
+
+.gpo-brand-carousel.is-enhanced .gpo-brand-item {
+  position: relative;
+  z-index: 2;
+}
+
+.gpo-filter-toggle {
+  display: none;
+  width: 100%;
+  margin: 0 0 14px;
+  padding: 14px 16px;
+  border: 1px solid rgba(203, 213, 225, 0.92);
+  border-radius: 18px;
+  background: #fff;
+  color: var(--gpo-local-text, var(--gpo-primary));
+  text-align: left;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  cursor: pointer;
+}
+
+.gpo-filter-toggle__copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.gpo-filter-toggle__copy strong {
+  font-size: 0.95rem;
+  line-height: 1.2;
+}
+
+.gpo-filter-toggle__copy small {
+  color: #64748b;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.gpo-filter-toggle__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  transition: transform 0.18s ease;
+}
+
+.gpo-filter-panel.is-open .gpo-filter-toggle__icon {
+  transform: rotate(90deg);
+}
+
+.gpo-filter-panel__body[hidden] {
+  display: none !important;
+}
+
+.gpo-filter-grid .gpo-filter-control,
+.gpo-filter-control__field {
+  min-width: 0;
+}
+
+.gpo-carousel-track {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  scroll-snap-type: x proximity;
+}
+
+.gpo-carousel-track::-webkit-scrollbar {
+  display: none;
+}
+
+.gpo-carousel-slide {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+@media (max-width: 1180px) {
+  .gpo-carousel-nav {
+    display: none !important;
+  }
+
+  .gpo-carousel-track {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+
+  .gpo-filter-panel.is-collapsible .gpo-filter-toggle {
+    display: flex;
+  }
+
+  .gpo-filter-panel.is-collapsible {
+    padding: 16px !important;
+  }
+}
+
+@media (max-width: 980px) {
+  .gpo-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .gpo-filter-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .gpo-filter-panel.is-collapsible {
+    padding: 14px !important;
+  }
+
+  .gpo-filter-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
 /* April 2026 responsive card visibility, compact meta and touch marquee refinements */
 
 @media (min-width: 1181px) {

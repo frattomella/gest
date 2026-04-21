@@ -19,7 +19,6 @@
   const blockData = window.gpoBlockData || { catalogPages: [] };
 
   const FILTER_OPTIONS = [
-    ['search', 'Ricerca testuale'],
     ['condition', 'Condizione'],
     ['brand', 'Marca'],
     ['fuel', 'Alimentazione'],
@@ -225,6 +224,14 @@
     ];
   }
 
+  function deviceFilterToggleGroups(props) {
+    return [
+      toggleGroup(props, 'Filtri visibili desktop', 'filterFieldsDesktop', FILTER_OPTIONS, 'filterFields'),
+      toggleGroup(props, 'Filtri visibili tablet', 'filterFieldsTablet', FILTER_OPTIONS, 'filterFields'),
+      toggleGroup(props, 'Filtri visibili mobile', 'filterFieldsMobile', FILTER_OPTIONS, 'filterFields')
+    ];
+  }
+
   function catalogInspector(props, includeFilters) {
     return [
       el(PanelBody, { title: 'Impostazioni catalogo', initialOpen: true }, [
@@ -263,7 +270,9 @@
         }),
         el(TextControl, { label: 'Testo bottone principale', value: props.attributes.primaryButtonLabel || 'Scheda veicolo', onChange: function (value) { props.setAttributes({ primaryButtonLabel: value }); } })
       ].concat(styleControls(props)))
-    ].concat(deviceToggleGroups(props)).concat(includeFilters ? [toggleGroup(props, 'Filtri visibili', 'filterFields', FILTER_OPTIONS)] : []);
+    ].concat(deviceToggleGroups(props)).concat(includeFilters ? [
+      toggleGroup(props, 'Filtri visibili base', 'filterFields', FILTER_OPTIONS)
+    ].concat(deviceFilterToggleGroups(props)) : []);
   }
 
   function cardDisplayInspector(props) {
@@ -298,7 +307,7 @@
     title: 'GestPark Griglia veicoli',
     icon: 'screenoptions',
     category: 'widgets',
-    attributes: { limit:{type:'number',default:6}, columns:{type:'number',default:3}, cardLayout:{type:'string',default:'default'}, show:{type:'string',default:'image,badge,brand,title,price,chips,neopatentati,body_type,transmission,engine_size,primary_button'}, showDesktop:{type:'string',default:''}, showTablet:{type:'string',default:''}, showMobile:{type:'string',default:''}, filterFields:{type:'string',default:'search,condition,brand,fuel,body_type,transmission,year,min_price,max_price,max_mileage,sort'}, outerPaddingX:{type:'number',default:18}, sectionGap:{type:'number',default:24}, primaryColor:{type:'string',default:''}, accentColor:{type:'string',default:''}, bgColor:{type:'string',default:''}, textColor:{type:'string',default:''}, buttonColor:{type:'string',default:''}, buttonTextColor:{type:'string',default:''}, primaryButtonLabel:{type:'string',default:'Scheda veicolo'}, secondaryButtonLabel:{type:'string',default:'Richiedi info'} },
+    attributes: { limit:{type:'number',default:6}, columns:{type:'number',default:3}, cardLayout:{type:'string',default:'default'}, show:{type:'string',default:'image,badge,brand,title,price,chips,neopatentati,body_type,transmission,engine_size,primary_button'}, showDesktop:{type:'string',default:''}, showTablet:{type:'string',default:''}, showMobile:{type:'string',default:''}, filterFields:{type:'string',default:'condition,brand,fuel,body_type,transmission,year,min_price,max_price,max_mileage,sort'}, filterFieldsDesktop:{type:'string',default:''}, filterFieldsTablet:{type:'string',default:''}, filterFieldsMobile:{type:'string',default:''}, outerPaddingX:{type:'number',default:18}, sectionGap:{type:'number',default:24}, primaryColor:{type:'string',default:''}, accentColor:{type:'string',default:''}, bgColor:{type:'string',default:''}, textColor:{type:'string',default:''}, buttonColor:{type:'string',default:''}, buttonTextColor:{type:'string',default:''}, primaryButtonLabel:{type:'string',default:'Scheda veicolo'}, secondaryButtonLabel:{type:'string',default:'Richiedi info'} },
     edit: function (props) { return previewEdit(props, 'GestPark Griglia veicoli', 'Anteprima reale della griglia responsive del catalogo.', catalogInspector(props, true)); },
     save: function () { return null; }
   });
@@ -307,7 +316,7 @@
     title: 'GestPark Catalogo veicoli',
     icon: 'car',
     category: 'widgets',
-    attributes: { limit:{type:'number',default:12}, columns:{type:'number',default:3}, cardLayout:{type:'string',default:'default'}, show:{type:'string',default:'image,badge,brand,title,price,chips,neopatentati,body_type,transmission,engine_size,primary_button'}, showDesktop:{type:'string',default:''}, showTablet:{type:'string',default:''}, showMobile:{type:'string',default:''}, filterFields:{type:'string',default:'search,condition,brand,fuel,body_type,transmission,year,min_price,max_price,max_mileage,sort'}, outerPaddingX:{type:'number',default:18}, sectionGap:{type:'number',default:24}, primaryColor:{type:'string',default:''}, accentColor:{type:'string',default:''}, bgColor:{type:'string',default:''}, textColor:{type:'string',default:''}, buttonColor:{type:'string',default:''}, buttonTextColor:{type:'string',default:''}, primaryButtonLabel:{type:'string',default:'Scheda veicolo'}, secondaryButtonLabel:{type:'string',default:'Richiedi info'} },
+    attributes: { limit:{type:'number',default:12}, columns:{type:'number',default:3}, cardLayout:{type:'string',default:'default'}, show:{type:'string',default:'image,badge,brand,title,price,chips,neopatentati,body_type,transmission,engine_size,primary_button'}, showDesktop:{type:'string',default:''}, showTablet:{type:'string',default:''}, showMobile:{type:'string',default:''}, filterFields:{type:'string',default:'condition,brand,fuel,body_type,transmission,year,min_price,max_price,max_mileage,sort'}, filterFieldsDesktop:{type:'string',default:''}, filterFieldsTablet:{type:'string',default:''}, filterFieldsMobile:{type:'string',default:''}, outerPaddingX:{type:'number',default:18}, sectionGap:{type:'number',default:24}, primaryColor:{type:'string',default:''}, accentColor:{type:'string',default:''}, bgColor:{type:'string',default:''}, textColor:{type:'string',default:''}, buttonColor:{type:'string',default:''}, buttonTextColor:{type:'string',default:''}, primaryButtonLabel:{type:'string',default:'Scheda veicolo'}, secondaryButtonLabel:{type:'string',default:'Richiedi info'} },
     edit: function (props) { return previewEdit(props, 'GestPark Catalogo veicoli', 'Anteprima reale del catalogo con filtri personalizzabili.', catalogInspector(props, true)); },
     save: function () { return null; }
   });

@@ -3,6 +3,36 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+if (!function_exists('gpo_get_brand_slug')) {
+    function gpo_get_brand_slug($brand) {
+        $brand = trim((string) $brand);
+        $map = [
+            'Mercedes-Benz' => 'mercedes',
+            'Mercedes Benz' => 'mercedes',
+            'Mercedes' => 'mercedes',
+            'Alfa Romeo' => 'alfaromeo',
+            'Land Rover' => 'landrover',
+            'Range Rover' => 'rangerover',
+            'DS Automobiles' => 'ds',
+            'DS' => 'ds',
+            'Citroen' => 'citroen',
+            'Citroën' => 'citroen',
+            'DR Automobiles' => 'dr',
+            'Skoda' => 'skoda',
+            'Škoda' => 'skoda',
+            'Volkswagen' => 'volkswagen',
+            'VW' => 'volkswagen',
+        ];
+
+        if (isset($map[$brand])) {
+            return $map[$brand];
+        }
+
+        $normalized = remove_accents($brand);
+        return strtolower(str_replace([' ', '-', '.', '&', "'", '’'], '', $normalized));
+    }
+}
+
 class GPO_Frontend {
     protected static $template_vehicle_id = 0;
     public static function init() {
@@ -28,6 +58,7 @@ class GPO_Frontend {
     public static function assets() {
         wp_register_style('gpo-public', GPO_PLUGIN_URL . 'public/assets/css/gpo-public.css', [], gpo_asset_version('public/assets/css/gpo-public.css'));
         wp_register_script('gpo-carousel', GPO_PLUGIN_URL . 'public/assets/js/gpo-carousel.js', [], gpo_asset_version('public/assets/js/gpo-carousel.js'), true);
+        wp_register_script('gpo-filters', GPO_PLUGIN_URL . 'public/assets/js/gpo-filters.js', [], gpo_asset_version('public/assets/js/gpo-filters.js'), true);
         wp_register_script('gpo-live-search', GPO_PLUGIN_URL . 'public/assets/js/gpo-live-search.js', [], gpo_asset_version('public/assets/js/gpo-live-search.js'), true);
         wp_register_script('gpo-vehicle-gallery', GPO_PLUGIN_URL . 'public/assets/js/gpo-vehicle-gallery.js', [], gpo_asset_version('public/assets/js/gpo-vehicle-gallery.js'), true);
 
@@ -135,7 +166,6 @@ class GPO_Frontend {
 
     protected static function default_filter_fields() {
         return [
-            'search',
             'brand',
             'condition',
             'fuel',
@@ -375,6 +405,9 @@ class GPO_Frontend {
             'outer_padding_x' => self::display_settings()['style']['outer_padding_x'] ?? '18',
             'section_gap' => self::display_settings()['style']['section_gap'] ?? '24',
             'filter_fields' => '',
+            'filter_fields_desktop' => '',
+            'filter_fields_tablet' => '',
+            'filter_fields_mobile' => '',
             'primary_color' => '',
             'accent_color' => '',
             'bg_color' => '',
@@ -391,7 +424,12 @@ class GPO_Frontend {
         ob_start();
         echo '<div class="gpo-catalog-shell" style="' . esc_attr($wrapper_style) . '">';
         if ($atts['filters'] === 'yes') {
-            echo self::render_filter_form($atts['filter_fields']);
+            wp_enqueue_script('gpo-filters');
+            echo self::render_filter_form($atts['filter_fields'], [
+                'desktop' => $atts['filter_fields_desktop'] ?? '',
+                'tablet' => $atts['filter_fields_tablet'] ?? '',
+                'mobile' => $atts['filter_fields_mobile'] ?? '',
+            ]);
         }
         self::render_results_header($query, false);
         echo '<div class="gpo-grid columns-' . absint($atts['columns']) . '">';
@@ -515,6 +553,7 @@ class GPO_Frontend {
 
     public static function vehicle_filters_shortcode() {
         wp_enqueue_style('gpo-public');
+        wp_enqueue_script('gpo-filters');
         return self::render_filter_form('');
     }
 
@@ -533,6 +572,9 @@ class GPO_Frontend {
             'outer_padding_x' => self::display_settings()['style']['outer_padding_x'] ?? '18',
             'section_gap' => self::display_settings()['style']['section_gap'] ?? '24',
             'filter_fields' => '',
+            'filter_fields_desktop' => '',
+            'filter_fields_tablet' => '',
+            'filter_fields_mobile' => '',
             'primary_color' => '',
             'accent_color' => '',
             'bg_color' => '',
@@ -560,6 +602,9 @@ class GPO_Frontend {
             'outer_padding_x' => $atts['outer_padding_x'],
             'section_gap' => $atts['section_gap'],
             'filter_fields' => $atts['filter_fields'],
+            'filter_fields_desktop' => $atts['filter_fields_desktop'] ?? '',
+            'filter_fields_tablet' => $atts['filter_fields_tablet'] ?? '',
+            'filter_fields_mobile' => $atts['filter_fields_mobile'] ?? '',
         ]);
     }
 
@@ -898,7 +943,7 @@ class GPO_Frontend {
         echo '</select></div></div>';
     }
 
-    protected static function render_filter_form($override_fields = '') {
+    protected static function render_filter_form($override_fields = '', $responsive_visibility = []) {
         $action = get_permalink() ?: home_url('/');
         $catalog_values = [
             'condition' => self::distinct_meta_values('_gpo_condition'),
@@ -909,28 +954,38 @@ class GPO_Frontend {
             'year' => self::distinct_meta_values('_gpo_year', true),
         ];
         $visible_filters = self::resolve_filter_fields($override_fields);
+        $device_visibility = [
+            'desktop' => self::device_filter_fields($responsive_visibility, 'desktop', $visible_filters),
+            'tablet' => self::device_filter_fields($responsive_visibility, 'tablet', $visible_filters),
+            'mobile' => self::device_filter_fields($responsive_visibility, 'mobile', $visible_filters),
+        ];
+        $panel_body_id = function_exists('wp_unique_id') ? wp_unique_id('gpo-filter-panel-') : 'gpo-filter-panel-body';
 
         ob_start();
-        echo '<form id="gpo-filter-form" class="gpo-filter-panel" method="get" action="' . esc_url($action) . '">';
+        echo '<form id="gpo-filter-form" class="gpo-filter-panel" data-gpo-filter-panel="1" method="get" action="' . esc_url($action) . '">';
         if (self::request_value('gpo_brand_key') !== '') {
             echo '<input type="hidden" name="gpo_brand_key" value="' . esc_attr(self::request_value('gpo_brand_key')) . '" />';
         }
         if (self::request_value('gpo_catalog_ref') !== '') {
             echo '<input type="hidden" name="gpo_catalog_ref" value="' . esc_attr(self::request_value('gpo_catalog_ref')) . '" />';
         }
+        echo '<button class="gpo-filter-toggle" type="button" aria-expanded="true" aria-controls="' . esc_attr($panel_body_id) . '">';
+        echo '<span class="gpo-filter-toggle__copy"><strong>Filtri catalogo</strong><small>Affina il parco auto per marca, prezzo e caratteristiche.</small></span>';
+        echo '<span class="gpo-filter-toggle__icon" aria-hidden="true">' . self::icon_markup('chevron-right') . '</span>';
+        echo '</button>';
+        echo '<div class="gpo-filter-panel__body" id="' . esc_attr($panel_body_id) . '">';
         echo '<div class="gpo-filter-grid">';
-        if (in_array('search', $visible_filters, true)) { self::render_filter_input('Cerca veicolo', 'gpo_search', self::request_value('gpo_search'), 'text', 'Marca o modello'); }
-        if (in_array('condition', $visible_filters, true)) { self::render_filter_select('Condizione', 'gpo_condition', $catalog_values['condition']); }
-        if (in_array('brand', $visible_filters, true)) { self::render_filter_select('Marca', 'gpo_brand', $catalog_values['brand']); }
-        if (in_array('fuel', $visible_filters, true)) { self::render_filter_select('Alimentazione', 'gpo_fuel', $catalog_values['fuel']); }
-        if (in_array('body_type', $visible_filters, true)) { self::render_filter_select('Carrozzeria', 'gpo_body_type', $catalog_values['body_type']); }
-        if (in_array('transmission', $visible_filters, true)) { self::render_filter_select('Cambio', 'gpo_transmission', $catalog_values['transmission']); }
-        if (in_array('year', $visible_filters, true)) { self::render_filter_select('Anno', 'gpo_year', $catalog_values['year']); }
-        if (in_array('min_price', $visible_filters, true)) { self::render_filter_input('Prezzo min', 'gpo_min_price', self::request_value('gpo_min_price'), 'number', '0'); }
-        if (in_array('max_price', $visible_filters, true)) { self::render_filter_input('Prezzo max', 'gpo_max_price', self::request_value('gpo_max_price'), 'number', '50000'); }
-        if (in_array('max_mileage', $visible_filters, true)) { self::render_filter_input('KM max', 'gpo_max_mileage', self::request_value('gpo_max_mileage'), 'number', '60000'); }
+        if (in_array('condition', $visible_filters, true)) { self::render_filter_select('Condizione', 'gpo_condition', $catalog_values['condition'], self::filter_visibility_classes($device_visibility, 'condition')); }
+        if (in_array('brand', $visible_filters, true)) { self::render_filter_select('Marca', 'gpo_brand', $catalog_values['brand'], self::filter_visibility_classes($device_visibility, 'brand')); }
+        if (in_array('fuel', $visible_filters, true)) { self::render_filter_select('Alimentazione', 'gpo_fuel', $catalog_values['fuel'], self::filter_visibility_classes($device_visibility, 'fuel')); }
+        if (in_array('body_type', $visible_filters, true)) { self::render_filter_select('Carrozzeria', 'gpo_body_type', $catalog_values['body_type'], self::filter_visibility_classes($device_visibility, 'body_type')); }
+        if (in_array('transmission', $visible_filters, true)) { self::render_filter_select('Cambio', 'gpo_transmission', $catalog_values['transmission'], self::filter_visibility_classes($device_visibility, 'transmission')); }
+        if (in_array('year', $visible_filters, true)) { self::render_filter_select('Anno', 'gpo_year', $catalog_values['year'], self::filter_visibility_classes($device_visibility, 'year')); }
+        if (in_array('min_price', $visible_filters, true)) { self::render_filter_input('Prezzo min', 'gpo_min_price', self::request_value('gpo_min_price'), 'number', '0', self::filter_visibility_classes($device_visibility, 'min_price')); }
+        if (in_array('max_price', $visible_filters, true)) { self::render_filter_input('Prezzo max', 'gpo_max_price', self::request_value('gpo_max_price'), 'number', '50000', self::filter_visibility_classes($device_visibility, 'max_price')); }
+        if (in_array('max_mileage', $visible_filters, true)) { self::render_filter_input('KM max', 'gpo_max_mileage', self::request_value('gpo_max_mileage'), 'number', '60000', self::filter_visibility_classes($device_visibility, 'max_mileage')); }
         if (in_array('sort', $visible_filters, true)) {
-            echo '<label class="gpo-filter-control gpo-filter-control--select"><span class="gpo-filter-control__label">Ordina per</span><select class="gpo-filter-control__field" name="gpo_sort">';
+            echo '<label class="' . esc_attr(trim('gpo-filter-control gpo-filter-control--select ' . self::filter_visibility_classes($device_visibility, 'sort'))) . '"><span class="gpo-filter-control__label">Ordina per</span><select class="gpo-filter-control__field" name="gpo_sort">';
             $sort = self::request_value('gpo_sort') ?: 'date_desc';
             $options = [
                 'date_desc' => 'Più recenti',
@@ -946,19 +1001,55 @@ class GPO_Frontend {
         }
         echo '</div>';
         echo '<div class="gpo-filter-actions"><button class="gpo-button" type="submit">Applica filtri</button><a class="gpo-button gpo-button-secondary" href="' . esc_url($action) . '">Reset</a></div>';
+        echo '</div>';
         echo '</form>';
         return ob_get_clean();
     }
 
     protected static function resolve_filter_fields($override_fields = '') {
+        $fields = [];
         if (!empty($override_fields)) {
-            return self::parse_show_string($override_fields);
+            $fields = self::parse_show_string($override_fields);
+        } else {
+            $fields = self::default_filter_fields();
         }
-        return self::default_filter_fields();
+
+        return array_values(array_filter($fields, function ($field) {
+            return $field !== 'search';
+        }));
     }
 
-    protected static function render_filter_select($label, $name, $values) {
-        echo '<label class="gpo-filter-control gpo-filter-control--select"><span class="gpo-filter-control__label">' . esc_html($label) . '</span><select class="gpo-filter-control__field" name="' . esc_attr($name) . '"><option value="">Tutti</option>';
+    protected static function device_filter_fields($visibility, $device, $fallback) {
+        $raw = '';
+
+        if (isset($visibility[$device])) {
+            $raw = (string) $visibility[$device];
+        } elseif (isset($visibility['filter_fields_' . $device])) {
+            $raw = (string) $visibility['filter_fields_' . $device];
+        }
+
+        $parsed = array_values(array_filter(self::parse_show_string($raw), function ($field) {
+            return $field !== 'search';
+        }));
+
+        return !empty($parsed) ? $parsed : $fallback;
+    }
+
+    protected static function filter_visibility_classes($visibility, $key) {
+        $desktop = $visibility['desktop'] ?? [];
+        $tablet = $visibility['tablet'] ?? [];
+        $mobile = $visibility['mobile'] ?? [];
+
+        return implode(' ', array_filter([
+            'gpo-device-field',
+            in_array($key, $desktop, true) ? 'gpo-show-desktop' : 'gpo-hide-desktop',
+            in_array($key, $tablet, true) ? 'gpo-show-tablet' : 'gpo-hide-tablet',
+            in_array($key, $mobile, true) ? 'gpo-show-mobile' : 'gpo-hide-mobile',
+        ]));
+    }
+
+    protected static function render_filter_select($label, $name, $values, $extra_class = '') {
+        echo '<label class="' . esc_attr(trim('gpo-filter-control gpo-filter-control--select ' . $extra_class)) . '"><span class="gpo-filter-control__label">' . esc_html($label) . '</span><select class="gpo-filter-control__field" name="' . esc_attr($name) . '"><option value="">Tutti</option>';
         $current = self::request_value($name);
         foreach ($values as $value) {
             echo '<option value="' . esc_attr($value) . '" ' . selected($current, $value, false) . '>' . esc_html($value) . '</option>';
@@ -966,8 +1057,8 @@ class GPO_Frontend {
         echo '</select></label>';
     }
 
-    protected static function render_filter_input($label, $name, $value, $type = 'text', $placeholder = '') {
-        echo '<label class="gpo-filter-control gpo-filter-control--input"><span class="gpo-filter-control__label">' . esc_html($label) . '</span><input class="gpo-filter-control__field" type="' . esc_attr($type) . '" name="' . esc_attr($name) . '" value="' . esc_attr($value) . '" placeholder="' . esc_attr($placeholder) . '" /></label>';
+    protected static function render_filter_input($label, $name, $value, $type = 'text', $placeholder = '', $extra_class = '') {
+        echo '<label class="' . esc_attr(trim('gpo-filter-control gpo-filter-control--input ' . $extra_class)) . '"><span class="gpo-filter-control__label">' . esc_html($label) . '</span><input class="gpo-filter-control__field" type="' . esc_attr($type) . '" name="' . esc_attr($name) . '" value="' . esc_attr($value) . '" placeholder="' . esc_attr($placeholder) . '" /></label>';
     }
 
     public static function fallback_vehicle_image_url() {
@@ -1708,24 +1799,24 @@ class GPO_Frontend {
 
     protected static function brand_logo_url_local($brand) {
         $entry = self::brand_entry_local($brand);
-        $key = $entry['key'];
+        $slug = gpo_get_brand_slug($entry['name']);
 
         foreach (['svg', 'png', 'webp', 'jpg', 'jpeg'] as $extension) {
-            $relative = 'public/assets/images/brands/' . $key . '.' . $extension;
+            $relative = 'public/assets/brands/' . $slug . '.' . $extension;
             if (file_exists(GPO_PLUGIN_DIR . $relative)) {
                 return GPO_PLUGIN_URL . $relative;
             }
         }
 
-        return self::brand_logo_data_uri_local($brand);
+        return '';
     }
 
     protected static function brand_logo_has_local_asset($brand) {
         $entry = self::brand_entry_local($brand);
-        $key = $entry['key'];
+        $slug = gpo_get_brand_slug($entry['name']);
 
         foreach (['svg', 'png', 'webp', 'jpg', 'jpeg'] as $extension) {
-            if (file_exists(GPO_PLUGIN_DIR . 'public/assets/images/brands/' . $key . '.' . $extension)) {
+            if (file_exists(GPO_PLUGIN_DIR . 'public/assets/brands/' . $slug . '.' . $extension)) {
                 return true;
             }
         }
@@ -1929,9 +2020,10 @@ class GPO_Frontend {
 
     protected static function known_brand_logo($brand) {
         $key = self::normalize_brand_key($brand);
-        $local_file = GPO_PLUGIN_DIR . 'public/assets/images/brands/' . $key . '.png';
+        $slug = gpo_get_brand_slug($brand);
+        $local_file = GPO_PLUGIN_DIR . 'public/assets/brands/' . $slug . '.png';
         if (file_exists($local_file)) {
-            return GPO_PLUGIN_URL . 'public/assets/images/brands/' . $key . '.png';
+            return GPO_PLUGIN_URL . 'public/assets/brands/' . $slug . '.png';
         }
         $registry = self::brand_registry();
         if (isset($registry[$key]['domain'])) {

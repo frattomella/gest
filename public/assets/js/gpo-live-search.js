@@ -294,13 +294,27 @@
       queueResume(220);
     });
     viewport.addEventListener('click', function (event) {
-      if (!suppressClick) {
+      var brandLink;
+
+      if (suppressClick) {
+        event.preventDefault();
+        event.stopPropagation();
+        suppressClick = false;
+        return;
+      }
+
+      brandLink = event.target.closest('.gpo-brand-item[href]');
+
+      if (!brandLink) {
+        return;
+      }
+
+      if (event.defaultPrevented || event.button > 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
         return;
       }
 
       event.preventDefault();
-      event.stopPropagation();
-      suppressClick = false;
+      window.location.href = brandLink.getAttribute('href');
     }, true);
 
     window.addEventListener('resize', function () {
