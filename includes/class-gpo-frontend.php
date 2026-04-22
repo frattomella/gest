@@ -811,6 +811,139 @@ class GPO_Frontend {
         return '<span class="' . esc_attr(trim($class)) . '"><span class="gpo-neo-badge__icon" aria-hidden="true">' . self::icon_markup('check-circle') . '</span><span>Neopatentati</span></span>';
     }
 
+    protected static function single_technical_items($post_id, $data = []) {
+        $data = is_array($data) ? $data : [];
+
+        return array_values(array_filter([
+            [
+                'label' => 'Alimentazione',
+                'value' => (string) ($data['fuel'] ?? get_post_meta($post_id, '_gpo_fuel', true)),
+                'icon' => 'fuel',
+            ],
+            [
+                'label' => 'Carrozzeria',
+                'value' => (string) ($data['body_type'] ?? get_post_meta($post_id, '_gpo_body_type', true)),
+                'icon' => 'car',
+            ],
+            [
+                'label' => 'Cambio',
+                'value' => (string) ($data['transmission'] ?? get_post_meta($post_id, '_gpo_transmission', true)),
+                'icon' => 'gear',
+            ],
+            [
+                'label' => 'Cilindrata',
+                'value' => self::format_engine_size($data['engine_size'] ?? get_post_meta($post_id, '_gpo_engine_size', true)),
+                'icon' => 'engine',
+            ],
+            [
+                'label' => 'Potenza',
+                'value' => (string) ($data['power'] ?? get_post_meta($post_id, '_gpo_power', true)),
+                'icon' => 'bolt',
+            ],
+            [
+                'label' => 'Colore',
+                'value' => (string) ($data['color'] ?? get_post_meta($post_id, '_gpo_color', true)),
+                'icon' => 'palette',
+            ],
+            [
+                'label' => 'Porte',
+                'value' => (string) ($data['doors'] ?? get_post_meta($post_id, '_gpo_doors', true)),
+                'icon' => 'door',
+            ],
+            [
+                'label' => 'Posti',
+                'value' => (string) ($data['seats'] ?? get_post_meta($post_id, '_gpo_seats', true)),
+                'icon' => 'users',
+            ],
+            [
+                'label' => 'Sede',
+                'value' => (string) ($data['location'] ?? get_post_meta($post_id, '_gpo_location', true)),
+                'icon' => 'pin',
+            ],
+        ], function ($item) {
+            return trim((string) ($item['value'] ?? '')) !== '';
+        }));
+    }
+
+    public static function single_technical_badges_markup($post_id, $data = []) {
+        $items = self::single_technical_items($post_id, $data);
+        if (empty($items)) {
+            return '';
+        }
+
+        $html = '<div class="gpo-single-tech-grid">';
+        foreach ($items as $item) {
+            $html .= '<span class="gpo-single-tech-badge">';
+            $html .= '<span class="gpo-single-tech-badge__icon" aria-hidden="true">' . self::icon_markup($item['icon']) . '</span>';
+            $html .= '<span class="gpo-single-tech-badge__copy">';
+            $html .= '<small>' . esc_html($item['label']) . '</small>';
+            $html .= '<strong>' . esc_html($item['value']) . '</strong>';
+            $html .= '</span>';
+            $html .= '</span>';
+        }
+        $html .= '</div>';
+
+        return $html;
+    }
+
+    public static function single_strengths_card_markup($post_id, $data = []) {
+        $data = is_array($data) ? $data : [];
+        $items = [];
+
+        if (!empty($data['condition'])) {
+            $items[] = 'Condizione veicolo: ' . $data['condition'];
+        }
+        if (!empty($data['fuel'])) {
+            $items[] = 'Alimentazione: ' . $data['fuel'];
+        }
+        if (!empty($data['transmission'])) {
+            $items[] = 'Cambio: ' . $data['transmission'];
+        }
+        if (!empty($data['location'])) {
+            $items[] = 'Disponibile in sede a ' . $data['location'];
+        }
+        if (!empty($data['neopatentati'])) {
+            $items[] = 'Compatibile anche con neopatentati';
+        }
+        if (!empty($data['promotion'])) {
+            $items[] = 'Promozione commerciale attiva sul prezzo esposto';
+        }
+
+        $items = array_values(array_unique(array_filter($items)));
+        if (count($items) < 3) {
+            $items[] = 'Contatto diretto con il concessionario per dettagli e disponibilita.';
+        }
+        if (count($items) < 4) {
+            $items[] = 'Valutazione commerciale e prova su strada su richiesta.';
+        }
+
+        return '<div class="gpo-side-card gpo-side-card--strengths"><h3>Punti di Forza</h3>' . self::icon_list_markup(array_slice($items, 0, 4)) . '</div>';
+    }
+
+    public static function share_actions_markup($post_id) {
+        $post_id = absint($post_id);
+        $url = $post_id ? get_permalink($post_id) : '';
+        if (!$url) {
+            return '';
+        }
+
+        $title = trim(wp_strip_all_tags(get_the_title($post_id)));
+        $whatsapp_url = 'https://wa.me/?text=' . rawurlencode(trim($title . ' ' . $url));
+
+        $html = '<div class="gpo-share-actions" aria-label="Azioni di condivisione">';
+        $html .= '<button type="button" class="gpo-share-action" data-gpo-copy-link="' . esc_url($url) . '" data-gpo-copy-label="Link copiato">';
+        $html .= '<span class="gpo-share-action__icon" aria-hidden="true">' . self::icon_markup('copy') . '</span>';
+        $html .= '<span>Copia link</span>';
+        $html .= '</button>';
+        $html .= '<a class="gpo-share-action gpo-share-action--whatsapp" href="' . esc_url($whatsapp_url) . '" target="_blank" rel="noopener noreferrer">';
+        $html .= '<span class="gpo-share-action__icon" aria-hidden="true">' . self::icon_markup('whatsapp') . '</span>';
+        $html .= '<span>Condividi su WhatsApp</span>';
+        $html .= '</a>';
+        $html .= '</div>';
+
+        return $html;
+    }
+
     protected static function device_visible_elements($atts, $device, $fallback) {
         $underscored = 'show_' . $device;
         $camel = 'show' . ucfirst($device);
@@ -1542,18 +1675,29 @@ class GPO_Frontend {
     public static function gallery_markup($post_id, $with_panel = false) {
         $post_id = absint($post_id);
         $items = self::gallery_items($post_id);
+        $gallery_payload = !empty($items) ? wp_json_encode(array_map(function ($item) {
+            return [
+                'large' => $item['large'],
+                'full' => $item['full'],
+                'alt' => $item['alt'],
+                'caption' => $item['caption'],
+            ];
+        }, $items)) : '';
         if (wp_script_is('gpo-vehicle-gallery', 'registered')) {
             wp_enqueue_script('gpo-vehicle-gallery');
         }
 
         ob_start();
         if ($with_panel) {
-            echo '<div class="gpo-single-gallery-panel' . (empty($items) ? ' is-empty' : '') . '" data-gpo-gallery="1">';
+            echo '<div class="gpo-single-gallery-panel' . (empty($items) ? ' is-empty' : '') . '" data-gpo-gallery="1"' . ($gallery_payload ? ' data-gpo-gallery-items="' . esc_attr($gallery_payload) . '"' : '') . '>';
         }
 
         if (!empty($items)) {
             $current = $items[0];
             $count = count($items);
+            $visible_thumb_limit = 10;
+            $thumb_items = array_slice($items, 0, min($count, $visible_thumb_limit));
+            $remaining_items = max(0, $count - $visible_thumb_limit);
 
             echo '<div class="gpo-single-stage">';
             echo '<button type="button" class="gpo-single-stage__nav prev" aria-label="Foto precedente">' . self::icon_markup('chevron-left') . '</button>';
@@ -1568,9 +1712,13 @@ class GPO_Frontend {
             echo '</div>';
 
             echo '<div class="gpo-single-thumbs" role="list">';
-            foreach ($items as $index => $item) {
-                echo '<button type="button" class="gpo-single-thumb' . ($index === 0 ? ' is-active' : '') . '" data-index="' . esc_attr((string) $index) . '" data-large-src="' . esc_url($item['large']) . '" data-full-src="' . esc_url($item['full']) . '" data-alt="' . esc_attr($item['alt']) . '" data-caption="' . esc_attr($item['caption']) . '" aria-label="Seleziona foto ' . esc_attr((string) ($index + 1)) . '"' . ($index === 0 ? ' aria-current="true"' : '') . '>';
+            foreach ($thumb_items as $index => $item) {
+                $is_more_tile = $remaining_items > 0 && $index === count($thumb_items) - 1;
+                echo '<button type="button" class="gpo-single-thumb' . ($index === 0 ? ' is-active' : '') . ($is_more_tile ? ' gpo-single-thumb--more' : '') . '" data-index="' . esc_attr((string) $index) . '" data-large-src="' . esc_url($item['large']) . '" data-full-src="' . esc_url($item['full']) . '" data-alt="' . esc_attr($item['alt']) . '" data-caption="' . esc_attr($item['caption']) . '" aria-label="Seleziona foto ' . esc_attr((string) ($index + 1)) . '"' . ($index === 0 ? ' aria-current="true"' : '') . '>';
                 echo '<img src="' . esc_url($item['thumb']) . '" alt="' . esc_attr($item['alt']) . '" loading="lazy" />';
+                if ($is_more_tile) {
+                    echo '<span class="gpo-single-thumb__more">+' . esc_html((string) $remaining_items) . ' foto</span>';
+                }
                 echo '</button>';
             }
             echo '</div>';
@@ -1980,6 +2128,38 @@ class GPO_Frontend {
 
         if ($type === 'engine') {
             return '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h3l2-2h6l2 2h3v6h-3l-2 2H9l-2-2H4z"></path><path d="M10 12h4"></path></svg>';
+        }
+
+        if ($type === 'fuel') {
+            return '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 5h8v14H7z"></path><path d="M15 8h2l2 2v6a2 2 0 0 1-2 2h-2"></path><path d="M9 9h4"></path></svg>';
+        }
+
+        if ($type === 'palette') {
+            return '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18c1.2 0 2-.8 2-1.8 0-.7-.4-1.2-.4-1.9 0-.8.8-1.3 1.7-1.3H17A4 4 0 0 0 21 12a9 9 0 0 0-9-9Z"></path><circle cx="7.5" cy="10.5" r=".8"></circle><circle cx="11" cy="7.5" r=".8"></circle><circle cx="16.2" cy="9.2" r=".8"></circle></svg>';
+        }
+
+        if ($type === 'door') {
+            return '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h9l3 2v14H6z"></path><path d="M9 12h.01"></path></svg>';
+        }
+
+        if ($type === 'users') {
+            return '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"></path><circle cx="9.5" cy="7.5" r="3.5"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M15 4.2a3.5 3.5 0 0 1 0 6.6"></path></svg>';
+        }
+
+        if ($type === 'pin') {
+            return '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s6-5.33 6-11a6 6 0 1 0-12 0c0 5.67 6 11 6 11Z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>';
+        }
+
+        if ($type === 'bolt') {
+            return '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 5 14h6l-1 8 8-12h-6l1-8Z"></path></svg>';
+        }
+
+        if ($type === 'copy') {
+            return '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+        }
+
+        if ($type === 'whatsapp') {
+            return '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M12 2.2a9.73 9.73 0 0 0-8.44 14.58L2 22l5.38-1.5A9.79 9.79 0 1 0 12 2.2Zm0 17.77a8.07 8.07 0 0 1-4.11-1.13l-.3-.18-3.2.89.86-3.12-.2-.32a8.1 8.1 0 1 1 6.95 3.86Zm4.45-6.04c-.24-.12-1.42-.7-1.64-.77-.22-.08-.38-.12-.54.12s-.62.77-.76.92c-.14.16-.28.18-.52.06-.24-.12-1.01-.37-1.92-1.2-.71-.63-1.2-1.42-1.34-1.66-.14-.24-.02-.37.1-.49.1-.1.24-.28.36-.42.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42-.06-.12-.54-1.3-.74-1.78-.2-.47-.4-.4-.54-.41h-.46c-.16 0-.42.06-.64.3s-.84.82-.84 2 .86 2.3.98 2.46c.12.16 1.68 2.56 4.08 3.6.57.24 1.02.38 1.36.48.58.18 1.1.16 1.52.1.46-.06 1.42-.58 1.62-1.14.2-.56.2-1.04.14-1.14-.06-.1-.22-.16-.46-.28Z"/></svg>';
         }
 
         if ($type === 'check-circle') {

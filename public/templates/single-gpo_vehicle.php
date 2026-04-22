@@ -41,28 +41,33 @@ $promo_price = $vehicle['promo_price'] ?? get_post_meta($post_id, '_gpo_price_pr
 $current_price = $vehicle['current_price'] ?? ($promo_price ?: $price);
 $neo_badge = GPO_Frontend::neopatentati_badge_markup($post_id, 'gpo-neo-badge gpo-neo-badge--single', $vehicle);
 $quick_panel = GPO_Frontend::quick_info_panel_markup($post_id, 'gpo-quick-info-panel gpo-quick-info-panel--single', [], $vehicle);
-$meta = [
-    'Alimentazione' => get_post_meta($post_id, '_gpo_fuel', true),
-    'Carrozzeria' => get_post_meta($post_id, '_gpo_body_type', true),
-    'Cambio' => get_post_meta($post_id, '_gpo_transmission', true),
-    'Cilindrata' => get_post_meta($post_id, '_gpo_engine_size', true) ? get_post_meta($post_id, '_gpo_engine_size', true) . ' cc' : '',
-    'Potenza' => get_post_meta($post_id, '_gpo_power', true),
-    'Colore' => get_post_meta($post_id, '_gpo_color', true),
-    'Porte' => get_post_meta($post_id, '_gpo_doors', true),
-    'Posti' => get_post_meta($post_id, '_gpo_seats', true),
-    'Sede' => get_post_meta($post_id, '_gpo_location', true),
-];
+$technical_badges = GPO_Frontend::single_technical_badges_markup($post_id, $vehicle);
+$share_actions = GPO_Frontend::share_actions_markup($post_id);
 $show = function ($key) use ($visible) {
     return in_array($key, $visible, true);
 };
+$strengths_markup = $show('strengths') ? GPO_Frontend::single_strengths_card_markup($post_id, $vehicle) : '';
 $contact_markup = '';
 if ($show('contact_box')) {
     $contact_markup = GPO_Frontend::lead_form_markup($post_id, [
         'title' => 'Richiedi informazioni',
         'text' => 'Compila il modulo per ricevere disponibilita, valutazione permuta e proposta commerciale personalizzata su questo veicolo.',
         'button_label' => 'Invia richiesta',
-        'wrapper_class' => 'gpo-inline-lead-card',
+        'wrapper_class' => 'gpo-inline-lead-card gpo-inline-lead-card--single',
     ]);
+}
+$followup_markup = '';
+if (class_exists('GPO_Blocks') && method_exists('GPO_Blocks', 'render_vehicle_carousel')) {
+    GPO_Frontend::set_template_vehicle_context($post_id);
+    $followup_markup = GPO_Blocks::render_vehicle_carousel([
+        'title' => 'Carosello Veicolo',
+        'source' => 'related_brand',
+        'limit' => 6,
+        'show' => 'image,title,price,chips,neopatentati,primary_button',
+        'cardLayout' => 'default',
+        'primaryButtonLabel' => 'Scheda veicolo',
+    ]);
+    GPO_Frontend::clear_template_vehicle_context();
 }
 ?>
 <main id="primary" class="site-main gpo-theme-main">
@@ -111,12 +116,13 @@ if ($show('contact_box')) {
                     <?php endif; ?>
                 </div>
 
-                <div class="gpo-meta-grid">
-                    <?php foreach ($meta as $label => $value) : ?>
-                        <?php if (!$value) { continue; } ?>
-                        <div><strong><?php echo esc_html($label); ?></strong><span><?php echo esc_html($value); ?></span></div>
-                    <?php endforeach; ?>
-                </div>
+                <?php if ($technical_badges) : ?>
+                    <?php echo $technical_badges; ?>
+                <?php endif; ?>
+
+                <?php if ($share_actions) : ?>
+                    <?php echo $share_actions; ?>
+                <?php endif; ?>
             </div>
         <?php endif; ?>
     </section>
@@ -154,22 +160,15 @@ if ($show('contact_box')) {
         </div>
 
         <aside class="gpo-side-stack">
-            <?php if ($show('strengths')) : ?>
-                <div class="gpo-side-card">
-                    <h3>Punti di forza</h3>
-                    <ul class="gpo-icon-list">
-                        <li>Scheda completa e personalizzabile</li>
-                        <li>Dati importabili da API e modificabili localmente</li>
-                        <li>Compatibile con editor WordPress e tema del sito</li>
-                    </ul>
-                </div>
-            <?php endif; ?>
+            <?php echo $strengths_markup; ?>
+            <?php echo $contact_markup; ?>
         </aside>
     </section>
 
-    <?php if ($contact_markup) : ?>
-        <section class="gpo-single-contact-section">
-            <?php echo $contact_markup; ?>
+    <?php if ($followup_markup) : ?>
+        <section class="gpo-single-follow-up">
+            <div class="gpo-single-follow-up__divider" aria-hidden="true"></div>
+            <?php echo $followup_markup; ?>
         </section>
     <?php endif; ?>
 </div>

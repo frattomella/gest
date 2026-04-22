@@ -95,15 +95,19 @@
 
   function initMobileMenuSearch(shell){
     var sourceId;
+    var sourceBlock = null;
     var clonedShell = null;
     var resizeTimer = 0;
     var syncTimer = 0;
     var mutationObserver = null;
     var targetSelectors = [
       '.wp-block-navigation__responsive-container.is-menu-open .wp-block-navigation__responsive-container-content',
+      '.wp-block-navigation__responsive-container.is-menu-open .wp-block-navigation__container',
       '.wp-block-navigation__responsive-container.is-menu-open',
       '.wp-block-navigation__responsive-dialog.is-menu-open',
+      '[data-wp-interactive*="core/navigation"] .wp-block-navigation__responsive-container-content',
       '.wp-block-navigation__responsive-container-content',
+      '.wp-block-navigation__responsive-container .wp-block-navigation__container',
       '.wp-block-navigation__responsive-dialog',
       '.wp-block-navigation__responsive-container',
       '.menu-modal .modal-inner',
@@ -137,7 +141,15 @@
 
     shell.dataset.mobileMenuBound = '1';
     sourceId = shell.getAttribute('data-gpo-mobile-search-id') || ('gpo-search-' + Math.random().toString(36).slice(2));
+    sourceBlock = shell.closest('.gpo-search-mobile-mode-burger');
     shell.setAttribute('data-gpo-mobile-search-id', sourceId);
+
+    function setMountedState(isMounted) {
+      shell.classList.toggle('is-mobile-menu-mounted', !!isMounted);
+      if (sourceBlock) {
+        sourceBlock.classList.toggle('is-mobile-menu-mounted', !!isMounted);
+      }
+    }
 
     function isMobileViewport() {
       return window.matchMedia ? window.matchMedia('(max-width: 781px)').matches : window.innerWidth <= 781;
@@ -198,8 +210,14 @@
       if (signature.indexOf('responsive') !== -1) {
         score += 4;
       }
+      if (node.matches && node.matches('.wp-block-navigation__responsive-container-content, .wp-block-navigation__responsive-container, .wp-block-navigation__responsive-dialog')) {
+        score += 12;
+      }
       if (signature.indexOf('mobile') !== -1 || signature.indexOf('offcanvas') !== -1 || signature.indexOf('drawer') !== -1 || signature.indexOf('menu') !== -1) {
         score += 4;
+      }
+      if (qs('.wp-block-navigation__container, .wp-block-page-list, .wp-block-navigation-item', node)) {
+        score += 5;
       }
       if (isOpenState(node)) {
         score += 10;
@@ -272,6 +290,7 @@
       clonedShell.setAttribute('data-gpo-mobile-clone', '1');
       clonedShell.removeAttribute('data-gpo-mobile-mode');
       clonedShell.classList.add('gpo-mobile-menu-search-shell');
+      clonedShell.classList.remove('is-mobile-menu-mounted');
 
       form = qs('.gpo-vehicle-search', clonedShell);
       if (form) {
@@ -304,6 +323,7 @@
 
       target = findTargetContainer();
       if (!target || scoreTarget(target) < 6) {
+        unmountClone();
         return;
       }
 
@@ -318,12 +338,15 @@
       if (form) {
         initSearch(form);
       }
+
+      setMountedState(true);
     }
 
     function unmountClone() {
       if (clonedShell && clonedShell.parentNode) {
         clonedShell.parentNode.removeChild(clonedShell);
       }
+      setMountedState(false);
     }
 
     function syncPlacement() {
