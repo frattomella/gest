@@ -3,7 +3,7 @@
  * Plugin Name: gestpark online
  * Plugin URI: https://example.com/
  * Description: Plugin WordPress per importare veicoli da API esterne, gestire vetrine, promozioni e visualizzazione veicoli con supporto Gutenberg ed Elementor.
- * Version: 0.2.24
+ * Version: 0.2.25
  * Author: OpenAI
  * Update URI: https://gestpark-online.local/plugin
  * Text Domain: gestpark-online
@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('GPO_VERSION', '0.2.24');
+define('GPO_VERSION', '0.2.25');
 define('GPO_PLUGIN_FILE', __FILE__);
 define('GPO_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('GPO_PLUGIN_URL', plugin_dir_url(__FILE__));
