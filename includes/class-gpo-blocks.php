@@ -91,6 +91,27 @@ class GPO_Blocks {
         return $parts;
     }
 
+    protected static function search_shortcode_attributes($attributes = []) {
+        $parts = '';
+        $visibility = [
+            'showOnDesktop' => 'show_on_desktop',
+            'showOnTablet' => 'show_on_tablet',
+            'showOnMobile' => 'show_on_mobile',
+        ];
+
+        foreach ($visibility as $attribute => $shortcode_attribute) {
+            if (array_key_exists($attribute, $attributes)) {
+                $parts .= ' ' . $shortcode_attribute . '="' . (!empty($attributes[$attribute]) ? 'yes' : 'no') . '"';
+            }
+        }
+
+        if (!empty($attributes['mobileMode'])) {
+            $parts .= ' mobile_mode="' . esc_attr($attributes['mobileMode']) . '"';
+        }
+
+        return $parts;
+    }
+
     public static function enqueue_shared_block_assets() {
         if (!wp_style_is('gpo-public', 'registered')) {
             wp_register_style('gpo-public', GPO_PLUGIN_URL . 'public/assets/css/gpo-public.css', [], gpo_asset_version('public/assets/css/gpo-public.css'));
@@ -262,7 +283,7 @@ class GPO_Blocks {
         register_block_type('gestpark/vehicle-search', [
             'editor_script' => 'gpo-blocks',
             'render_callback' => function ($attributes) {
-                $content = do_shortcode('[gestpark_vehicle_search page_id="' . absint($attributes['pageId'] ?? 0) . '" catalog_ref="' . esc_attr($attributes['catalogRef'] ?? '') . '" placeholder="' . esc_attr($attributes['placeholder'] ?? 'Cerca veicolo') . '" width="' . absint($attributes['width'] ?? 100) . '" radius="' . absint($attributes['radius'] ?? 999) . '" primary_color="' . esc_attr($attributes['primaryColor'] ?? '') . '" accent_color="' . esc_attr($attributes['accentColor'] ?? '') . '" bg_color="' . esc_attr($attributes['bgColor'] ?? '') . '" text_color="' . esc_attr($attributes['textColor'] ?? '') . '" button_color="' . esc_attr($attributes['buttonColor'] ?? '') . '"]');
+                $content = do_shortcode('[gestpark_vehicle_search page_id="' . absint($attributes['pageId'] ?? 0) . '" catalog_ref="' . esc_attr($attributes['catalogRef'] ?? '') . '" placeholder="' . esc_attr($attributes['placeholder'] ?? 'Cerca veicolo') . '" width="' . absint($attributes['width'] ?? 100) . '" radius="' . absint($attributes['radius'] ?? 999) . '" primary_color="' . esc_attr($attributes['primaryColor'] ?? '') . '" accent_color="' . esc_attr($attributes['accentColor'] ?? '') . '" bg_color="' . esc_attr($attributes['bgColor'] ?? '') . '" text_color="' . esc_attr($attributes['textColor'] ?? '') . '" button_color="' . esc_attr($attributes['buttonColor'] ?? '') . '"' . self::search_shortcode_attributes($attributes) . ']');
                 return self::render_dynamic_block('gpo-block-vehicle-search', $attributes, $content);
             },
             'attributes' => [
@@ -271,6 +292,10 @@ class GPO_Blocks {
                 'placeholder' => ['type' => 'string', 'default' => 'Cerca veicolo'],
                 'width' => ['type' => 'number', 'default' => 100],
                 'radius' => ['type' => 'number', 'default' => 999],
+                'showOnDesktop' => ['type' => 'boolean', 'default' => true],
+                'showOnTablet' => ['type' => 'boolean', 'default' => true],
+                'showOnMobile' => ['type' => 'boolean', 'default' => true],
+                'mobileMode' => ['type' => 'string', 'default' => 'normal'],
                 'primaryColor' => ['type' => 'string', 'default' => ''],
                 'accentColor' => ['type' => 'string', 'default' => ''],
                 'bgColor' => ['type' => 'string', 'default' => ''],
@@ -516,10 +541,30 @@ class GPO_Blocks {
         return '';
     }
 
+    protected static function responsive_wrapper_classes($attributes = []) {
+        $classes = [];
+
+        if (array_key_exists('showOnDesktop', $attributes) && empty($attributes['showOnDesktop'])) {
+            $classes[] = 'gpo-hide-desktop';
+        }
+        if (array_key_exists('showOnTablet', $attributes) && empty($attributes['showOnTablet'])) {
+            $classes[] = 'gpo-hide-tablet';
+        }
+        if (array_key_exists('showOnMobile', $attributes) && empty($attributes['showOnMobile'])) {
+            $classes[] = 'gpo-hide-mobile';
+        }
+        if (($attributes['mobileMode'] ?? 'normal') === 'burger') {
+            $classes[] = 'gpo-search-mobile-mode-burger';
+        }
+
+        return implode(' ', $classes);
+    }
+
     protected static function render_dynamic_block($class, $attributes, $content) {
         $align_class = self::preferred_align_class($class, $attributes);
         $layout_class = self::preferred_layout_class($class);
-        $class_names = trim($class . ' ' . $layout_class . ' ' . $align_class);
+        $visibility_class = self::responsive_wrapper_classes($attributes);
+        $class_names = trim($class . ' ' . $layout_class . ' ' . $align_class . ' ' . $visibility_class);
         return '<div ' . self::wrapper_attrs($class_names, $attributes) . '>' . $content . '</div>';
     }
 

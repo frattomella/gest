@@ -232,6 +232,36 @@
     ];
   }
 
+  function searchDeviceControls(props) {
+    return el(PanelBody, { title: 'Visibilita per dispositivo', initialOpen: false }, [
+      el(ToggleControl, {
+        label: 'Mostra su Desktop',
+        checked: props.attributes.showOnDesktop !== false,
+        onChange: function (value) { props.setAttributes({ showOnDesktop: value }); }
+      }),
+      el(ToggleControl, {
+        label: 'Mostra su Tablet',
+        checked: props.attributes.showOnTablet !== false,
+        onChange: function (value) { props.setAttributes({ showOnTablet: value }); }
+      }),
+      el(ToggleControl, {
+        label: 'Mostra su Mobile',
+        checked: props.attributes.showOnMobile !== false,
+        onChange: function (value) { props.setAttributes({ showOnMobile: value }); }
+      }),
+      el(SelectControl, {
+        label: 'Modalita mobile',
+        value: props.attributes.mobileMode || 'normal',
+        options: [
+          { label: 'Normale', value: 'normal' },
+          { label: 'Nel burger menu', value: 'burger' }
+        ],
+        help: 'In modalita burger la barra resta normale su desktop e viene agganciata al menu mobile del tema quando e disponibile.',
+        onChange: function (value) { props.setAttributes({ mobileMode: value || 'normal' }); }
+      })
+    ]);
+  }
+
   function catalogInspector(props, includeFilters) {
     return [
       el(PanelBody, { title: 'Impostazioni catalogo', initialOpen: true }, [
@@ -499,14 +529,15 @@
     title: 'GestPark Ricerca veicoli',
     icon: 'search',
     category: 'widgets',
-    attributes: { pageId:{type:'number',default:0}, catalogRef:{type:'string',default:'default'}, placeholder:{type:'string',default:'Cerca veicolo'}, width:{type:'number',default:100}, radius:{type:'number',default:999}, primaryColor:{type:'string',default:''}, accentColor:{type:'string',default:''}, bgColor:{type:'string',default:''}, textColor:{type:'string',default:''}, buttonColor:{type:'string',default:''} },
+    attributes: { pageId:{type:'number',default:0}, catalogRef:{type:'string',default:'default'}, placeholder:{type:'string',default:'Cerca veicolo'}, width:{type:'number',default:100}, radius:{type:'number',default:999}, showOnDesktop:{type:'boolean',default:true}, showOnTablet:{type:'boolean',default:true}, showOnMobile:{type:'boolean',default:true}, mobileMode:{type:'string',default:'normal'}, primaryColor:{type:'string',default:''}, accentColor:{type:'string',default:''}, bgColor:{type:'string',default:''}, textColor:{type:'string',default:''}, buttonColor:{type:'string',default:''} },
     edit: function (props) {
       return previewEdit(props, 'GestPark Ricerca veicoli', '', [
         el(PanelBody, { title:'Impostazioni barra di ricerca', initialOpen:true }, targetPageControls(props).concat([
           el(TextControl, { label:'Placeholder', value:props.attributes.placeholder || 'Cerca veicolo', onChange:function(v){ props.setAttributes({ placeholder:v }); } }),
           el(RangeControl, { label:'Larghezza percentuale', value:props.attributes.width, min:20, max:100, onChange:function(v){ props.setAttributes({ width:v || 20 }); } }),
           el(RangeControl, { label:'Raggio angoli', value:props.attributes.radius, min:36, max:999, onChange:function(v){ props.setAttributes({ radius:v || 36 }); } })
-        ].concat(styleControls(props))))
+        ].concat(styleControls(props)))),
+        searchDeviceControls(props)
       ]);
     },
     save: function(){ return null; }

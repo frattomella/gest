@@ -1113,6 +1113,53 @@ body .post-content > .gpo-block.alignfull {
   line-height: 1.4;
 }
 
+.gpo-mobile-menu-search-host {
+  width: 100%;
+  max-width: 100%;
+  padding: 12px 0 8px;
+  box-sizing: border-box;
+}
+
+.gpo-mobile-menu-search-shell {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.gpo-mobile-menu-search-shell .gpo-vehicle-search {
+  width: 100% !important;
+  max-width: none;
+}
+
+.gpo-mobile-menu-search-shell .gpo-search-results {
+  position: static;
+  margin-top: 12px;
+}
+
+@media (min-width: 1025px) {
+  .gpo-hide-desktop {
+    display: none !important;
+  }
+}
+
+@media (min-width: 782px) and (max-width: 1024px) {
+  .gpo-hide-tablet {
+    display: none !important;
+  }
+}
+
+@media (max-width: 781px) {
+  .gpo-hide-mobile {
+    display: none !important;
+  }
+
+  .gpo-search-mobile-mode-burger.gpo-block-vehicle-search {
+    display: none !important;
+  }
+}
+
 .gpo-brand-carousel.is-enhanced .gpo-brand-viewport,
 .gpo-brand-carousel.is-enhanced .gpo-brand-track,
 .gpo-brand-carousel.is-enhanced .gpo-brand-item {
@@ -3609,6 +3656,7 @@ body.gpo-lightbox-open {
   margin: 0 auto;
   padding-left: clamp(16px, 2vw, 34px);
   padding-right: clamp(16px, 2vw, 34px);
+  box-sizing: border-box;
 }
 
 .single-gpo_vehicle .gpo-single-wrap,
@@ -3618,6 +3666,36 @@ body.gpo-lightbox-open {
   padding-left: 0;
   padding-right: 0;
   gap: clamp(28px, 2.4vw, 42px);
+  box-sizing: border-box;
+}
+
+.single-gpo_vehicle .gpo-theme-main,
+.single-gpo_vehicle .gpo-page-shell,
+.single-gpo_vehicle .gpo-single-wrap,
+.single-gpo_vehicle .gpo-single-hero,
+.single-gpo_vehicle .gpo-content-grid,
+.single-gpo_vehicle .gpo-main-stack,
+.single-gpo_vehicle .gpo-side-stack,
+.single-gpo_vehicle .gpo-single-gallery-panel,
+.single-gpo_vehicle .gpo-single-summary,
+.single-gpo_vehicle .gpo-content-block,
+.single-gpo_vehicle .gpo-side-card,
+.single-gpo_vehicle .gpo-inline-lead-card,
+.single-gpo_vehicle .gpo-single-contact-section,
+.single-gpo_vehicle .gpo-single-stage,
+.single-gpo_vehicle .gpo-single-main,
+.single-gpo_vehicle .gpo-single-thumbs,
+.single-gpo_vehicle .gpo-meta-grid,
+.single-gpo_vehicle .gpo-single-summary__highlights,
+.single-gpo_vehicle .gpo-template-shell,
+.single-gpo_vehicle .gpo-template-shell .gpo-template-hero__content {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.single-gpo_vehicle .gpo-theme-main {
+  overflow-x: clip;
 }
 
 .single-gpo_vehicle .gpo-back-link,
@@ -3813,9 +3891,14 @@ body.gpo-lightbox-open {
   }
 
   .single-gpo_vehicle .gpo-single-thumbs {
+    display: grid;
+    grid-template-columns: none;
+    grid-auto-flow: column;
     gap: 8px;
     grid-auto-columns: 72px;
     overflow-x: auto;
+    max-width: 100%;
+    padding: 0;
     scrollbar-width: none;
   }
 
@@ -3858,6 +3941,11 @@ body.gpo-lightbox-open {
   }
 
   .single-gpo_vehicle .gpo-inline-lead-card .gpo-lead-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .single-gpo_vehicle .gpo-meta-grid,
+  .single-gpo_vehicle .gpo-template-shell .gpo-meta-grid {
     grid-template-columns: 1fr;
   }
 }
