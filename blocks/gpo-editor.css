@@ -149,3 +149,17 @@
   margin-left: 0;
   margin-right: 0;
 }
+
+.editor-styles-wrapper .wp-block[data-type="gestpark/vehicle-search"] .gpo-block-preview--search {
+  margin-bottom: 0;
+}
+
+.editor-styles-wrapper .wp-block[data-type="gestpark/vehicle-search"] .gpo-editor-frame--search {
+  max-width: 100%;
+  padding: 0;
+}
+
+.editor-styles-wrapper .wp-block[data-type="gestpark/vehicle-search"] .gpo-block.gpo-block-vehicle-search {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}

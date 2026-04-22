@@ -1076,6 +1076,85 @@ body .post-content > .gpo-block.alignfull {
   }
 }
 
+/* Final search alignment and mobile-menu overrides */
+.gpo-vehicle-search-shell {
+  width: min(100%, var(--gpo-search-width, 100%)) !important;
+  max-width: min(100%, var(--gpo-search-width, 100%)) !important;
+  min-width: 0;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding: 0 !important;
+}
+
+.gpo-vehicle-search-shell.is-align-left {
+  margin-left: 0 !important;
+  margin-right: auto !important;
+}
+
+.gpo-vehicle-search-shell.is-align-center {
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.gpo-vehicle-search-shell.is-align-right {
+  margin-left: auto !important;
+  margin-right: 0 !important;
+}
+
+.gpo-block.gpo-block-vehicle-search {
+  --gpo-search-width-effective: min(100%, var(--gpo-search-width, 100%));
+  width: var(--gpo-search-width-effective);
+  max-width: var(--gpo-search-width-effective);
+  min-width: 0;
+  flex: 0 1 var(--gpo-search-width-effective);
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  box-sizing: border-box;
+}
+
+.gpo-block.gpo-block-vehicle-search.gpo-search-align-left {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.gpo-block.gpo-block-vehicle-search.gpo-search-align-center {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.gpo-block.gpo-block-vehicle-search.gpo-search-align-right {
+  margin-left: auto;
+  margin-right: 0;
+}
+
+.gpo-block.gpo-block-vehicle-search .gpo-vehicle-search-shell {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+}
+
+.gpo-block.gpo-block-vehicle-search .gpo-vehicle-search {
+  width: 100% !important;
+  max-width: none;
+  margin: 0 !important;
+}
+
+.gpo-block.gpo-block-vehicle-search .gpo-search-results {
+  width: 100%;
+}
+
+.gpo-mobile-menu-search-host {
+  display: block;
+}
+
+.gpo-mobile-menu-search-shell {
+  flex: 1 1 auto;
+}
+
+.gpo-mobile-menu-search-shell .gpo-search-results {
+  width: 100%;
+}
+
 /* Final April 2026 overrides */
 
 .gpo-vehicle-search-shell {

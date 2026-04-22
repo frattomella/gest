@@ -2191,6 +2191,7 @@ class GPO_Frontend {
             'placeholder' => 'Cerca veicolo',
             'width' => 100,
             'radius' => 999,
+            'search_align' => 'left',
             'show_on_desktop' => 'yes',
             'show_on_tablet' => 'yes',
             'show_on_mobile' => 'yes',
@@ -2206,6 +2207,10 @@ class GPO_Frontend {
         if (!in_array($mobile_mode, ['normal', 'burger'], true)) {
             $mobile_mode = 'normal';
         }
+        $search_align = sanitize_key($atts['search_align'] ?? 'left');
+        if (!in_array($search_align, ['left', 'center', 'right'], true)) {
+            $search_align = 'left';
+        }
         $shell_id = wp_unique_id('gpo-search-');
         $style = self::wrapper_style([
             'primary_color' => $atts['primary_color'],
@@ -2215,7 +2220,7 @@ class GPO_Frontend {
             'button_color' => $atts['button_color'],
         ]) . '--gpo-search-width:' . max(20, min(100, absint($atts['width']))) . '%;--gpo-search-radius:' . max(36, absint($atts['radius'])) . 'px;--gpo-shell-margin-y:0px;--gpo-shell-padding-x:0px;';
         ob_start();
-        echo '<div class="gpo-vehicle-search-shell' . ($mobile_mode === 'burger' ? ' gpo-vehicle-search-shell--mobile-menu-source' : '') . '" style="' . esc_attr($style) . '" data-gpo-mobile-mode="' . esc_attr($mobile_mode) . '" data-gpo-show-mobile="' . esc_attr(($atts['show_on_mobile'] ?? 'yes') === 'no' ? 'no' : 'yes') . '" data-gpo-mobile-search-id="' . esc_attr($shell_id) . '">';
+        echo '<div class="gpo-vehicle-search-shell is-align-' . esc_attr($search_align) . ($mobile_mode === 'burger' ? ' gpo-vehicle-search-shell--mobile-menu-source' : '') . '" style="' . esc_attr($style) . '" data-gpo-mobile-mode="' . esc_attr($mobile_mode) . '" data-gpo-show-mobile="' . esc_attr(($atts['show_on_mobile'] ?? 'yes') === 'no' ? 'no' : 'yes') . '" data-gpo-mobile-search-id="' . esc_attr($shell_id) . '" data-gpo-search-align="' . esc_attr($search_align) . '">';
         echo '<form class="gpo-vehicle-search" data-target-url="' . esc_url($target_url) . '" data-catalog-ref="' . esc_attr($atts['catalog_ref']) . '" action="' . esc_url($target_url) . '" method="get" autocomplete="off">';
         echo '<span class="gpo-search-icon" aria-hidden="true">' . self::icon_markup('search') . '</span>';
         echo '<input type="text" name="gpo_search" class="gpo-search-input" placeholder="' . esc_attr($atts['placeholder']) . '" />';

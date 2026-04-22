@@ -120,8 +120,11 @@
     }, []);
   }
 
-  function previewEdit(props, title, description, controls) {
-    const blockProps = useBlockProps({ className: 'gpo-block-preview' });
+  function previewEdit(props, title, description, controls, options) {
+    const config = options || {};
+    const previewClassName = ['gpo-block-preview', config.previewClassName].filter(Boolean).join(' ');
+    const frameClassName = ['gpo-editor-frame', config.frameClassName].filter(Boolean).join(' ');
+    const blockProps = useBlockProps({ className: previewClassName });
     const frameRef = useRef(null);
     ensureDefaultColors(props);
     useEffect(function () {
@@ -144,9 +147,9 @@
     }, [props.attributes]);
     return el('div', blockProps, [
       el(InspectorControls, {}, controls || []),
-      el('div', { className: 'gpo-block-label' }, title),
+      config.showLabel === false ? null : el('div', { className: 'gpo-block-label' }, title),
       description ? el('p', { style: { marginTop: 0, color: '#475569' } }, description) : null,
-      el('div', { className: 'gpo-editor-frame', ref: frameRef }, [
+      el('div', { className: frameClassName, ref: frameRef }, [
         el(Disabled, {}, el(ServerSideRender, {
           block: props.name,
           attributes: props.attributes,
@@ -233,7 +236,17 @@
   }
 
   function searchDeviceControls(props) {
-    return el(PanelBody, { title: 'Visibilita per dispositivo', initialOpen: false }, [
+    return el(PanelBody, { title: 'Visibilita e comportamento mobile', initialOpen: false }, [
+      el(SelectControl, {
+        label: 'Allineamento nella riga',
+        value: props.attributes.searchAlign || 'left',
+        options: [
+          { label: 'Sinistra', value: 'left' },
+          { label: 'Centro', value: 'center' },
+          { label: 'Destra', value: 'right' }
+        ],
+        onChange: function (value) { props.setAttributes({ searchAlign: value || 'left' }); }
+      }),
       el(ToggleControl, {
         label: 'Mostra su Desktop',
         checked: props.attributes.showOnDesktop !== false,
@@ -529,7 +542,7 @@
     title: 'GestPark Ricerca veicoli',
     icon: 'search',
     category: 'widgets',
-    attributes: { pageId:{type:'number',default:0}, catalogRef:{type:'string',default:'default'}, placeholder:{type:'string',default:'Cerca veicolo'}, width:{type:'number',default:100}, radius:{type:'number',default:999}, showOnDesktop:{type:'boolean',default:true}, showOnTablet:{type:'boolean',default:true}, showOnMobile:{type:'boolean',default:true}, mobileMode:{type:'string',default:'normal'}, primaryColor:{type:'string',default:''}, accentColor:{type:'string',default:''}, bgColor:{type:'string',default:''}, textColor:{type:'string',default:''}, buttonColor:{type:'string',default:''} },
+    attributes: { pageId:{type:'number',default:0}, catalogRef:{type:'string',default:'default'}, placeholder:{type:'string',default:'Cerca veicolo'}, width:{type:'number',default:100}, radius:{type:'number',default:999}, searchAlign:{type:'string',default:'left'}, showOnDesktop:{type:'boolean',default:true}, showOnTablet:{type:'boolean',default:true}, showOnMobile:{type:'boolean',default:true}, mobileMode:{type:'string',default:'normal'}, primaryColor:{type:'string',default:''}, accentColor:{type:'string',default:''}, bgColor:{type:'string',default:''}, textColor:{type:'string',default:''}, buttonColor:{type:'string',default:''} },
     edit: function (props) {
       return previewEdit(props, 'GestPark Ricerca veicoli', '', [
         el(PanelBody, { title:'Impostazioni barra di ricerca', initialOpen:true }, targetPageControls(props).concat([
@@ -538,7 +551,11 @@
           el(RangeControl, { label:'Raggio angoli', value:props.attributes.radius, min:36, max:999, onChange:function(v){ props.setAttributes({ radius:v || 36 }); } })
         ].concat(styleControls(props)))),
         searchDeviceControls(props)
-      ]);
+      ], {
+        showLabel: false,
+        previewClassName: 'gpo-block-preview--search',
+        frameClassName: 'gpo-editor-frame--search'
+      });
     },
     save: function(){ return null; }
   });

@@ -109,6 +109,10 @@ class GPO_Blocks {
             $parts .= ' mobile_mode="' . esc_attr($attributes['mobileMode']) . '"';
         }
 
+        if (!empty($attributes['searchAlign'])) {
+            $parts .= ' search_align="' . esc_attr($attributes['searchAlign']) . '"';
+        }
+
         return $parts;
     }
 
@@ -292,6 +296,7 @@ class GPO_Blocks {
                 'placeholder' => ['type' => 'string', 'default' => 'Cerca veicolo'],
                 'width' => ['type' => 'number', 'default' => 100],
                 'radius' => ['type' => 'number', 'default' => 999],
+                'searchAlign' => ['type' => 'string', 'default' => 'left'],
                 'showOnDesktop' => ['type' => 'boolean', 'default' => true],
                 'showOnTablet' => ['type' => 'boolean', 'default' => true],
                 'showOnMobile' => ['type' => 'boolean', 'default' => true],
@@ -498,6 +503,9 @@ class GPO_Blocks {
         if (isset($attributes['sectionGap'])) {
             $style .= '--gpo-section-gap:' . absint($attributes['sectionGap']) . 'px;';
         }
+        if (isset($attributes['width'])) {
+            $style .= '--gpo-search-width:' . max(20, min(100, absint($attributes['width']))) . '%;';
+        }
         return $style;
     }
 
@@ -507,7 +515,6 @@ class GPO_Blocks {
             'gpo-block-featured-carousel',
             'gpo-block-featured-vehicle',
             'gpo-block-brand-carousel',
-            'gpo-block-vehicle-search',
         ];
     }
 
@@ -555,6 +562,12 @@ class GPO_Blocks {
         }
         if (($attributes['mobileMode'] ?? 'normal') === 'burger') {
             $classes[] = 'gpo-search-mobile-mode-burger';
+        }
+        if (!empty($attributes['searchAlign'])) {
+            $align = sanitize_key($attributes['searchAlign']);
+            if (in_array($align, ['left', 'center', 'right'], true)) {
+                $classes[] = 'gpo-search-align-' . $align;
+            }
         }
 
         return implode(' ', $classes);
