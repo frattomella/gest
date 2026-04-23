@@ -275,23 +275,27 @@
     ]);
   }
 
-  function searchPreviewSummary(props) {
-    var visibility = [];
-    if (props.attributes.showOnDesktop !== false) visibility.push('Desktop');
-    if (props.attributes.showOnTablet !== false) visibility.push('Tablet');
-    if (props.attributes.showOnMobile !== false) visibility.push('Mobile');
-
-    return visibility.length ? visibility.join(' / ') : 'Blocco nascosto su tutti i device';
+  function searchPreviewVisibilityClasses(props) {
+    return [
+      props.attributes.showOnDesktop === false ? 'gpo-hide-desktop' : '',
+      props.attributes.showOnTablet === false ? 'gpo-hide-tablet' : '',
+      props.attributes.showOnMobile === false ? 'gpo-hide-mobile' : ''
+    ].filter(Boolean).join(' ');
   }
 
   function searchPreviewEdit(props) {
     var width = Math.max(20, Math.min(100, parseInt(props.attributes.width, 10) || 100));
     var align = props.attributes.searchAlign || 'left';
-    var mobileMode = props.attributes.mobileMode || 'normal';
     var placeholder = props.attributes.placeholder || 'Cerca veicolo';
+    var visibilityClasses = searchPreviewVisibilityClasses(props);
     var blockProps = useBlockProps({
-      className: ['gpo-block-preview', 'gpo-block-preview--search', 'gpo-block-preview--search-editor', 'gpo-search-align-' + align].join(' '),
-      style: { '--gpo-search-width': width + '%' }
+      className: ['gpo-block-preview', 'gpo-block-preview--search', 'gpo-block-preview--search-editor', 'gpo-search-align-' + align, visibilityClasses].filter(Boolean).join(' '),
+      style: {
+        '--gpo-search-width': width + '%',
+        width: width + '%',
+        maxWidth: '100%',
+        flexBasis: width + '%'
+      }
     });
 
     ensureDefaultColors(props);
@@ -305,18 +309,12 @@
         ].concat(styleControls(props)))),
         searchDeviceControls(props)
       ]),
-      el('div', { className:'gpo-search-editor-shell gpo-search-editor-shell--' + align }, [
+      el('div', { className:['gpo-search-editor-shell', 'gpo-search-editor-shell--' + align].join(' ') }, [
         el('div', { className:'gpo-search-editor-bar', style:{ borderRadius:(props.attributes.radius || 999) + 'px' } }, [
           el('span', { className:'gpo-search-editor-icon', 'aria-hidden':'true' }, 'S'),
           el('span', { className:'gpo-search-editor-placeholder' }, placeholder),
           el('span', { className:'gpo-search-editor-clear', 'aria-hidden':'true' }, 'x')
         ])
-      ]),
-      el('div', { className:'gpo-search-editor-meta' }, [
-        el('span', { className:'gpo-search-editor-chip' }, searchPreviewSummary(props)),
-        mobileMode === 'burger'
-          ? el('span', { className:'gpo-search-editor-chip gpo-search-editor-chip--accent' }, 'Mobile: dentro burger menu')
-          : el('span', { className:'gpo-search-editor-chip' }, 'Mobile: modalita normale')
       ])
     ]);
   }

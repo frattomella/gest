@@ -509,6 +509,9 @@ class GPO_Frontend {
         if (!in_array($desktop_layout, ['standard', 'marketplace-sidebar'], true)) {
             $desktop_layout = 'standard';
         }
+        $display['context'] = !empty($atts['context'])
+            ? sanitize_key($atts['context'])
+            : (($atts['filters'] ?? 'no') === 'yes' ? 'catalog' : 'default');
         $wrapper_style = self::wrapper_style($atts);
         $catalog_classes = ['gpo-catalog-shell', 'gpo-catalog-shell--layout-' . $desktop_layout];
         $is_marketplace_sidebar = ($atts['filters'] === 'yes' && $desktop_layout === 'marketplace-sidebar');
@@ -739,6 +742,7 @@ class GPO_Frontend {
             'filter_fields_desktop' => $atts['filter_fields_desktop'] ?? '',
             'filter_fields_tablet' => $atts['filter_fields_tablet'] ?? '',
             'filter_fields_mobile' => $atts['filter_fields_mobile'] ?? '',
+            'context' => 'catalog',
         ]);
     }
 
@@ -1092,37 +1096,36 @@ class GPO_Frontend {
             $meta_query[] = ['key' => '_gpo_featured', 'value' => '1'];
         }
 
-        $condition = self::request_value('gpo_condition');
-        $fuel = self::request_value('gpo_fuel');
-        $body = self::request_value('gpo_body_type');
-        $transmission = self::request_value('gpo_transmission');
-        $brand = self::request_value('gpo_brand');
-        $brand_key = self::request_value('gpo_brand_key');
+        $condition = self::request_values('gpo_condition');
+        $fuel = self::request_values('gpo_fuel');
+        $body = self::request_values('gpo_body_type');
+        $transmission = self::request_values('gpo_transmission');
+        $brand = self::request_values('gpo_brand');
+        $brand_key = self::request_values('gpo_brand_key');
         $search = self::request_value('gpo_search');
         $min_price = self::request_value('gpo_min_price');
         $max_price = self::request_value('gpo_max_price');
         $max_mileage = self::request_value('gpo_max_mileage');
-        $year = self::request_value('gpo_year');
+        $year = self::request_values('gpo_year');
 
-        if ($condition !== '') {
-            $meta_query[] = ['key' => '_gpo_condition', 'value' => $condition];
+        if (!empty($condition)) {
+            $meta_query[] = ['key' => '_gpo_condition', 'value' => $condition, 'compare' => 'IN'];
         }
-        if ($fuel !== '') {
-            $meta_query[] = ['key' => '_gpo_fuel', 'value' => $fuel];
+        if (!empty($fuel)) {
+            $meta_query[] = ['key' => '_gpo_fuel', 'value' => $fuel, 'compare' => 'IN'];
         }
-        if ($body !== '') {
-            $meta_query[] = ['key' => '_gpo_body_type', 'value' => $body];
+        if (!empty($body)) {
+            $meta_query[] = ['key' => '_gpo_body_type', 'value' => $body, 'compare' => 'IN'];
         }
-        if ($transmission !== '') {
-            $meta_query[] = ['key' => '_gpo_transmission', 'value' => $transmission];
+        if (!empty($transmission)) {
+            $meta_query[] = ['key' => '_gpo_transmission', 'value' => $transmission, 'compare' => 'IN'];
         }
-        if ($brand_key !== '') {
-            $meta_query[] = self::brand_meta_query($brand_key);
-        } elseif ($brand !== '') {
-            $meta_query[] = ['key' => '_gpo_brand', 'value' => $brand];
+        $brand_meta_query = self::brand_filters_meta_clause($brand_key, $brand);
+        if (!empty($brand_meta_query)) {
+            $meta_query[] = $brand_meta_query;
         }
-        if ($year !== '') {
-            $meta_query[] = ['key' => '_gpo_year', 'value' => $year];
+        if (!empty($year)) {
+            $meta_query[] = ['key' => '_gpo_year', 'value' => $year, 'compare' => 'IN'];
         }
         if ($min_price !== '' || $max_price !== '') {
             $range = ['key' => '_gpo_price', 'type' => 'NUMERIC'];
@@ -1195,6 +1198,36 @@ class GPO_Frontend {
         return new WP_Query($args);
     }
 
+    protected static function brand_filters_meta_clause($brand_keys = [], $brands = []) {
+        $clauses = [];
+
+        foreach ((array) $brand_keys as $brand_key) {
+            $brand_key = sanitize_text_field((string) $brand_key);
+            if ($brand_key === '') {
+                continue;
+            }
+            $clauses[] = self::brand_meta_query($brand_key);
+        }
+
+        foreach ((array) $brands as $brand) {
+            $brand = sanitize_text_field((string) $brand);
+            if ($brand === '') {
+                continue;
+            }
+            $clauses[] = ['key' => '_gpo_brand', 'value' => $brand];
+        }
+
+        if (empty($clauses)) {
+            return [];
+        }
+
+        if (count($clauses) === 1) {
+            return $clauses[0];
+        }
+
+        return array_merge(['relation' => 'OR'], $clauses);
+    }
+
     protected static function render_results_header($query, $compact = false, $options = []) {
         $found = absint($query->found_posts);
         $sort = self::request_value('gpo_sort') ?: 'date_desc';
@@ -1210,11 +1243,7 @@ class GPO_Frontend {
         }
 
         echo '<div class="' . esc_attr(implode(' ', $classes)) . '">';
-        echo '<div class="gpo-results-head__summary"><strong>' . esc_html((string) $found) . '</strong> veicoli trovati';
-        if ($layout === 'marketplace-sidebar') {
-            echo '<span class="gpo-results-head__view-chip">Layout sidebar</span>';
-        }
-        echo '</div>';
+        echo '<div class="gpo-results-head__summary"><strong>' . esc_html((string) $found) . '</strong> veicoli trovati</div>';
         echo '<div class="gpo-results-head__controls">';
         if ($show_limit_control) {
             echo '<div class="gpo-sort-wrap gpo-sort-wrap--limit"><label for="gpo-limit">Mostra</label><select id="gpo-limit" name="gpo_limit" form="gpo-filter-form">';
@@ -1259,20 +1288,21 @@ class GPO_Frontend {
 
         ob_start();
         echo '<form id="gpo-filter-form" class="gpo-filter-panel' . ($layout === 'marketplace-sidebar' ? ' gpo-filter-panel--marketplace-sidebar' : '') . '" data-gpo-filter-panel="1" method="get" action="' . esc_url($action) . '">';
-        if (self::request_value('gpo_brand_key') !== '') {
-            echo '<input type="hidden" name="gpo_brand_key" value="' . esc_attr(self::request_value('gpo_brand_key')) . '" />';
+        foreach (self::request_values('gpo_brand_key') as $brand_key_value) {
+            echo '<input type="hidden" name="gpo_brand_key[]" value="' . esc_attr($brand_key_value) . '" />';
         }
         if (self::request_value('gpo_catalog_ref') !== '') {
             echo '<input type="hidden" name="gpo_catalog_ref" value="' . esc_attr(self::request_value('gpo_catalog_ref')) . '" />';
         }
-        if (self::request_value('gpo_limit') !== '') {
-            echo '<input type="hidden" name="gpo_limit" value="' . esc_attr(self::request_value('gpo_limit')) . '" />';
+        if (self::request_value('gpo_search') !== '') {
+            echo '<input type="hidden" name="gpo_search" value="' . esc_attr(self::request_value('gpo_search')) . '" />';
         }
         echo '<button class="gpo-filter-toggle" type="button" aria-expanded="true" aria-controls="' . esc_attr($panel_body_id) . '">';
         echo '<span class="gpo-filter-toggle__copy"><strong>Filtri catalogo</strong><small>Affina il parco auto per marca, prezzo e caratteristiche.</small></span>';
         echo '<span class="gpo-filter-toggle__icon" aria-hidden="true">' . self::icon_markup('chevron-right') . '</span>';
         echo '</button>';
         echo '<div class="gpo-filter-panel__body" id="' . esc_attr($panel_body_id) . '">';
+        echo self::active_filter_chips_markup($action);
         echo '<div class="gpo-filter-grid">';
         if (in_array('condition', $visible_filters, true)) { self::render_filter_select('Condizione', 'gpo_condition', $catalog_values['condition'], self::filter_visibility_classes($device_visibility, 'condition')); }
         if (in_array('brand', $visible_filters, true)) { self::render_filter_select('Marca', 'gpo_brand', $catalog_values['brand'], self::filter_visibility_classes($device_visibility, 'brand')); }
@@ -1299,7 +1329,7 @@ class GPO_Frontend {
             echo '</select></label>';
         }
         echo '</div>';
-        echo '<div class="gpo-filter-actions"><button class="gpo-button" type="submit">Applica filtri</button><a class="gpo-button gpo-button-secondary" href="' . esc_url($action) . '">Reset</a></div>';
+        echo '<div class="gpo-filter-actions"><a class="gpo-button gpo-button-secondary" href="' . esc_url(self::filter_reset_url($action)) . '">Reset</a></div>';
         echo '</div>';
         echo '</form>';
         return ob_get_clean();
@@ -1348,16 +1378,131 @@ class GPO_Frontend {
     }
 
     protected static function render_filter_select($label, $name, $values, $extra_class = '') {
-        echo '<label class="' . esc_attr(trim('gpo-filter-control gpo-filter-control--select ' . $extra_class)) . '"><span class="gpo-filter-control__label">' . esc_html($label) . '</span><select class="gpo-filter-control__field" name="' . esc_attr($name) . '"><option value="">Tutti</option>';
-        $current = self::request_value($name);
+        $current = self::request_values($name);
+        echo '<div class="' . esc_attr(trim('gpo-filter-control gpo-filter-control--multi ' . $extra_class)) . '">';
+        echo '<span class="gpo-filter-control__label">' . esc_html($label) . '</span>';
+        echo '<div class="gpo-filter-options" role="group" aria-label="' . esc_attr($label) . '">';
         foreach ($values as $value) {
-            echo '<option value="' . esc_attr($value) . '" ' . selected($current, $value, false) . '>' . esc_html($value) . '</option>';
+            $id = function_exists('wp_unique_id') ? wp_unique_id($name . '-') : sanitize_html_class($name . '-' . md5((string) $value));
+            echo '<label class="gpo-filter-option" for="' . esc_attr($id) . '">';
+            echo '<input class="gpo-filter-option__input" type="checkbox" id="' . esc_attr($id) . '" name="' . esc_attr($name) . '[]" value="' . esc_attr($value) . '" ' . checked(in_array((string) $value, $current, true), true, false) . ' />';
+            echo '<span class="gpo-filter-option__chip">' . esc_html($value) . '</span>';
+            echo '</label>';
         }
-        echo '</select></label>';
+        if (empty($values)) {
+            echo '<span class="gpo-filter-option__empty">Nessun valore disponibile</span>';
+        }
+        echo '</div></div>';
     }
 
     protected static function render_filter_input($label, $name, $value, $type = 'text', $placeholder = '', $extra_class = '') {
         echo '<label class="' . esc_attr(trim('gpo-filter-control gpo-filter-control--input ' . $extra_class)) . '"><span class="gpo-filter-control__label">' . esc_html($label) . '</span><input class="gpo-filter-control__field" type="' . esc_attr($type) . '" name="' . esc_attr($name) . '" value="' . esc_attr($value) . '" placeholder="' . esc_attr($placeholder) . '" /></label>';
+    }
+
+    protected static function active_filter_chips_markup($action) {
+        $chips = [];
+        $definitions = [
+            'gpo_condition' => 'Condizione',
+            'gpo_brand' => 'Marca',
+            'gpo_fuel' => 'Alimentazione',
+            'gpo_body_type' => 'Carrozzeria',
+            'gpo_transmission' => 'Cambio',
+            'gpo_year' => 'Anno',
+        ];
+
+        foreach ($definitions as $key => $label) {
+            foreach (self::request_values($key) as $value) {
+                $chips[] = [
+                    'key' => $key,
+                    'value' => $value,
+                    'label' => $label . ': ' . $value,
+                ];
+            }
+        }
+
+        foreach (self::request_values('gpo_brand_key') as $brand_key) {
+            $entry = self::brand_entry_local($brand_key);
+            $chips[] = [
+                'key' => 'gpo_brand_key',
+                'value' => $brand_key,
+                'label' => 'Marca: ' . ($entry['name'] ?? $brand_key),
+            ];
+        }
+
+        if (self::request_value('gpo_min_price') !== '') {
+            $chips[] = [
+                'key' => 'gpo_min_price',
+                'value' => null,
+                'label' => 'Prezzo da ' . self::format_price_public((float) self::request_value('gpo_min_price')),
+            ];
+        }
+
+        if (self::request_value('gpo_max_price') !== '') {
+            $chips[] = [
+                'key' => 'gpo_max_price',
+                'value' => null,
+                'label' => 'Prezzo fino a ' . self::format_price_public((float) self::request_value('gpo_max_price')),
+            ];
+        }
+
+        if (self::request_value('gpo_max_mileage') !== '') {
+            $chips[] = [
+                'key' => 'gpo_max_mileage',
+                'value' => null,
+                'label' => 'KM max ' . self::format_number(self::request_value('gpo_max_mileage'), ' km'),
+            ];
+        }
+
+        if (empty($chips)) {
+            return '';
+        }
+
+        ob_start();
+        echo '<div class="gpo-active-filters" aria-label="Filtri attivi">';
+        echo '<span class="gpo-active-filters__label">Filtri attivi</span>';
+        echo '<div class="gpo-active-filters__list">';
+        foreach ($chips as $chip) {
+            echo '<a class="gpo-active-filter" href="' . esc_url(self::filter_chip_remove_url($action, $chip['key'], $chip['value'])) . '">';
+            echo '<span class="gpo-active-filter__text">' . esc_html($chip['label']) . '</span>';
+            echo '<span class="gpo-active-filter__remove" aria-hidden="true">&times;</span>';
+            echo '</a>';
+        }
+        echo '</div>';
+        echo '</div>';
+
+        return ob_get_clean();
+    }
+
+    protected static function filter_chip_remove_url($action, $key, $value = null) {
+        $args = self::current_request_query_args();
+
+        if (!array_key_exists($key, $args)) {
+            return add_query_arg($args, $action);
+        }
+
+        if ($value !== null && is_array($args[$key])) {
+            $args[$key] = array_values(array_filter($args[$key], function ($current) use ($value) {
+                return (string) $current !== (string) $value;
+            }));
+
+            if (empty($args[$key])) {
+                unset($args[$key]);
+            }
+        } else {
+            unset($args[$key]);
+        }
+
+        return add_query_arg($args, $action);
+    }
+
+    protected static function filter_reset_url($action) {
+        $args = [];
+
+        if (self::request_value('gpo_catalog_ref') !== '') {
+            $args['gpo_catalog_ref'] = self::request_value('gpo_catalog_ref');
+        }
+
+        return add_query_arg($args, $action);
     }
 
     public static function fallback_vehicle_image_url() {
@@ -1469,7 +1614,7 @@ class GPO_Frontend {
                 echo '<div class="gpo-card-overlay">';
                 if ($badge) {
                     echo '<span class="gpo-badge">' . esc_html($badge) . '</span>';
-                } elseif ($is_featured && $context !== 'showcase') {
+                } elseif ($is_featured && !in_array($context, ['showcase', 'catalog'], true)) {
                     echo '<span class="gpo-badge">In vetrina</span>';
                 }
                 if ($promotion) {
@@ -2007,7 +2152,51 @@ class GPO_Frontend {
     }
 
     protected static function request_value($key) {
-        return isset($_GET[$key]) ? sanitize_text_field(wp_unslash($_GET[$key])) : '';
+        $values = self::request_values($key);
+
+        return $values[0] ?? '';
+    }
+
+    protected static function request_values($key) {
+        if (!isset($_GET[$key])) {
+            return [];
+        }
+
+        $raw = wp_unslash($_GET[$key]);
+        $items = is_array($raw) ? $raw : [$raw];
+        $items = array_map(function ($value) {
+            return sanitize_text_field((string) $value);
+        }, $items);
+
+        return array_values(array_unique(array_filter($items, function ($value) {
+            return $value !== '';
+        })));
+    }
+
+    protected static function current_request_query_args() {
+        $args = [];
+
+        foreach ((array) $_GET as $key => $raw) {
+            if (is_array($raw)) {
+                $values = array_values(array_unique(array_filter(array_map(function ($value) {
+                    return sanitize_text_field((string) wp_unslash($value));
+                }, $raw), function ($value) {
+                    return $value !== '';
+                })));
+
+                if (!empty($values)) {
+                    $args[sanitize_key((string) $key)] = $values;
+                }
+                continue;
+            }
+
+            $value = sanitize_text_field((string) wp_unslash($raw));
+            if ($value !== '') {
+                $args[sanitize_key((string) $key)] = $value;
+            }
+        }
+
+        return $args;
     }
 
     public static function ensure_template_preview_vehicle() {

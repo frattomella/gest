@@ -63,14 +63,23 @@
       return;
     }
 
-    Array.prototype.slice.call(form.querySelectorAll('#gpo-sort, #gpo-limit')).forEach(function (field) {
+    function submitForm() {
+      if (typeof form.requestSubmit === 'function') {
+        form.requestSubmit();
+        return;
+      }
+
+      form.submit();
+    }
+
+    Array.prototype.slice.call(form.querySelectorAll('.gpo-filter-control__field, .gpo-filter-option__input, #gpo-sort, #gpo-limit')).forEach(function (field) {
       if (!field || field.dataset.bound === '1') {
         return;
       }
 
       field.dataset.bound = '1';
       field.addEventListener('change', function () {
-        form.submit();
+        submitForm();
       });
     });
   }

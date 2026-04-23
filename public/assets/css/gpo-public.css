@@ -1076,6 +1076,216 @@ body .post-content > .gpo-block.alignfull {
   }
 }
 
+/* Final April 2026 catalog + search editor parity fixes */
+
+.gpo-quick-info-panel__item,
+.gpo-quick-info-panel__copy,
+.gpo-quick-info-panel__copy small,
+.gpo-quick-info-panel__copy strong {
+  text-decoration: none !important;
+}
+
+.gpo-catalog-shell {
+  --gpo-shell-effective-max: max(var(--gpo-content-max-width), 1480px);
+}
+
+.gpo-catalog-shell .gpo-filter-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.gpo-catalog-shell--layout-marketplace-sidebar .gpo-catalog-layout {
+  grid-template-columns: minmax(280px, 308px) minmax(0, 1fr);
+  gap: clamp(18px, 2vw, 30px);
+}
+
+.gpo-filter-control--multi {
+  min-width: 0;
+}
+
+.gpo-filter-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 48px;
+  padding: 12px;
+  border: 1px solid rgba(203, 213, 225, 0.95);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  box-sizing: border-box;
+}
+
+.gpo-filter-option {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+}
+
+.gpo-filter-option__input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.gpo-filter-option__chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  max-width: 100%;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(203, 213, 225, 0.95);
+  background: #f8fafc;
+  color: #334155;
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  box-sizing: border-box;
+  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.gpo-filter-option__input:checked + .gpo-filter-option__chip {
+  border-color: color-mix(in srgb, var(--gpo-accent) 32%, rgba(203, 213, 225, 0.95));
+  background: color-mix(in srgb, var(--gpo-accent) 10%, #ffffff);
+  color: var(--gpo-local-text, var(--gpo-primary));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--gpo-accent) 10%, transparent);
+}
+
+.gpo-filter-option__empty {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.gpo-active-filters {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.gpo-active-filters__label {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.gpo-active-filters__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gpo-active-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  max-width: 100%;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(203, 213, 225, 0.95);
+  background: #fff;
+  color: var(--gpo-local-text, var(--gpo-primary));
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+.gpo-active-filter__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gpo-active-filter__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.06);
+  font-size: 0.98rem;
+  line-height: 1;
+}
+
+.gpo-filter-actions {
+  justify-content: flex-start;
+}
+
+.gpo-filter-actions .gpo-button-secondary {
+  min-width: auto;
+}
+
+.gpo-filter-panel--marketplace-sidebar .gpo-filter-actions {
+  flex-direction: row;
+  align-items: center;
+}
+
+.single-gpo_vehicle .gpo-single-follow-up {
+  width: 100%;
+  max-width: none;
+}
+
+.single-gpo_vehicle .gpo-single-follow-up .gpo-block,
+.single-gpo_vehicle .gpo-single-follow-up .gpo-single-block,
+.single-gpo_vehicle .gpo-single-follow-up .gpo-carousel-shell,
+.single-gpo_vehicle .gpo-single-follow-up .gpo-catalog-shell {
+  width: 100%;
+  max-width: none;
+}
+
+.single-gpo_vehicle .gpo-single-follow-up .gpo-carousel-shell {
+  --gpo-shell-effective-max: max(var(--gpo-content-max-width), 1480px);
+}
+
+@media (min-width: 981px) {
+  .gpo-catalog-shell {
+    padding-left: clamp(12px, 1.4vw, 22px);
+    padding-right: clamp(12px, 1.4vw, 22px);
+  }
+}
+
+@media (max-width: 1180px) {
+  .gpo-catalog-shell {
+    --gpo-shell-effective-max: 100%;
+  }
+
+  .gpo-catalog-shell .gpo-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .gpo-catalog-shell .gpo-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .gpo-filter-options {
+    padding: 10px;
+  }
+
+  .gpo-filter-option__chip,
+  .gpo-active-filter {
+    min-height: 32px;
+    font-size: 0.82rem;
+  }
+
+  .gpo-active-filters__list {
+    gap: 6px;
+  }
+}
+
 /* Final April 2026 terminal overrides */
 
 .gpo-brand-carousel.is-enhanced .gpo-brand-track {
@@ -4916,5 +5126,185 @@ body.gpo-lightbox-open {
   .gpo-brand-item {
     padding: 14px;
     border-radius: 22px;
+  }
+}
+/* Final April 2026 end-of-file overrides */
+
+.gpo-quick-info-panel__item,
+.gpo-quick-info-panel__copy,
+.gpo-quick-info-panel__copy small,
+.gpo-quick-info-panel__copy strong {
+  text-decoration: none !important;
+}
+
+.gpo-catalog-shell {
+  --gpo-shell-effective-max: max(var(--gpo-content-max-width), 1480px);
+}
+
+.gpo-catalog-shell--layout-marketplace-sidebar .gpo-catalog-layout {
+  grid-template-columns: minmax(280px, 308px) minmax(0, 1fr);
+  gap: clamp(18px, 2vw, 30px);
+}
+
+.gpo-catalog-shell .gpo-filter-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.gpo-filter-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 48px;
+  padding: 12px;
+  border: 1px solid rgba(203, 213, 225, 0.95);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  box-sizing: border-box;
+}
+
+.gpo-filter-option {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+}
+
+.gpo-filter-option__input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.gpo-filter-option__chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  max-width: 100%;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(203, 213, 225, 0.95);
+  background: #f8fafc;
+  color: #334155;
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.gpo-filter-option__input:checked + .gpo-filter-option__chip {
+  border-color: color-mix(in srgb, var(--gpo-accent) 32%, rgba(203, 213, 225, 0.95));
+  background: color-mix(in srgb, var(--gpo-accent) 10%, #ffffff);
+  color: var(--gpo-local-text, var(--gpo-primary));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--gpo-accent) 10%, transparent);
+}
+
+.gpo-active-filters {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.gpo-active-filters__label {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.gpo-active-filters__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gpo-active-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  max-width: 100%;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(203, 213, 225, 0.95);
+  background: #fff;
+  color: var(--gpo-local-text, var(--gpo-primary));
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+.gpo-active-filter__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gpo-active-filter__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.06);
+  font-size: 0.98rem;
+  line-height: 1;
+}
+
+.gpo-filter-actions {
+  justify-content: flex-start;
+}
+
+.single-gpo_vehicle .gpo-single-follow-up,
+.single-gpo_vehicle .gpo-single-follow-up .gpo-block,
+.single-gpo_vehicle .gpo-single-follow-up .gpo-single-block,
+.single-gpo_vehicle .gpo-single-follow-up .gpo-carousel-shell,
+.single-gpo_vehicle .gpo-single-follow-up .gpo-catalog-shell {
+  width: 100%;
+  max-width: none;
+}
+
+.single-gpo_vehicle .gpo-single-follow-up .gpo-carousel-shell {
+  --gpo-shell-effective-max: max(var(--gpo-content-max-width), 1480px);
+}
+
+@media (min-width: 981px) {
+  .gpo-catalog-shell {
+    padding-left: clamp(12px, 1.4vw, 22px);
+    padding-right: clamp(12px, 1.4vw, 22px);
+  }
+}
+
+@media (max-width: 1180px) {
+  .gpo-catalog-shell {
+    --gpo-shell-effective-max: 100%;
+  }
+
+  .gpo-catalog-shell .gpo-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .gpo-catalog-shell .gpo-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .gpo-filter-options {
+    padding: 10px;
+  }
+
+  .gpo-filter-option__chip,
+  .gpo-active-filter {
+    min-height: 32px;
+    font-size: 0.82rem;
   }
 }
