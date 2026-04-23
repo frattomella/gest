@@ -152,6 +152,11 @@
 
 .editor-styles-wrapper .wp-block[data-type="gestpark/vehicle-search"] .gpo-block-preview--search {
   margin-bottom: 0;
+  overflow: visible;
+}
+
+.editor-styles-wrapper .wp-block[data-type="gestpark/vehicle-search"] {
+  line-height: 1.2;
 }
 
 .editor-styles-wrapper .wp-block[data-type="gestpark/vehicle-search"] .gpo-editor-frame--search {
@@ -196,4 +201,106 @@
 .editor-styles-wrapper .wp-block-navigation .wp-block[data-type="gestpark/vehicle-search"] .gpo-vehicle-search {
   width: 100% !important;
   max-width: 100% !important;
+}
+
+.editor-styles-wrapper .wp-block[data-type="gestpark/vehicle-search"] .gpo-block-preview--search-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  margin-bottom: 0 !important;
+  line-height: 1.2;
+}
+
+.editor-styles-wrapper .wp-block[data-type="gestpark/vehicle-search"] .gpo-search-editor-shell {
+  display: flex;
+  width: min(100%, var(--gpo-search-width, 100%));
+  max-width: 100%;
+  min-width: 0;
+}
+
+.editor-styles-wrapper .wp-block[data-type="gestpark/vehicle-search"] .gpo-search-editor-shell--left {
+  margin-right: auto;
+}
+
+.editor-styles-wrapper .wp-block[data-type="gestpark/vehicle-search"] .gpo-search-editor-shell--center {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.editor-styles-wrapper .wp-block[data-type="gestpark/vehicle-search"] .gpo-search-editor-shell--right {
+  margin-left: auto;
+}
+
+.editor-styles-wrapper .wp-block[data-type="gestpark/vehicle-search"] .gpo-search-editor-bar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 58px;
+  padding: 0 16px;
+  border: 1px solid #d8e1ea;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+  box-sizing: border-box;
+}
+
+.editor-styles-wrapper .wp-block[data-type="gestpark/vehicle-search"] .gpo-search-editor-icon,
+.editor-styles-wrapper .wp-block[data-type="gestpark/vehicle-search"] .gpo-search-editor-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  color: #64748b;
+  background: #f8fafc;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.editor-styles-wrapper .wp-block[data-type="gestpark/vehicle-search"] .gpo-search-editor-placeholder {
+  min-width: 0;
+  color: #475569;
+  font-size: 0.96rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.editor-styles-wrapper .wp-block[data-type="gestpark/vehicle-search"] .gpo-search-editor-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.editor-styles-wrapper .wp-block[data-type="gestpark/vehicle-search"] .gpo-search-editor-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #edf2f7;
+  color: #334155;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.editor-styles-wrapper .wp-block[data-type="gestpark/vehicle-search"] .gpo-search-editor-chip--accent {
+  background: #eaf3ff;
+  color: #113a7d;
+}
+
+.editor-styles-wrapper .wp-block-navigation .wp-block[data-type="gestpark/vehicle-search"] {
+  min-width: min(100%, 250px);
+  flex: 0 1 320px;
+  line-height: 1.2;
+}
+
+.editor-styles-wrapper .wp-block-navigation .wp-block[data-type="gestpark/vehicle-search"] .gpo-search-editor-shell {
+  width: 100%;
 }

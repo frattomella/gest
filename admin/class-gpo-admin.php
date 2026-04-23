@@ -56,6 +56,7 @@ class GPO_Admin {
                 'body_font' => 'inherit',
                 'card_layout' => 'default',
                 'single_layout' => 'classic',
+                'single_header' => 'default',
                 'single_template_id' => 0,
                 'card_gap' => '24',
                 'card_padding' => '22',
@@ -238,7 +239,7 @@ class GPO_Admin {
         }
 
         if (!empty($input['style']) && is_array($input['style'])) {
-            foreach (['primary_color', 'accent_color', 'card_bg', 'radius', 'title_font', 'body_font', 'card_layout', 'single_layout', 'single_template_id', 'card_gap', 'card_padding', 'content_max_width', 'outer_margin_y', 'outer_padding_x', 'section_gap', 'filter_columns'] as $key) {
+            foreach (['primary_color', 'accent_color', 'card_bg', 'radius', 'title_font', 'body_font', 'card_layout', 'single_layout', 'single_header', 'single_template_id', 'card_gap', 'card_padding', 'content_max_width', 'outer_margin_y', 'outer_padding_x', 'section_gap', 'filter_columns'] as $key) {
                 if (isset($input['style'][$key])) {
                     $output['style'][$key] = sanitize_text_field($input['style'][$key]);
                 }
@@ -572,6 +573,53 @@ class GPO_Admin {
         }
 
         return sanitize_email((string) ($raw_settings['style']['lead_email'] ?? ''));
+    }
+
+    public static function vehicle_page_header_options() {
+        $options = [
+            'default' => 'Header predefinito del tema',
+        ];
+
+        if (function_exists('wp_is_block_theme') && wp_is_block_theme() && function_exists('get_block_templates')) {
+            $templates = get_block_templates([], 'wp_template_part');
+            foreach ((array) $templates as $template) {
+                $area = is_object($template) ? (string) ($template->area ?? '') : (string) ($template['area'] ?? '');
+                $slug = is_object($template) ? sanitize_key((string) ($template->slug ?? '')) : sanitize_key((string) ($template['slug'] ?? ''));
+                $title = is_object($template) ? (string) ($template->title ?? '') : (string) ($template['title'] ?? '');
+                if ($area !== 'header' || $slug === '' || isset($options[$slug])) {
+                    continue;
+                }
+
+                $options[$slug] = $title !== ''
+                    ? $title
+                    : ucwords(str_replace(['-', '_'], ' ', $slug));
+            }
+
+            return $options;
+        }
+
+        $theme_dirs = array_unique(array_filter([
+            trailingslashit(get_stylesheet_directory()),
+            trailingslashit(get_template_directory()),
+        ]));
+
+        foreach ($theme_dirs as $theme_dir) {
+            foreach ((array) glob($theme_dir . 'header*.php') as $file) {
+                $basename = wp_basename($file, '.php');
+                if ($basename === 'header') {
+                    continue;
+                }
+
+                $slug = sanitize_key((string) preg_replace('/^header-?/', '', $basename));
+                if ($slug === '' || isset($options[$slug])) {
+                    continue;
+                }
+
+                $options[$slug] = ucwords(str_replace(['-', '_'], ' ', $slug));
+            }
+        }
+
+        return $options;
     }
 
     protected static function vehicle_options() {
@@ -1916,6 +1964,8 @@ class GPO_Admin {
         $vehicle_records = self::vehicle_records();
         $brand_options = self::brand_options();
         $lead_email = self::configured_lead_email();
+        $header_options = self::vehicle_page_header_options();
+        $selected_header = sanitize_key((string) ($settings['style']['single_header'] ?? 'default'));
         $featured_map = array_column($vehicle_records, 'label', 'id');
         $featured_summary = !empty($components['featured_vehicle']['vehicle_id']) && isset($featured_map[$components['featured_vehicle']['vehicle_id']]) ? $featured_map[$components['featured_vehicle']['vehicle_id']] : 'Fallback automatico';
         $brand_mode_labels = [
@@ -1926,6 +1976,7 @@ class GPO_Admin {
         $brand_summary = $brand_mode_labels[$components['brand_banner']['mode'] ?? 'inventory'] ?? 'Solo marchi in stock';
         $showcase_summary = !empty($components['showcase_carousel']['vehicle_ids']) ? count((array) $components['showcase_carousel']['vehicle_ids']) . ' veicoli in vetrina' : 'Fallback automatico';
         $lead_summary = $lead_email ? 'Configurata' : 'Non configurata';
+        $header_summary = $header_options[$selected_header] ?? ($header_options['default'] ?? 'Header predefinito del tema');
 
         self::render_page_start(
             'components',
@@ -2051,6 +2102,23 @@ class GPO_Admin {
         ]);
         echo '</div>';
         echo '<div class="gpo-surface gpo-surface--accent gpo-surface--compact"><div class="gpo-surface__eyebrow">Stato attuale</div><h2>' . esc_html($lead_email ? 'Richieste attive' : 'Richieste non attive') . '</h2><p>' . esc_html($lead_email ? 'Il modulo di contatto delle schede veicolo è pronto a recapitare le richieste al destinatario configurato.' : 'Imposta un indirizzo email per attivare l invio delle richieste informative provenienti dal sito.') . '</p></div>';
+        echo '</div>';
+        self::component_section_end();
+
+        self::component_section_start('vehicle_page', 'Scheda veicolo', 'Scegli quale intestazione usare nella pagina veicolo e mantieni la scheda coerente con la navigazione del sito.', $header_summary);
+        echo '<div class="gpo-surface-grid gpo-surface-grid--connections">';
+        echo '<div class="gpo-surface gpo-surface--compact">';
+        echo '<div class="gpo-surface__eyebrow">Header attivo</div><h2>Intestazione della scheda</h2>';
+        self::render_setting_field([
+            'label' => 'Header da usare',
+            'name' => 'gpo_settings[style][single_header]',
+            'value' => $selected_header,
+            'type' => 'select',
+            'options' => $header_options,
+            'description' => 'Nei block theme usiamo il template part header selezionato. Nei temi classici usiamo il file header corrispondente quando esiste.',
+        ]);
+        echo '</div>';
+        echo '<div class="gpo-surface gpo-surface--accent gpo-surface--compact"><div class="gpo-surface__eyebrow">Compatibilità</div><h2>Come viene applicato</h2><p>Se il tema espone più header, la scheda veicolo usa quello scelto. Se l opzione selezionata non è disponibile nel tema attivo, il plugin torna automaticamente all header predefinito.</p></div>';
         echo '</div>';
         self::component_section_end();
 

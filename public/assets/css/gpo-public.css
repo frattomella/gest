@@ -4172,6 +4172,10 @@ body.gpo-lightbox-open {
   font-weight: 700;
 }
 
+.gpo-card .gpo-promo-copy::before {
+  display: none;
+}
+
 .gpo-promo-copy::before {
   content: "";
   width: 8px;
@@ -4380,6 +4384,38 @@ body.gpo-lightbox-open {
   border-color: rgba(203, 213, 225, 0.86);
 }
 
+.gpo-quick-info-panel--single {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 8px;
+  border-radius: 16px;
+}
+
+.gpo-quick-info-panel--single .gpo-quick-info-panel__item {
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
+}
+
+.gpo-quick-info-panel--single .gpo-quick-info-panel__icon {
+  width: 26px;
+  height: 26px;
+}
+
+.gpo-quick-info-panel--single .gpo-quick-info-panel__copy {
+  gap: 1px;
+}
+
+.gpo-quick-info-panel--single .gpo-quick-info-panel__copy small {
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+}
+
+.gpo-quick-info-panel--single .gpo-quick-info-panel__copy strong {
+  font-size: clamp(0.8rem, 0.76rem + 0.12vw, 0.88rem);
+  line-height: 1.14;
+}
+
 .gpo-single-summary__highlights {
   display: grid;
   gap: 12px;
@@ -4548,6 +4584,16 @@ body.gpo-lightbox-open {
     font-size: 0.88rem;
   }
 
+  .gpo-quick-info-panel--single {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+    padding: 7px;
+  }
+
+  .gpo-quick-info-panel--single .gpo-quick-info-panel__item {
+    padding: 8px 9px;
+  }
+
   .single-gpo_vehicle .gpo-page-shell {
     padding-left: 12px;
     padding-right: 12px;
@@ -4656,6 +4702,10 @@ body.gpo-lightbox-open {
 }
 
 @media (max-width: 560px) {
+  .gpo-quick-info-panel--single {
+    grid-template-columns: 1fr;
+  }
+
   .gpo-quick-info-panel__copy small {
     font-size: 0.6rem;
   }

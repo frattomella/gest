@@ -19,11 +19,9 @@ if ($is_block_theme) {
     <?php
     wp_body_open();
     echo '<div class="wp-site-blocks">';
-    if (function_exists('block_template_part')) {
-        block_template_part('header');
-    }
+    GPO_Frontend::render_single_header();
 } else {
-    get_header();
+    GPO_Frontend::render_single_header();
 }
 
 $post_id = get_the_ID();

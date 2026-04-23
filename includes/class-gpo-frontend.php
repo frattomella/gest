@@ -313,6 +313,35 @@ class GPO_Frontend {
         return ob_get_clean();
     }
 
+    protected static function selected_single_header() {
+        $settings = self::display_settings();
+        $selected = sanitize_key((string) ($settings['style']['single_header'] ?? 'default'));
+        $options = class_exists('GPO_Admin') && method_exists('GPO_Admin', 'vehicle_page_header_options')
+            ? GPO_Admin::vehicle_page_header_options()
+            : ['default' => 'Header predefinito del tema'];
+
+        return isset($options[$selected]) ? $selected : 'default';
+    }
+
+    public static function render_single_header() {
+        $selected = self::selected_single_header();
+
+        if (function_exists('wp_is_block_theme') && wp_is_block_theme()) {
+            $slug = $selected === 'default' ? 'header' : $selected;
+            if (function_exists('block_template_part')) {
+                block_template_part($slug);
+                return;
+            }
+        }
+
+        if ($selected !== 'default') {
+            get_header($selected);
+            return;
+        }
+
+        get_header();
+    }
+
     public static function back_button_markup($post_id = 0) {
         $post_id = absint($post_id);
         $fallback = $post_id ? get_post_type_archive_link('gpo_vehicle') : '';
@@ -1470,8 +1499,6 @@ class GPO_Frontend {
             $promo_copy = self::promotion_copy_text($promotion);
             if ($promotion && $promo_copy !== '') {
                 echo '<span class="gpo-promo-copy">' . esc_html($promo_copy) . '</span>';
-            } elseif ($promotion) {
-                echo '<span class="gpo-promo-copy">' . esc_html($promotion['discount_label']) . '</span>';
             }
             echo '</div>';
         }

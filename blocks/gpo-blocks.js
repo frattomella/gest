@@ -275,6 +275,52 @@
     ]);
   }
 
+  function searchPreviewSummary(props) {
+    var visibility = [];
+    if (props.attributes.showOnDesktop !== false) visibility.push('Desktop');
+    if (props.attributes.showOnTablet !== false) visibility.push('Tablet');
+    if (props.attributes.showOnMobile !== false) visibility.push('Mobile');
+
+    return visibility.length ? visibility.join(' / ') : 'Blocco nascosto su tutti i device';
+  }
+
+  function searchPreviewEdit(props) {
+    var width = Math.max(20, Math.min(100, parseInt(props.attributes.width, 10) || 100));
+    var align = props.attributes.searchAlign || 'left';
+    var mobileMode = props.attributes.mobileMode || 'normal';
+    var placeholder = props.attributes.placeholder || 'Cerca veicolo';
+    var blockProps = useBlockProps({
+      className: ['gpo-block-preview', 'gpo-block-preview--search', 'gpo-block-preview--search-editor', 'gpo-search-align-' + align].join(' '),
+      style: { '--gpo-search-width': width + '%' }
+    });
+
+    ensureDefaultColors(props);
+
+    return el('div', blockProps, [
+      el(InspectorControls, {}, [
+        el(PanelBody, { title:'Impostazioni barra di ricerca', initialOpen:true }, targetPageControls(props).concat([
+          el(TextControl, { label:'Placeholder', value:placeholder, onChange:function(v){ props.setAttributes({ placeholder:v }); } }),
+          el(RangeControl, { label:'Larghezza percentuale', value:width, min:20, max:100, onChange:function(v){ props.setAttributes({ width:v || 20 }); } }),
+          el(RangeControl, { label:'Raggio angoli', value:props.attributes.radius, min:36, max:999, onChange:function(v){ props.setAttributes({ radius:v || 36 }); } })
+        ].concat(styleControls(props)))),
+        searchDeviceControls(props)
+      ]),
+      el('div', { className:'gpo-search-editor-shell gpo-search-editor-shell--' + align }, [
+        el('div', { className:'gpo-search-editor-bar', style:{ borderRadius:(props.attributes.radius || 999) + 'px' } }, [
+          el('span', { className:'gpo-search-editor-icon', 'aria-hidden':'true' }, 'S'),
+          el('span', { className:'gpo-search-editor-placeholder' }, placeholder),
+          el('span', { className:'gpo-search-editor-clear', 'aria-hidden':'true' }, 'x')
+        ])
+      ]),
+      el('div', { className:'gpo-search-editor-meta' }, [
+        el('span', { className:'gpo-search-editor-chip' }, searchPreviewSummary(props)),
+        mobileMode === 'burger'
+          ? el('span', { className:'gpo-search-editor-chip gpo-search-editor-chip--accent' }, 'Mobile: dentro burger menu')
+          : el('span', { className:'gpo-search-editor-chip' }, 'Mobile: modalita normale')
+      ])
+    ]);
+  }
+
   function catalogInspector(props, includeFilters) {
     var catalogControls = [
         el(RangeControl, {
@@ -557,20 +603,7 @@
     icon: 'search',
     category: 'widgets',
     attributes: { pageId:{type:'number',default:0}, catalogRef:{type:'string',default:'default'}, placeholder:{type:'string',default:'Cerca veicolo'}, width:{type:'number',default:100}, radius:{type:'number',default:999}, searchAlign:{type:'string',default:'left'}, showOnDesktop:{type:'boolean',default:true}, showOnTablet:{type:'boolean',default:true}, showOnMobile:{type:'boolean',default:true}, mobileMode:{type:'string',default:'normal'}, primaryColor:{type:'string',default:''}, accentColor:{type:'string',default:''}, bgColor:{type:'string',default:''}, textColor:{type:'string',default:''}, buttonColor:{type:'string',default:''} },
-    edit: function (props) {
-      return previewEdit(props, 'GestPark Ricerca veicoli', '', [
-        el(PanelBody, { title:'Impostazioni barra di ricerca', initialOpen:true }, targetPageControls(props).concat([
-          el(TextControl, { label:'Placeholder', value:props.attributes.placeholder || 'Cerca veicolo', onChange:function(v){ props.setAttributes({ placeholder:v }); } }),
-          el(RangeControl, { label:'Larghezza percentuale', value:props.attributes.width, min:20, max:100, onChange:function(v){ props.setAttributes({ width:v || 20 }); } }),
-          el(RangeControl, { label:'Raggio angoli', value:props.attributes.radius, min:36, max:999, onChange:function(v){ props.setAttributes({ radius:v || 36 }); } })
-        ].concat(styleControls(props)))),
-        searchDeviceControls(props)
-      ], {
-        showLabel: false,
-        previewClassName: 'gpo-block-preview--search',
-        frameClassName: 'gpo-editor-frame--search'
-      });
-    },
+    edit: function (props) { return searchPreviewEdit(props); },
     save: function(){ return null; }
   });
 
