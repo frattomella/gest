@@ -84,6 +84,27 @@ class GPO_Frontend {
             '--gpo-surface:#f8fafc;' .
             '--gpo-shadow:0 16px 40px rgba(15,23,42,.08);' .
         '}';
+        $css .= '.gpo-brand-carousel.is-enhanced .gpo-brand-track{animation:none!important;transform:none!important;will-change:auto;padding-inline:0!important;}' .
+            '.gpo-brand-carousel.is-enhanced .gpo-brand-viewport{overflow-x:auto!important;overflow-y:hidden!important;scroll-behavior:auto!important;scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;}' .
+            '.gpo-brand-carousel.is-enhanced .gpo-brand-viewport::-webkit-scrollbar{display:none;}' .
+            '.gpo-brand-carousel.is-enhanced .gpo-brand-run{gap:clamp(14px,1.6vw,22px)!important;}' .
+            '.gpo-share-actions{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;width:100%;max-width:100%;}' .
+            '.gpo-share-action{width:100%;max-width:100%;min-width:0;box-sizing:border-box;}' .
+            '.gpo-share-action>span:last-child{min-width:0;white-space:normal;overflow-wrap:anywhere;}' .
+            '.gpo-share-action--whatsapp{justify-content:flex-start;}' .
+            '.gpo-catalog-shell--layout-marketplace-sidebar .gpo-catalog-layout{display:grid;grid-template-columns:minmax(280px,320px) minmax(0,1fr);gap:24px;align-items:start;}' .
+            '.gpo-catalog-shell--layout-marketplace-sidebar .gpo-catalog-layout__sidebar,.gpo-catalog-shell--layout-marketplace-sidebar .gpo-catalog-layout__results{min-width:0;}' .
+            '.gpo-catalog-shell--layout-marketplace-sidebar .gpo-filter-panel{margin-bottom:0;}' .
+            '.gpo-filter-panel--marketplace-sidebar .gpo-filter-toggle{display:flex;}' .
+            '.gpo-filter-panel--marketplace-sidebar .gpo-filter-panel__body{display:grid;gap:18px;}' .
+            '.gpo-filter-panel--marketplace-sidebar .gpo-filter-grid{grid-template-columns:1fr;}' .
+            '.gpo-filter-panel--marketplace-sidebar .gpo-filter-actions{flex-direction:column;align-items:stretch;}' .
+            '.gpo-results-head--marketplace{padding:18px 20px;border:1px solid var(--gpo-border);border-radius:calc(var(--gpo-radius) + 4px);background:#fff;box-shadow:var(--gpo-shadow);margin-bottom:18px;}' .
+            '.gpo-results-head__summary{display:flex;flex-wrap:wrap;align-items:center;gap:10px;}' .
+            '.gpo-results-head__view-chip{display:inline-flex;align-items:center;padding:7px 11px;border-radius:999px;background:rgba(15,23,42,.06);color:#334155;font-size:.78rem;font-weight:700;letter-spacing:.01em;}' .
+            '.gpo-results-head__controls{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-left:auto;}' .
+            '.gpo-sort-wrap--limit select{min-width:96px;}' .
+            '@media (max-width:980px){.gpo-share-actions{grid-template-columns:1fr;}.gpo-catalog-shell--layout-marketplace-sidebar .gpo-catalog-layout{grid-template-columns:1fr;}.gpo-results-head__controls{width:100%;margin-left:0;}}';
         wp_add_inline_style('gpo-public', $css);
         wp_localize_script('gpo-live-search', 'gpoSearchData', [
             'ajaxUrl' => admin_url('admin-ajax.php'),
@@ -426,6 +447,7 @@ class GPO_Frontend {
             'limit' => 12,
             'columns' => 3,
             'filters' => 'no',
+            'desktop_layout' => 'standard',
             'orderby' => 'date',
             'order' => 'DESC',
             'show' => '',
@@ -454,19 +476,51 @@ class GPO_Frontend {
 
         $query = self::build_vehicle_query($atts);
         $display = self::resolve_card_display($atts);
+        $desktop_layout = sanitize_key($atts['desktop_layout'] ?? 'standard');
+        if (!in_array($desktop_layout, ['standard', 'marketplace-sidebar'], true)) {
+            $desktop_layout = 'standard';
+        }
         $wrapper_style = self::wrapper_style($atts);
+        $catalog_classes = ['gpo-catalog-shell', 'gpo-catalog-shell--layout-' . $desktop_layout];
+        $is_marketplace_sidebar = ($atts['filters'] === 'yes' && $desktop_layout === 'marketplace-sidebar');
 
         ob_start();
-        echo '<div class="gpo-catalog-shell" style="' . esc_attr($wrapper_style) . '">';
-        if ($atts['filters'] === 'yes') {
+        echo '<div class="' . esc_attr(implode(' ', $catalog_classes)) . '" style="' . esc_attr($wrapper_style) . '">';
+        if ($is_marketplace_sidebar) {
             wp_enqueue_script('gpo-filters');
+            echo '<div class="gpo-catalog-layout gpo-catalog-layout--marketplace-sidebar">';
+            echo '<aside class="gpo-catalog-layout__sidebar">';
             echo self::render_filter_form($atts['filter_fields'], [
                 'desktop' => $atts['filter_fields_desktop'] ?? '',
                 'tablet' => $atts['filter_fields_tablet'] ?? '',
                 'mobile' => $atts['filter_fields_mobile'] ?? '',
+            ], [
+                'layout' => $desktop_layout,
+                'omit_sort' => true,
+            ]);
+            echo '</aside>';
+            echo '<div class="gpo-catalog-layout__results">';
+            self::render_results_header($query, false, [
+                'layout' => $desktop_layout,
+                'show_limit_control' => true,
+                'current_limit' => absint($atts['limit']),
+            ]);
+        } else {
+            if ($atts['filters'] === 'yes') {
+                wp_enqueue_script('gpo-filters');
+                echo self::render_filter_form($atts['filter_fields'], [
+                    'desktop' => $atts['filter_fields_desktop'] ?? '',
+                    'tablet' => $atts['filter_fields_tablet'] ?? '',
+                    'mobile' => $atts['filter_fields_mobile'] ?? '',
+                ], [
+                    'layout' => $desktop_layout,
+                ]);
+            }
+            self::render_results_header($query, false, [
+                'layout' => $desktop_layout,
+                'current_limit' => absint($atts['limit']),
             ]);
         }
-        self::render_results_header($query, false);
         echo '<div class="gpo-grid columns-' . absint($atts['columns']) . '">';
         if ($query->have_posts()) {
             while ($query->have_posts()) {
@@ -476,7 +530,11 @@ class GPO_Frontend {
         } else {
             echo '<div class="gpo-empty-state"><h3>Nessun veicolo disponibile</h3><p>Non sono presenti veicoli che corrispondono ai filtri selezionati. Aggiorna i criteri di ricerca oppure verifica l inventario pubblicato.</p></div>';
         }
-        echo '</div></div>';
+        echo '</div>';
+        if ($is_marketplace_sidebar) {
+            echo '</div></div>';
+        }
+        echo '</div>';
         wp_reset_postdata();
         return ob_get_clean();
     }
@@ -531,6 +589,8 @@ class GPO_Frontend {
             'limit' => 12,
             'autoplay' => 'yes',
             'interval' => 5000,
+            'source' => 'showcase',
+            'vehicle_id' => 0,
             'show' => '',
             'show_desktop' => '',
             'show_tablet' => '',
@@ -561,7 +621,15 @@ class GPO_Frontend {
             $section_title = 'Veicoli selezionati';
         }
 
-        $ids = self::active_showcase_vehicle_ids(absint($atts['limit']));
+        $source = sanitize_key($atts['source'] ?? 'showcase');
+        if (!in_array($source, ['showcase', 'related_brand'], true)) {
+            $source = 'showcase';
+        }
+        $vehicle_id = absint($atts['vehicle_id'] ?? 0);
+        $ids = ($source === 'related_brand' && $vehicle_id > 0)
+            ? self::related_brand_vehicle_ids($vehicle_id, absint($atts['limit']))
+            : self::active_showcase_vehicle_ids(absint($atts['limit']));
+        $display['context'] = ($source === 'showcase') ? 'showcase' : 'vehicle-carousel';
         ob_start();
         echo '<div class="gpo-carousel-shell" style="' . esc_attr(self::wrapper_style($atts) . '--gpo-carousel-items-per-page:' . $items_per_page . ';') . '">';
         echo '<div class="gpo-section-head' . ($show_title ? '' : ' is-title-hidden') . '">';
@@ -596,6 +664,7 @@ class GPO_Frontend {
         $atts = shortcode_atts([
             'limit' => 12,
             'columns' => 3,
+            'desktop_layout' => 'standard',
             'orderby' => 'date',
             'order' => 'DESC',
             'show' => '',
@@ -622,6 +691,7 @@ class GPO_Frontend {
         return self::vehicle_grid_shortcode([
             'limit' => $atts['limit'],
             'columns' => $atts['columns'],
+            'desktop_layout' => $atts['desktop_layout'],
             'orderby' => $atts['orderby'],
             'order' => $atts['order'],
             'filters' => 'yes',
@@ -981,6 +1051,10 @@ class GPO_Frontend {
 
     protected static function build_vehicle_query($atts = []) {
         $limit = max(1, absint($atts['limit'] ?? 12));
+        $requested_limit = absint(self::request_value('gpo_limit'));
+        if ($requested_limit > 0) {
+            $limit = max(6, min(48, $requested_limit));
+        }
         $meta_query = [
             self::exclude_demo_vehicle_meta_clause(),
         ];
@@ -1092,11 +1166,34 @@ class GPO_Frontend {
         return new WP_Query($args);
     }
 
-    protected static function render_results_header($query, $compact = false) {
+    protected static function render_results_header($query, $compact = false, $options = []) {
         $found = absint($query->found_posts);
         $sort = self::request_value('gpo_sort') ?: 'date_desc';
-        echo '<div class="gpo-results-head' . ($compact ? ' gpo-results-head-compact' : '') . '">';
-        echo '<div><strong>' . esc_html((string) $found) . '</strong> veicoli trovati</div>';
+        $layout = sanitize_key($options['layout'] ?? 'standard');
+        $show_limit_control = !empty($options['show_limit_control']);
+        $current_limit = max(6, min(48, absint(self::request_value('gpo_limit') ?: ($options['current_limit'] ?? 12))));
+        $classes = ['gpo-results-head'];
+        if ($compact) {
+            $classes[] = 'gpo-results-head-compact';
+        }
+        if ($layout === 'marketplace-sidebar') {
+            $classes[] = 'gpo-results-head--marketplace';
+        }
+
+        echo '<div class="' . esc_attr(implode(' ', $classes)) . '">';
+        echo '<div class="gpo-results-head__summary"><strong>' . esc_html((string) $found) . '</strong> veicoli trovati';
+        if ($layout === 'marketplace-sidebar') {
+            echo '<span class="gpo-results-head__view-chip">Layout sidebar</span>';
+        }
+        echo '</div>';
+        echo '<div class="gpo-results-head__controls">';
+        if ($show_limit_control) {
+            echo '<div class="gpo-sort-wrap gpo-sort-wrap--limit"><label for="gpo-limit">Mostra</label><select id="gpo-limit" name="gpo_limit" form="gpo-filter-form">';
+            foreach ([12, 24, 36, 48] as $limit_option) {
+                echo '<option value="' . esc_attr((string) $limit_option) . '" ' . selected($current_limit, $limit_option, false) . '>' . esc_html((string) $limit_option) . '</option>';
+            }
+            echo '</select></div>';
+        }
         echo '<div class="gpo-sort-wrap"><label for="gpo-sort">Ordina per</label><select id="gpo-sort" name="gpo_sort" form="gpo-filter-form">';
         $options = [
             'date_desc' => 'Più recenti',
@@ -1108,11 +1205,13 @@ class GPO_Frontend {
         foreach ($options as $value => $label) {
             echo '<option value="' . esc_attr($value) . '" ' . selected($sort, $value, false) . '>' . esc_html($label) . '</option>';
         }
-        echo '</select></div></div>';
+        echo '</select></div></div></div>';
     }
 
-    protected static function render_filter_form($override_fields = '', $responsive_visibility = []) {
+    protected static function render_filter_form($override_fields = '', $responsive_visibility = [], $options = []) {
         $action = get_permalink() ?: home_url('/');
+        $layout = sanitize_key($options['layout'] ?? 'standard');
+        $omit_sort = !empty($options['omit_sort']);
         $catalog_values = [
             'condition' => self::distinct_meta_values('_gpo_condition'),
             'fuel' => self::distinct_meta_values('_gpo_fuel'),
@@ -1130,12 +1229,15 @@ class GPO_Frontend {
         $panel_body_id = function_exists('wp_unique_id') ? wp_unique_id('gpo-filter-panel-') : 'gpo-filter-panel-body';
 
         ob_start();
-        echo '<form id="gpo-filter-form" class="gpo-filter-panel" data-gpo-filter-panel="1" method="get" action="' . esc_url($action) . '">';
+        echo '<form id="gpo-filter-form" class="gpo-filter-panel' . ($layout === 'marketplace-sidebar' ? ' gpo-filter-panel--marketplace-sidebar' : '') . '" data-gpo-filter-panel="1" method="get" action="' . esc_url($action) . '">';
         if (self::request_value('gpo_brand_key') !== '') {
             echo '<input type="hidden" name="gpo_brand_key" value="' . esc_attr(self::request_value('gpo_brand_key')) . '" />';
         }
         if (self::request_value('gpo_catalog_ref') !== '') {
             echo '<input type="hidden" name="gpo_catalog_ref" value="' . esc_attr(self::request_value('gpo_catalog_ref')) . '" />';
+        }
+        if (self::request_value('gpo_limit') !== '') {
+            echo '<input type="hidden" name="gpo_limit" value="' . esc_attr(self::request_value('gpo_limit')) . '" />';
         }
         echo '<button class="gpo-filter-toggle" type="button" aria-expanded="true" aria-controls="' . esc_attr($panel_body_id) . '">';
         echo '<span class="gpo-filter-toggle__copy"><strong>Filtri catalogo</strong><small>Affina il parco auto per marca, prezzo e caratteristiche.</small></span>';
@@ -1152,7 +1254,7 @@ class GPO_Frontend {
         if (in_array('min_price', $visible_filters, true)) { self::render_filter_input('Prezzo min', 'gpo_min_price', self::request_value('gpo_min_price'), 'number', '0', self::filter_visibility_classes($device_visibility, 'min_price')); }
         if (in_array('max_price', $visible_filters, true)) { self::render_filter_input('Prezzo max', 'gpo_max_price', self::request_value('gpo_max_price'), 'number', '50000', self::filter_visibility_classes($device_visibility, 'max_price')); }
         if (in_array('max_mileage', $visible_filters, true)) { self::render_filter_input('KM max', 'gpo_max_mileage', self::request_value('gpo_max_mileage'), 'number', '60000', self::filter_visibility_classes($device_visibility, 'max_mileage')); }
-        if (in_array('sort', $visible_filters, true)) {
+        if (!$omit_sort && in_array('sort', $visible_filters, true)) {
             echo '<label class="' . esc_attr(trim('gpo-filter-control gpo-filter-control--select ' . self::filter_visibility_classes($device_visibility, 'sort'))) . '"><span class="gpo-filter-control__label">Ordina per</span><select class="gpo-filter-control__field" name="gpo_sort">';
             $sort = self::request_value('gpo_sort') ?: 'date_desc';
             $options = [
@@ -1323,6 +1425,7 @@ class GPO_Frontend {
 
         $layout = $display['layout'] ?? 'default';
         $hero = !empty($display['hero']);
+        $context = sanitize_key($display['context'] ?? 'default');
 
         echo '<article class="gpo-card gpo-card-layout-' . esc_attr($layout) . ' ' . ($hero ? 'gpo-card-hero' : '') . '" data-gpo-card-url="' . esc_url($permalink) . '">';
 
@@ -1337,7 +1440,7 @@ class GPO_Frontend {
                 echo '<div class="gpo-card-overlay">';
                 if ($badge) {
                     echo '<span class="gpo-badge">' . esc_html($badge) . '</span>';
-                } elseif ($is_featured) {
+                } elseif ($is_featured && $context !== 'showcase') {
                     echo '<span class="gpo-badge">In vetrina</span>';
                 }
                 if ($promotion) {
@@ -1490,6 +1593,45 @@ class GPO_Frontend {
         }
 
         return self::latest_real_vehicle_ids($limit);
+    }
+
+    protected static function related_brand_vehicle_ids($post_id, $limit = 6) {
+        $post_id = absint($post_id);
+        $limit = max(1, absint($limit));
+        $brand = trim((string) get_post_meta($post_id, '_gpo_brand', true));
+
+        if ($post_id < 1 || $brand === '') {
+            return array_slice(array_values(array_filter(self::latest_real_vehicle_ids($limit + 1), function ($candidate_id) use ($post_id) {
+                return absint($candidate_id) !== $post_id;
+            })), 0, $limit);
+        }
+
+        $query = new WP_Query([
+            'post_type' => 'gpo_vehicle',
+            'post_status' => 'publish',
+            'posts_per_page' => $limit,
+            'fields' => 'ids',
+            'post__not_in' => [$post_id],
+            'orderby' => 'date',
+            'order' => 'DESC',
+            'meta_query' => [
+                'relation' => 'AND',
+                self::exclude_demo_vehicle_meta_clause(),
+                self::brand_meta_query($brand),
+            ],
+        ]);
+
+        $ids = array_map('absint', (array) $query->posts);
+        if (count($ids) >= $limit) {
+            return array_slice($ids, 0, $limit);
+        }
+
+        $fallback = array_values(array_filter(self::latest_real_vehicle_ids($limit + 4), function ($candidate_id) use ($post_id, $ids) {
+            $candidate_id = absint($candidate_id);
+            return $candidate_id !== $post_id && !in_array($candidate_id, $ids, true);
+        }));
+
+        return array_slice(array_merge($ids, $fallback), 0, $limit);
     }
 
     protected static function schedule_has_window($row) {

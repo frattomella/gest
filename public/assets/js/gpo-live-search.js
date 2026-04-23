@@ -1,6 +1,19 @@
 (function(){
   function qs(sel, root){ return (root || document).querySelector(sel); }
   function qsa(sel, root){ return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
+  function isEditorEnvironment(){
+    var body = document.body;
+    return !!(
+      body && (
+        body.classList.contains('wp-admin') ||
+        body.classList.contains('block-editor-page') ||
+        body.classList.contains('appearance_page_gutenberg-edit-site')
+      ) ||
+      qs('.block-editor-writing-flow') ||
+      qs('.editor-styles-wrapper') ||
+      qs('.interface-interface-skeleton__content')
+    );
+  }
   function escapeHtml(value){
     return String(value || '')
       .replace(/&/g, '&amp;')
@@ -424,6 +437,7 @@
     var dragStartScroll = 0;
     var activePointerId = null;
     var suppressClick = false;
+    var autoScrolling = false;
     var speed = carousel ? parseInt(carousel.dataset.speed || '900', 10) : 900;
     var pxPerSecond = Math.max(14, Math.min(42, 32000 / Math.max(speed, 260)));
 
@@ -442,7 +456,9 @@
       }
 
       if (autoplay && runs.length > 1 && viewport.scrollLeft < runWidth * 0.2) {
+        autoScrolling = true;
         viewport.scrollLeft = runWidth;
+        autoScrolling = false;
       }
     }
 
@@ -489,8 +505,10 @@
       lastFrame = timestamp;
 
       if (autoplay && runs.length > 1 && !isPaused(timestamp)) {
+        autoScrolling = true;
         viewport.scrollLeft += (pxPerSecond * delta) / 1000;
         normalizeLoopPosition();
+        autoScrolling = false;
       }
 
       rafId = window.requestAnimationFrame(frame);
@@ -586,7 +604,9 @@
     viewport.addEventListener('lostpointercapture', endDrag);
     viewport.addEventListener('scroll', function () {
       normalizeLoopPosition();
-      queueResume(900);
+      if (!autoScrolling && !dragging) {
+        queueResume(900);
+      }
     }, { passive: true });
 
     viewport.addEventListener('mouseenter', function () {
@@ -638,6 +658,9 @@
   }
 
   function boot(){
+    if (isEditorEnvironment()) {
+      return;
+    }
     qsa('.gpo-vehicle-search').forEach(initSearch);
     qsa('.gpo-vehicle-search-shell[data-gpo-mobile-mode="burger"]').forEach(initMobileMenuSearch);
     qsa('.gpo-brand-carousel-shell').forEach(initBrandCarousel);

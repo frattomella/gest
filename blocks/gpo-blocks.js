@@ -276,8 +276,7 @@
   }
 
   function catalogInspector(props, includeFilters) {
-    return [
-      el(PanelBody, { title: 'Impostazioni catalogo', initialOpen: true }, [
+    var catalogControls = [
         el(RangeControl, {
           label: 'Numero elementi',
           value: props.attributes.limit,
@@ -312,7 +311,22 @@
           onChange: function (value) { props.setAttributes({ sectionGap: value || 0 }); }
         }),
         el(TextControl, { label: 'Testo bottone principale', value: props.attributes.primaryButtonLabel || 'Scheda veicolo', onChange: function (value) { props.setAttributes({ primaryButtonLabel: value }); } })
-      ].concat(styleControls(props)))
+    ];
+
+    if (props.name === 'gestpark/vehicle-catalog') {
+      catalogControls.splice(3, 0, el(SelectControl, {
+        label: 'Layout desktop',
+        value: props.attributes.desktopLayout || 'standard',
+        options: [
+          { label: 'Standard', value: 'standard' },
+          { label: 'Marketplace con sidebar', value: 'marketplace-sidebar' }
+        ],
+        onChange: function (value) { props.setAttributes({ desktopLayout: value || 'standard' }); }
+      }));
+    }
+
+    return [
+      el(PanelBody, { title: 'Impostazioni catalogo', initialOpen: true }, catalogControls.concat(styleControls(props)))
     ].concat(deviceToggleGroups(props)).concat(includeFilters ? [
       toggleGroup(props, 'Filtri visibili base', 'filterFields', FILTER_OPTIONS)
     ].concat(deviceFilterToggleGroups(props)) : []);
@@ -359,7 +373,7 @@
     title: 'GestPark Catalogo veicoli',
     icon: 'car',
     category: 'widgets',
-    attributes: { limit:{type:'number',default:12}, columns:{type:'number',default:3}, cardLayout:{type:'string',default:'default'}, show:{type:'string',default:'image,badge,brand,title,price,chips,neopatentati,body_type,transmission,engine_size,primary_button'}, showDesktop:{type:'string',default:''}, showTablet:{type:'string',default:''}, showMobile:{type:'string',default:''}, filterFields:{type:'string',default:'condition,brand,fuel,body_type,transmission,year,min_price,max_price,max_mileage,sort'}, filterFieldsDesktop:{type:'string',default:''}, filterFieldsTablet:{type:'string',default:''}, filterFieldsMobile:{type:'string',default:''}, outerPaddingX:{type:'number',default:18}, sectionGap:{type:'number',default:24}, primaryColor:{type:'string',default:''}, accentColor:{type:'string',default:''}, bgColor:{type:'string',default:''}, textColor:{type:'string',default:''}, buttonColor:{type:'string',default:''}, buttonTextColor:{type:'string',default:''}, primaryButtonLabel:{type:'string',default:'Scheda veicolo'}, secondaryButtonLabel:{type:'string',default:'Richiedi info'} },
+    attributes: { limit:{type:'number',default:12}, columns:{type:'number',default:3}, desktopLayout:{type:'string',default:'standard'}, cardLayout:{type:'string',default:'default'}, show:{type:'string',default:'image,badge,brand,title,price,chips,neopatentati,body_type,transmission,engine_size,primary_button'}, showDesktop:{type:'string',default:''}, showTablet:{type:'string',default:''}, showMobile:{type:'string',default:''}, filterFields:{type:'string',default:'condition,brand,fuel,body_type,transmission,year,min_price,max_price,max_mileage,sort'}, filterFieldsDesktop:{type:'string',default:''}, filterFieldsTablet:{type:'string',default:''}, filterFieldsMobile:{type:'string',default:''}, outerPaddingX:{type:'number',default:18}, sectionGap:{type:'number',default:24}, primaryColor:{type:'string',default:''}, accentColor:{type:'string',default:''}, bgColor:{type:'string',default:''}, textColor:{type:'string',default:''}, buttonColor:{type:'string',default:''}, buttonTextColor:{type:'string',default:''}, primaryButtonLabel:{type:'string',default:'Scheda veicolo'}, secondaryButtonLabel:{type:'string',default:'Richiedi info'} },
     edit: function (props) { return previewEdit(props, 'GestPark Catalogo veicoli', 'Anteprima reale del catalogo con filtri personalizzabili.', catalogInspector(props, true)); },
     save: function () { return null; }
   });

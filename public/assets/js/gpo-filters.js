@@ -3,6 +3,7 @@
     var toggle;
     var body;
     var userToggled;
+    var desktopAccordion;
 
     if (!panel || panel.dataset.bound === '1') {
       return;
@@ -17,6 +18,7 @@
 
     panel.dataset.bound = '1';
     userToggled = false;
+    desktopAccordion = panel.classList.contains('gpo-filter-panel--marketplace-sidebar');
 
     function isCompact() {
       return window.matchMedia('(max-width: 1180px)').matches;
@@ -29,10 +31,10 @@
     }
 
     function syncMode() {
-      if (isCompact()) {
+      if (isCompact() || desktopAccordion) {
         panel.classList.add('is-collapsible');
         if (!userToggled) {
-          setOpen(false);
+          setOpen(desktopAccordion && !isCompact());
         }
         return;
       }
@@ -42,7 +44,7 @@
     }
 
     toggle.addEventListener('click', function () {
-      if (!isCompact()) {
+      if (!isCompact() && !desktopAccordion) {
         return;
       }
 
@@ -54,8 +56,28 @@
     syncMode();
   }
 
+  function initFilterSelects() {
+    var form = document.getElementById('gpo-filter-form');
+
+    if (!form) {
+      return;
+    }
+
+    Array.prototype.slice.call(form.querySelectorAll('#gpo-sort, #gpo-limit')).forEach(function (field) {
+      if (!field || field.dataset.bound === '1') {
+        return;
+      }
+
+      field.dataset.bound = '1';
+      field.addEventListener('change', function () {
+        form.submit();
+      });
+    });
+  }
+
   function boot() {
     Array.prototype.slice.call(document.querySelectorAll('[data-gpo-filter-panel="1"]')).forEach(initFilterPanel);
+    initFilterSelects();
   }
 
   if (document.readyState === 'loading') {
