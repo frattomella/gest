@@ -1302,7 +1302,6 @@ class GPO_Frontend {
         echo '<span class="gpo-filter-toggle__icon" aria-hidden="true">' . self::icon_markup('chevron-right') . '</span>';
         echo '</button>';
         echo '<div class="gpo-filter-panel__body" id="' . esc_attr($panel_body_id) . '">';
-        echo self::active_filter_chips_markup($action);
         echo '<div class="gpo-filter-grid">';
         if (in_array('condition', $visible_filters, true)) { self::render_filter_select('Condizione', 'gpo_condition', $catalog_values['condition'], self::filter_visibility_classes($device_visibility, 'condition')); }
         if (in_array('brand', $visible_filters, true)) { self::render_filter_select('Marca', 'gpo_brand', $catalog_values['brand'], self::filter_visibility_classes($device_visibility, 'brand')); }
@@ -1329,7 +1328,10 @@ class GPO_Frontend {
             echo '</select></label>';
         }
         echo '</div>';
-        echo '<div class="gpo-filter-actions"><a class="gpo-button gpo-button-secondary" href="' . esc_url(self::filter_reset_url($action)) . '">Reset</a></div>';
+        echo '<div class="gpo-filter-actions">';
+        echo '<button class="gpo-button" type="submit">Applica filtri</button>';
+        echo '<a class="gpo-button gpo-button-secondary" href="' . esc_url(self::filter_reset_url($action)) . '">Reset</a>';
+        echo '</div>';
         echo '</div>';
         echo '</form>';
         return ob_get_clean();
@@ -1379,24 +1381,41 @@ class GPO_Frontend {
 
     protected static function render_filter_select($label, $name, $values, $extra_class = '') {
         $current = self::request_values($name);
-        echo '<div class="' . esc_attr(trim('gpo-filter-control gpo-filter-control--multi ' . $extra_class)) . '">';
+        echo '<div class="' . esc_attr(trim('gpo-filter-control gpo-filter-control--multi-select ' . $extra_class)) . '" data-gpo-filter-multi="' . esc_attr($name) . '">';
         echo '<span class="gpo-filter-control__label">' . esc_html($label) . '</span>';
-        echo '<div class="gpo-filter-options" role="group" aria-label="' . esc_attr($label) . '">';
+        echo '<div class="gpo-filter-multi-select">';
+        echo '<select class="gpo-filter-control__field gpo-filter-control__picker" data-gpo-filter-picker="' . esc_attr($name) . '" aria-label="' . esc_attr($label) . '">';
+        echo '<option value="">Seleziona</option>';
         foreach ($values as $value) {
-            $id = function_exists('wp_unique_id') ? wp_unique_id($name . '-') : sanitize_html_class($name . '-' . md5((string) $value));
-            echo '<label class="gpo-filter-option" for="' . esc_attr($id) . '">';
-            echo '<input class="gpo-filter-option__input" type="checkbox" id="' . esc_attr($id) . '" name="' . esc_attr($name) . '[]" value="' . esc_attr($value) . '" ' . checked(in_array((string) $value, $current, true), true, false) . ' />';
-            echo '<span class="gpo-filter-option__chip">' . esc_html($value) . '</span>';
-            echo '</label>';
+            echo '<option value="' . esc_attr($value) . '">' . esc_html($value) . '</option>';
         }
         if (empty($values)) {
-            echo '<span class="gpo-filter-option__empty">Nessun valore disponibile</span>';
+            echo '<option value="" disabled>Nessun valore disponibile</option>';
         }
+        echo '</select>';
+        echo '<div class="gpo-filter-control__values" data-gpo-filter-values="' . esc_attr($name) . '">';
+        foreach ($current as $value) {
+            echo self::filter_hidden_value_input_markup($name, $value);
+        }
+        echo '</div>';
+        echo '<div class="gpo-filter-selected-chips" data-gpo-filter-chips="' . esc_attr($name) . '"' . (empty($current) ? ' hidden' : '') . '>';
+        foreach ($current as $value) {
+            echo self::filter_selected_chip_markup($name, $value);
+        }
+        echo '</div>';
         echo '</div></div>';
     }
 
     protected static function render_filter_input($label, $name, $value, $type = 'text', $placeholder = '', $extra_class = '') {
         echo '<label class="' . esc_attr(trim('gpo-filter-control gpo-filter-control--input ' . $extra_class)) . '"><span class="gpo-filter-control__label">' . esc_html($label) . '</span><input class="gpo-filter-control__field" type="' . esc_attr($type) . '" name="' . esc_attr($name) . '" value="' . esc_attr($value) . '" placeholder="' . esc_attr($placeholder) . '" /></label>';
+    }
+
+    protected static function filter_hidden_value_input_markup($name, $value) {
+        return '<input type="hidden" name="' . esc_attr($name) . '[]" value="' . esc_attr($value) . '" data-gpo-filter-value="' . esc_attr($value) . '" />';
+    }
+
+    protected static function filter_selected_chip_markup($name, $value) {
+        return '<button class="gpo-filter-selected-chip" type="button" data-gpo-filter-chip-remove="' . esc_attr($name) . '" data-value="' . esc_attr($value) . '"><span class="gpo-filter-selected-chip__text">' . esc_html($value) . '</span><span class="gpo-filter-selected-chip__remove" aria-hidden="true">&times;</span></button>';
     }
 
     protected static function active_filter_chips_markup($action) {

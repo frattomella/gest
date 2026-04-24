@@ -506,7 +506,12 @@ class GPO_Blocks {
             $style .= '--gpo-section-gap:' . absint($attributes['sectionGap']) . 'px;';
         }
         if (isset($attributes['width'])) {
-            $style .= '--gpo-search-width:' . max(20, min(100, absint($attributes['width']))) . '%;';
+            $width = max(20, min(100, absint($attributes['width'])));
+            $style .= '--gpo-search-width:' . $width . '%;';
+            $style .= '--gpo-search-width-effective:min(100%, ' . $width . '%);';
+            $style .= 'width:min(100%, ' . $width . '%);';
+            $style .= 'max-width:min(100%, ' . $width . '%);';
+            $style .= 'flex-basis:min(100%, ' . $width . '%);';
         }
         return $style;
     }
@@ -530,20 +535,35 @@ class GPO_Blocks {
         return false;
     }
 
+    protected static function should_breakout_block($class, $attributes = []) {
+        if (!self::is_breakout_block($class)) {
+            return false;
+        }
+
+        if (
+            strpos((string) $class, 'gpo-block-catalog') !== false &&
+            sanitize_key((string) ($attributes['desktopLayout'] ?? '')) === 'marketplace-sidebar'
+        ) {
+            return false;
+        }
+
+        return true;
+    }
+
     protected static function preferred_align_class($class, $attributes = []) {
         if (!empty($attributes['align'])) {
             return '';
         }
 
-        if (self::is_breakout_block($class)) {
+        if (self::should_breakout_block($class, $attributes)) {
             return 'alignwide';
         }
 
         return '';
     }
 
-    protected static function preferred_layout_class($class) {
-        if (self::is_breakout_block($class)) {
+    protected static function preferred_layout_class($class, $attributes = []) {
+        if (self::should_breakout_block($class, $attributes)) {
             return 'gpo-breakout-block gpo-shell-wide-block';
         }
 
@@ -577,7 +597,7 @@ class GPO_Blocks {
 
     protected static function render_dynamic_block($class, $attributes, $content) {
         $align_class = self::preferred_align_class($class, $attributes);
-        $layout_class = self::preferred_layout_class($class);
+        $layout_class = self::preferred_layout_class($class, $attributes);
         $visibility_class = self::responsive_wrapper_classes($attributes);
         $class_names = trim($class . ' ' . $layout_class . ' ' . $align_class . ' ' . $visibility_class);
         return '<div ' . self::wrapper_attrs($class_names, $attributes) . '>' . $content . '</div>';

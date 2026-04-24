@@ -5308,3 +5308,126 @@ body.gpo-lightbox-open {
     font-size: 0.82rem;
   }
 }
+
+/* Final April 2026 search sizing + manual filter UX */
+
+.gpo-block.gpo-block-vehicle-search,
+.wp-block-gestpark-vehicle-search {
+  width: min(100%, var(--gpo-search-width, 100%)) !important;
+  max-width: min(100%, var(--gpo-search-width, 100%)) !important;
+  min-width: 0 !important;
+  flex: 0 1 min(100%, var(--gpo-search-width, 100%)) !important;
+  box-sizing: border-box;
+}
+
+.gpo-block.gpo-block-vehicle-search > .gpo-vehicle-search-shell,
+.wp-block-gestpark-vehicle-search > .gpo-vehicle-search-shell {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.gpo-block.gpo-block-vehicle-search > .gpo-vehicle-search-shell > .gpo-vehicle-search,
+.wp-block-gestpark-vehicle-search > .gpo-vehicle-search-shell > .gpo-vehicle-search {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0;
+}
+
+.gpo-filter-control--multi-select {
+  display: grid;
+  gap: 10px;
+}
+
+.gpo-filter-multi-select {
+  display: grid;
+  gap: 10px;
+}
+
+.gpo-filter-control__picker {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, #64748b 50%), linear-gradient(135deg, #64748b 50%, transparent 50%);
+  background-position: calc(100% - 20px) calc(50% - 3px), calc(100% - 14px) calc(50% - 3px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 42px;
+  cursor: pointer;
+}
+
+.gpo-filter-control__values {
+  display: none;
+}
+
+.gpo-filter-selected-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gpo-filter-selected-chips[hidden] {
+  display: none !important;
+}
+
+.gpo-filter-selected-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  max-width: 100%;
+  padding: 0 12px;
+  border: 1px solid rgba(203, 213, 225, 0.96);
+  border-radius: 999px;
+  background: #eef2f7;
+  color: #334155;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.2;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.gpo-filter-selected-chip__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gpo-filter-selected-chip__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.08);
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.gpo-filter-actions {
+  justify-content: flex-start;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.gpo-catalog-shell--layout-marketplace-sidebar {
+  position: relative;
+  z-index: 0;
+  overflow: visible;
+}
+
+.gpo-catalog-shell--layout-marketplace-sidebar .gpo-catalog-layout,
+.gpo-catalog-shell--layout-marketplace-sidebar .gpo-catalog-layout__sidebar,
+.gpo-catalog-shell--layout-marketplace-sidebar .gpo-catalog-layout__results {
+  position: relative;
+  z-index: auto;
+}
+
+@media (max-width: 720px) {
+  .gpo-filter-selected-chip {
+    max-width: 100%;
+  }
+}

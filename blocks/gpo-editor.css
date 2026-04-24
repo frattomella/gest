@@ -283,3 +283,22 @@
 .editor-styles-wrapper .wp-block-navigation .wp-block[data-type="gestpark/vehicle-search"] .gpo-search-editor-shell {
   width: 100%;
 }
+
+.editor-styles-wrapper .wp-block[data-type="gestpark/vehicle-search"] {
+  width: min(100%, var(--gpo-search-width, 100%)) !important;
+  max-width: min(100%, var(--gpo-search-width, 100%)) !important;
+  min-width: 0 !important;
+  flex: 0 1 auto !important;
+}
+
+.editor-styles-wrapper .wp-block-navigation .wp-block[data-type="gestpark/vehicle-search"] {
+  width: min(100%, var(--gpo-search-width, 100%)) !important;
+  max-width: min(100%, var(--gpo-search-width, 100%)) !important;
+  flex: 0 1 auto !important;
+}
+
+.editor-styles-wrapper .wp-block[data-type="gestpark/vehicle-search"] .gpo-block-preview--search-editor {
+  width: 100% !important;
+  max-width: 100% !important;
+  flex: 1 1 auto !important;
+}
