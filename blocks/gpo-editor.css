@@ -196,7 +196,6 @@
   min-width: 0 !important;
 }
 
-.editor-styles-wrapper .wp-block-navigation .wp-block[data-type="gestpark/vehicle-search"] .gpo-block.gpo-block-vehicle-search,
 .editor-styles-wrapper .wp-block-navigation .wp-block[data-type="gestpark/vehicle-search"] .gpo-vehicle-search-shell,
 .editor-styles-wrapper .wp-block-navigation .wp-block[data-type="gestpark/vehicle-search"] .gpo-vehicle-search {
   width: 100% !important;
@@ -275,7 +274,7 @@
 
 .editor-styles-wrapper .wp-block-navigation .wp-block[data-type="gestpark/vehicle-search"] {
   min-width: 0;
-  max-width: 100%;
+  max-width: none;
   flex: 0 1 auto;
   line-height: 1.2;
 }
@@ -285,15 +284,17 @@
 }
 
 .editor-styles-wrapper .wp-block[data-type="gestpark/vehicle-search"] {
-  width: min(100%, var(--gpo-search-width, 100%)) !important;
-  max-width: min(100%, var(--gpo-search-width, 100%)) !important;
+  width: auto !important;
+  max-width: none !important;
   min-width: 0 !important;
   flex: 0 1 auto !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
 }
 
 .editor-styles-wrapper .wp-block-navigation .wp-block[data-type="gestpark/vehicle-search"] {
-  width: min(100%, var(--gpo-search-width, 100%)) !important;
-  max-width: min(100%, var(--gpo-search-width, 100%)) !important;
+  width: auto !important;
+  max-width: none !important;
   flex: 0 1 auto !important;
 }
 

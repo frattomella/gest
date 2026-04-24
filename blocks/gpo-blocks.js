@@ -238,13 +238,14 @@
   function searchDeviceControls(props) {
     return el(PanelBody, { title: 'Visibilita e comportamento mobile', initialOpen: false }, [
       el(SelectControl, {
-        label: 'Allineamento nella riga',
+        label: 'Ancoraggio nel contenitore',
         value: props.attributes.searchAlign || 'left',
         options: [
           { label: 'Sinistra', value: 'left' },
           { label: 'Centro', value: 'center' },
           { label: 'Destra', value: 'right' }
         ],
+        help: 'Definisce come posizionare la barra dentro il contenitore padre senza creare spazio vuoto inutile.',
         onChange: function (value) { props.setAttributes({ searchAlign: value || 'left' }); }
       }),
       el(ToggleControl, {
@@ -283,18 +284,77 @@
     ].filter(Boolean).join(' ');
   }
 
+  function syncSearchEditorWrapper(node, width, align) {
+    var editorWrapper;
+    var widthValue;
+    var marginLeft;
+    var marginRight;
+
+    if (!node) {
+      return function () {};
+    }
+
+    editorWrapper = node.closest('.block-editor-block-list__block[data-type="gestpark/vehicle-search"]') || node.closest('[data-type="gestpark/vehicle-search"]');
+    if (!editorWrapper) {
+      return function () {};
+    }
+
+    widthValue = 'min(100%, ' + width + '%)';
+    marginLeft = align === 'right' || align === 'center' ? 'auto' : '0';
+    marginRight = align === 'left' || align === 'center' ? 'auto' : '0';
+
+    editorWrapper.style.setProperty('--gpo-search-width', width + '%');
+    editorWrapper.style.width = widthValue;
+    editorWrapper.style.maxWidth = widthValue;
+    editorWrapper.style.flexBasis = widthValue;
+    editorWrapper.style.flexGrow = '0';
+    editorWrapper.style.flexShrink = '1';
+    editorWrapper.style.minWidth = '0';
+    editorWrapper.style.display = 'flex';
+    editorWrapper.style.alignSelf = 'center';
+    editorWrapper.style.marginLeft = marginLeft;
+    editorWrapper.style.marginRight = marginRight;
+    editorWrapper.dataset.gpoSearchEditorAnchor = align;
+
+    return function () {
+      if (!editorWrapper.isConnected) {
+        return;
+      }
+
+      editorWrapper.style.removeProperty('--gpo-search-width');
+      editorWrapper.style.removeProperty('width');
+      editorWrapper.style.removeProperty('max-width');
+      editorWrapper.style.removeProperty('flex-basis');
+      editorWrapper.style.removeProperty('flex-grow');
+      editorWrapper.style.removeProperty('flex-shrink');
+      editorWrapper.style.removeProperty('min-width');
+      editorWrapper.style.removeProperty('display');
+      editorWrapper.style.removeProperty('align-self');
+      editorWrapper.style.removeProperty('margin-left');
+      editorWrapper.style.removeProperty('margin-right');
+      editorWrapper.removeAttribute('data-gpo-search-editor-anchor');
+    };
+  }
+
   function searchPreviewEdit(props) {
     var width = Math.max(20, Math.min(100, parseInt(props.attributes.width, 10) || 100));
     var align = props.attributes.searchAlign || 'left';
     var placeholder = props.attributes.placeholder || 'Cerca veicolo';
     var visibilityClasses = searchPreviewVisibilityClasses(props);
+    var previewRef = useRef(null);
+
+    useEffect(function () {
+      return syncSearchEditorWrapper(previewRef.current, width, align);
+    }, [width, align, props.clientId]);
+
     var blockProps = useBlockProps({
+      ref: previewRef,
       className: ['gpo-block-preview', 'gpo-block-preview--search', 'gpo-block-preview--search-editor', 'gpo-search-align-' + align, visibilityClasses].filter(Boolean).join(' '),
       style: {
         '--gpo-search-width': width + '%',
-        width: width + '%',
+        width: '100%',
         maxWidth: '100%',
-        flexBasis: width + '%'
+        flexBasis: 'auto'
       }
     });
 
