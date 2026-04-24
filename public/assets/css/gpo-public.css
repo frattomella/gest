@@ -5431,3 +5431,49 @@ body.gpo-lightbox-open {
     max-width: 100%;
   }
 }
+
+/* Final April 2026 marketplace desktop width fix */
+
+.gpo-catalog-shell--layout-marketplace-sidebar {
+  box-sizing: border-box;
+}
+
+.gpo-catalog-shell--layout-marketplace-sidebar .gpo-catalog-layout,
+.gpo-catalog-shell--layout-marketplace-sidebar .gpo-catalog-layout__sidebar,
+.gpo-catalog-shell--layout-marketplace-sidebar .gpo-catalog-layout__results,
+.gpo-catalog-shell--layout-marketplace-sidebar .gpo-filter-panel,
+.gpo-catalog-shell--layout-marketplace-sidebar .gpo-results-head--marketplace {
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+@media (min-width: 1181px) {
+  .gpo-catalog-shell--layout-marketplace-sidebar {
+    --gpo-marketplace-shell-max: min(calc(100vw - max(28px, 3vw)), max(var(--gpo-content-max-width), 1520px));
+    width: var(--gpo-marketplace-shell-max);
+    max-width: var(--gpo-marketplace-shell-max);
+    margin-left: calc(50% - (var(--gpo-marketplace-shell-max) / 2));
+    margin-right: calc(50% - (var(--gpo-marketplace-shell-max) / 2));
+    padding-left: clamp(18px, 1.8vw, 28px);
+    padding-right: clamp(18px, 1.8vw, 28px);
+  }
+
+  .gpo-catalog-shell--layout-marketplace-sidebar .gpo-catalog-layout {
+    grid-template-columns: minmax(300px, 340px) minmax(0, 1fr);
+    gap: clamp(22px, 2vw, 34px);
+    align-items: start;
+  }
+
+  .gpo-catalog-shell--layout-marketplace-sidebar .gpo-grid {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  }
+}
+
+@media (max-width: 1180px) {
+  .gpo-catalog-shell--layout-marketplace-sidebar {
+    width: min(100%, var(--gpo-shell-effective-max, 100%));
+    max-width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
