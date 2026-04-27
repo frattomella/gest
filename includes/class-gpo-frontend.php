@@ -216,6 +216,40 @@ class GPO_Frontend {
         return self::lead_email() !== '';
     }
 
+    protected static function whatsapp_contact_number() {
+        $settings = self::component_settings('lead_requests');
+        $raw = trim((string) ($settings['whatsapp_number'] ?? ''));
+        if ($raw === '') {
+            return '';
+        }
+
+        $normalized = preg_replace('/[^0-9+]/', '', $raw);
+        if (strpos($normalized, '00') === 0) {
+            $normalized = '+' . substr($normalized, 2);
+        }
+
+        return (string) $normalized;
+    }
+
+    protected static function whatsapp_chat_url($post_id = 0) {
+        $number = self::whatsapp_contact_number();
+        if ($number === '') {
+            return '';
+        }
+
+        $digits = preg_replace('/\D+/', '', $number);
+        if ($digits === '') {
+            return '';
+        }
+
+        $post_id = absint($post_id);
+        $title = $post_id ? trim(wp_strip_all_tags(get_the_title($post_id))) : 'questo veicolo';
+        $url = $post_id ? get_permalink($post_id) : '';
+        $message = trim('Buongiorno, vorrei ricevere maggiori informazioni su ' . $title . ($url ? ' ' . $url : ''));
+
+        return 'https://wa.me/' . rawurlencode($digits) . '?text=' . rawurlencode($message);
+    }
+
     protected static function lead_success_message() {
         $settings = self::display_settings();
         $message = trim((string) ($settings['style']['lead_success_message'] ?? ''));
@@ -1032,16 +1066,30 @@ class GPO_Frontend {
 
         $title = trim(wp_strip_all_tags(get_the_title($post_id)));
         $whatsapp_url = 'https://wa.me/?text=' . rawurlencode(trim($title . ' ' . $url));
+        $contact_whatsapp_url = self::whatsapp_chat_url($post_id);
 
-        $html = '<div class="gpo-share-actions" aria-label="Azioni di condivisione">';
+        $html = '<div class="gpo-share-stack">';
+        $html .= '<div class="gpo-share-actions" aria-label="Azioni di condivisione">';
         $html .= '<button type="button" class="gpo-share-action" data-gpo-copy-link="' . esc_url($url) . '" data-gpo-copy-label="Link copiato">';
         $html .= '<span class="gpo-share-action__icon" aria-hidden="true">' . self::icon_markup('copy') . '</span>';
-        $html .= '<span>Copia link</span>';
+        $html .= '<span>COPIA LINK</span>';
         $html .= '</button>';
         $html .= '<a class="gpo-share-action gpo-share-action--whatsapp" href="' . esc_url($whatsapp_url) . '" target="_blank" rel="noopener noreferrer">';
         $html .= '<span class="gpo-share-action__icon" aria-hidden="true">' . self::icon_markup('whatsapp') . '</span>';
-        $html .= '<span>Condividi su WhatsApp</span>';
+        $html .= '<span>CONDIVIDI SU WHATSAPP</span>';
         $html .= '</a>';
+        $html .= '</div>';
+        if ($contact_whatsapp_url) {
+            $html .= '<a class="gpo-share-cta gpo-share-cta--whatsapp" href="' . esc_url($contact_whatsapp_url) . '" target="_blank" rel="noopener noreferrer">';
+            $html .= '<span class="gpo-share-action__icon" aria-hidden="true">' . self::icon_markup('whatsapp') . '</span>';
+            $html .= '<span>CONTATTACI ORA</span>';
+            $html .= '</a>';
+        } else {
+            $html .= '<a class="gpo-share-cta gpo-share-cta--fallback" href="#richiesta-info">';
+            $html .= '<span class="gpo-share-action__icon" aria-hidden="true">' . self::icon_markup('whatsapp') . '</span>';
+            $html .= '<span>CONTATTACI ORA</span>';
+            $html .= '</a>';
+        }
         $html .= '</div>';
 
         return $html;

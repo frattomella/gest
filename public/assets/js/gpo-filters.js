@@ -190,9 +190,40 @@
     Array.prototype.slice.call(form.querySelectorAll('[data-gpo-filter-multi]')).forEach(initMultiFilter);
   }
 
+  function initInstantResultsControls() {
+    var form = document.getElementById('gpo-filter-form');
+    var instantControls;
+
+    if (!form || form.dataset.instantControlsBound === '1') {
+      return;
+    }
+
+    instantControls = Array.prototype.slice.call(document.querySelectorAll(
+      '#gpo-limit[form="gpo-filter-form"], #gpo-sort[form="gpo-filter-form"]'
+    ));
+
+    if (!instantControls.length) {
+      return;
+    }
+
+    form.dataset.instantControlsBound = '1';
+
+    instantControls.forEach(function (control) {
+      control.addEventListener('change', function () {
+        if (typeof form.requestSubmit === 'function') {
+          form.requestSubmit();
+          return;
+        }
+
+        form.submit();
+      });
+    });
+  }
+
   function boot() {
     Array.prototype.slice.call(document.querySelectorAll('[data-gpo-filter-panel="1"]')).forEach(initFilterPanel);
     initFilterSelects();
+    initInstantResultsControls();
   }
 
   if (document.readyState === 'loading') {

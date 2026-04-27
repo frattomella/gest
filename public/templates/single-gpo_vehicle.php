@@ -58,10 +58,10 @@ $followup_markup = '';
 if (class_exists('GPO_Blocks') && method_exists('GPO_Blocks', 'render_vehicle_carousel')) {
     GPO_Frontend::set_template_vehicle_context($post_id);
     $followup_markup = GPO_Blocks::render_vehicle_carousel([
-        'title' => 'Carosello Veicolo',
+        'title' => 'Altri veicoli da vedere',
         'source' => 'related_brand',
         'limit' => 6,
-        'show' => 'image,title,price,chips,neopatentati,primary_button',
+        'show' => 'image,title,price,chips,year,mileage,neopatentati,primary_button',
         'cardLayout' => 'default',
         'primaryButtonLabel' => 'Scheda veicolo',
     ]);

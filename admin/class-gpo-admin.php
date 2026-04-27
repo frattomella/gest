@@ -311,6 +311,7 @@ class GPO_Admin {
             ],
             'lead_requests' => [
                 'recipient_email' => '',
+                'whatsapp_number' => '',
             ],
             'vehicle_carousel' => [
                 'notes' => '',
@@ -438,6 +439,7 @@ class GPO_Admin {
 
         $lead_requests = isset($input['lead_requests']) && is_array($input['lead_requests']) ? $input['lead_requests'] : [];
         $output['lead_requests']['recipient_email'] = sanitize_email((string) ($lead_requests['recipient_email'] ?? ''));
+        $output['lead_requests']['whatsapp_number'] = sanitize_text_field((string) ($lead_requests['whatsapp_number'] ?? ''));
 
         foreach (['search_bar', 'catalog_filters', 'vehicle_carousel', 'vehicle_grid'] as $key) {
             $current = isset($input[$key]) && is_array($input[$key]) ? $input[$key] : [];
@@ -2099,6 +2101,14 @@ class GPO_Admin {
             'type' => 'email',
             'placeholder' => 'contatti@concessionaria.it',
             'description' => 'Le richieste inviate dalle schede veicolo verranno recapitate a questo indirizzo.',
+        ]);
+        self::render_setting_field([
+            'label' => 'Numero WhatsApp',
+            'name' => 'gpo_settings[components][lead_requests][whatsapp_number]',
+            'value' => $components['lead_requests']['whatsapp_number'] ?? '',
+            'type' => 'text',
+            'placeholder' => '+39 333 1234567',
+            'description' => 'Numero commerciale usato dal pulsante Contattaci ora nella scheda veicolo. Inserisci il prefisso internazionale.',
         ]);
         echo '</div>';
         echo '<div class="gpo-surface gpo-surface--accent gpo-surface--compact"><div class="gpo-surface__eyebrow">Stato attuale</div><h2>' . esc_html($lead_email ? 'Richieste attive' : 'Richieste non attive') . '</h2><p>' . esc_html($lead_email ? 'Il modulo di contatto delle schede veicolo è pronto a recapitare le richieste al destinatario configurato.' : 'Imposta un indirizzo email per attivare l invio delle richieste informative provenienti dal sito.') . '</p></div>';
