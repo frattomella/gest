@@ -27,6 +27,13 @@
     }
 
     carousel.dataset.bound = '1';
+    Array.prototype.slice.call(track.querySelectorAll('img, a')).forEach(function (node) {
+      node.setAttribute('draggable', 'false');
+    });
+
+    track.addEventListener('dragstart', function (event) {
+      event.preventDefault();
+    });
 
     function getSlides() {
       return Array.prototype.slice.call(track.querySelectorAll('.gpo-carousel-slide'));
@@ -259,6 +266,14 @@
       dragging = true;
       dragMoved = false;
 
+      if (track.setPointerCapture) {
+        try {
+          track.setPointerCapture(event.pointerId);
+        } catch (error) {
+          // Ignore browsers that reject pointer capture for this event.
+        }
+      }
+
       stop();
     });
 
@@ -313,6 +328,7 @@
       dragging = false;
       dragPointerId = null;
       dragMoved = false;
+      suppressClick = false;
       track.classList.remove('is-dragging');
       settleToNearestPage();
       restart();
@@ -325,6 +341,8 @@
 
       dragging = false;
       dragPointerId = null;
+      dragMoved = false;
+      suppressClick = false;
       track.classList.remove('is-dragging');
       settleToNearestPage();
       restart();

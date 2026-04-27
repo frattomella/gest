@@ -22,6 +22,9 @@ if (!function_exists('gpo_get_brand_slug')) {
             'Škoda' => 'skoda',
             'Volkswagen' => 'volkswagen',
             'VW' => 'volkswagen',
+            'Chrysler' => 'chrysler',
+            'Subaru' => 'subaru',
+            'Mini' => 'mini',
         ];
 
         if (isset($map[$brand])) {
@@ -223,12 +226,8 @@ class GPO_Frontend {
             return '';
         }
 
-        $normalized = preg_replace('/[^0-9+]/', '', $raw);
-        if (strpos($normalized, '00') === 0) {
-            $normalized = '+' . substr($normalized, 2);
-        }
-
-        return (string) $normalized;
+        $normalized = preg_replace('/\D+/', '', $raw);
+        return is_string($normalized) ? $normalized : '';
     }
 
     protected static function whatsapp_chat_url($post_id = 0) {
@@ -245,7 +244,7 @@ class GPO_Frontend {
         $post_id = absint($post_id);
         $title = $post_id ? trim(wp_strip_all_tags(get_the_title($post_id))) : 'questo veicolo';
         $url = $post_id ? get_permalink($post_id) : '';
-        $message = trim('Buongiorno, vorrei ricevere maggiori informazioni su ' . $title . ($url ? ' ' . $url : ''));
+        $message = trim('Vi contatto in merito al veicolo ' . $title . '. ' . $url);
 
         return 'https://wa.me/' . rawurlencode($digits) . '?text=' . rawurlencode($message);
     }
@@ -697,13 +696,13 @@ class GPO_Frontend {
             : self::active_showcase_vehicle_ids(absint($atts['limit']));
         $display['context'] = ($source === 'showcase') ? 'showcase' : 'vehicle-carousel';
         ob_start();
-        echo '<div class="gpo-carousel-shell" style="' . esc_attr(self::wrapper_style($atts) . '--gpo-carousel-items-per-page:' . $items_per_page . ';') . '">';
+        echo '<div class="gpo-carousel-shell gpo-carousel-shell--' . esc_attr($source) . '" style="' . esc_attr(self::wrapper_style($atts) . '--gpo-carousel-items-per-page:' . $items_per_page . ';') . '">';
         echo '<div class="gpo-section-head' . ($show_title ? '' : ' is-title-hidden') . '">';
         if ($show_title) {
             echo '<div><span class="gpo-kicker">Vetrina</span><h2>' . esc_html($section_title) . '</h2></div>';
         }
         echo '<div class="gpo-carousel-nav"><button class="gpo-carousel-prev" type="button" aria-label="Precedente">' . self::icon_markup('chevron-left') . '</button><button class="gpo-carousel-next" type="button" aria-label="Successivo">' . self::icon_markup('chevron-right') . '</button></div></div>';
-        echo '<div class="gpo-carousel" data-gpo-carousel="1" data-autoplay="' . esc_attr($atts['autoplay']) . '" data-interval="' . absint($atts['interval']) . '" data-loop="yes"><div class="gpo-carousel-track">';
+        echo '<div class="gpo-carousel gpo-carousel--' . esc_attr($source) . '" data-gpo-carousel="1" data-autoplay="' . esc_attr($atts['autoplay']) . '" data-interval="' . absint($atts['interval']) . '" data-loop="yes"><div class="gpo-carousel-track">';
         if (!empty($ids)) {
             foreach ($ids as $post_id) {
                 echo '<div class="gpo-carousel-slide">';
@@ -1085,10 +1084,7 @@ class GPO_Frontend {
             $html .= '<span>CONTATTACI ORA</span>';
             $html .= '</a>';
         } else {
-            $html .= '<a class="gpo-share-cta gpo-share-cta--fallback" href="#richiesta-info">';
-            $html .= '<span class="gpo-share-action__icon" aria-hidden="true">' . self::icon_markup('whatsapp') . '</span>';
-            $html .= '<span>CONTATTACI ORA</span>';
-            $html .= '</a>';
+            $html .= '<p class="gpo-share-note">Il contatto WhatsApp sarà disponibile non appena il recapito commerciale verrà configurato.</p>';
         }
         $html .= '</div>';
 

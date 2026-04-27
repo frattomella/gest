@@ -5673,3 +5673,136 @@ body.gpo-lightbox-open {
     right: 10px;
   }
 }
+
+/* Final April 2026 WhatsApp CTA and showroom carousel fixes */
+.single-gpo_vehicle .gpo-share-stack,
+.single-gpo_vehicle .gpo-template-shell .gpo-share-stack {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.single-gpo_vehicle .gpo-share-actions,
+.single-gpo_vehicle .gpo-template-shell .gpo-share-actions {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  max-width: 100%;
+}
+
+.single-gpo_vehicle .gpo-share-action,
+.single-gpo_vehicle .gpo-template-shell .gpo-share-action,
+.single-gpo_vehicle .gpo-share-cta,
+.single-gpo_vehicle .gpo-template-shell .gpo-share-cta {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.single-gpo_vehicle .gpo-share-action,
+.single-gpo_vehicle .gpo-template-shell .gpo-share-action {
+  min-height: 48px;
+  padding-inline: 14px;
+  border-radius: 14px;
+  justify-content: center;
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  box-shadow: none;
+}
+
+.single-gpo_vehicle .gpo-share-action--whatsapp,
+.single-gpo_vehicle .gpo-template-shell .gpo-share-action--whatsapp {
+  background: #ffffff;
+  color: #0f172a;
+  border-color: rgba(15, 23, 42, 0.14);
+}
+
+.single-gpo_vehicle .gpo-share-action:hover,
+.single-gpo_vehicle .gpo-template-shell .gpo-share-action:hover {
+  box-shadow: none;
+}
+
+.single-gpo_vehicle .gpo-share-action > span:last-child,
+.single-gpo_vehicle .gpo-template-shell .gpo-share-action > span:last-child,
+.single-gpo_vehicle .gpo-share-cta > span:last-child,
+.single-gpo_vehicle .gpo-template-shell .gpo-share-cta > span:last-child {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
+.single-gpo_vehicle .gpo-share-cta--whatsapp,
+.single-gpo_vehicle .gpo-template-shell .gpo-share-cta--whatsapp {
+  background: #25D366;
+  color: #ffffff;
+  border: 1px solid #25D366;
+  box-shadow: none;
+}
+
+.single-gpo_vehicle .gpo-share-cta--whatsapp:hover,
+.single-gpo_vehicle .gpo-template-shell .gpo-share-cta--whatsapp:hover {
+  background: #1ebe5b;
+  border-color: #1ebe5b;
+  box-shadow: none;
+}
+
+.single-gpo_vehicle .gpo-share-note,
+.single-gpo_vehicle .gpo-template-shell .gpo-share-note {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.04);
+  color: #475569;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.gpo-carousel-shell--showcase,
+.gpo-carousel--showcase,
+.gpo-carousel--showcase .gpo-carousel-track,
+.gpo-carousel--showcase .gpo-carousel-slide {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.gpo-carousel--showcase .gpo-carousel-track {
+  align-items: stretch;
+  overflow-y: hidden;
+}
+
+.gpo-carousel--showcase .gpo-carousel-slide {
+  display: flex;
+  height: auto;
+}
+
+.gpo-carousel--showcase .gpo-card {
+  width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 1180px) {
+  .single-gpo_vehicle .gpo-share-actions,
+  .single-gpo_vehicle .gpo-template-shell .gpo-share-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .gpo-carousel--showcase .gpo-carousel-track {
+    grid-auto-columns: minmax(300px, 82vw) !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .single-gpo_vehicle .gpo-share-actions,
+  .single-gpo_vehicle .gpo-template-shell .gpo-share-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .gpo-carousel--showcase .gpo-carousel-track {
+    grid-auto-columns: 100% !important;
+  }
+}

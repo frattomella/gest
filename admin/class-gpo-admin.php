@@ -332,6 +332,11 @@ class GPO_Admin {
         return preg_match('/^\d{2}:\d{2}$/', $value) ? $value : '';
     }
 
+    protected static function sanitize_whatsapp_number($value) {
+        $digits = preg_replace('/\D+/', '', (string) $value);
+        return is_string($digits) ? $digits : '';
+    }
+
     protected static function sanitize_vehicle_ids($items) {
         return array_values(array_filter(array_map('absint', (array) $items)));
     }
@@ -439,7 +444,7 @@ class GPO_Admin {
 
         $lead_requests = isset($input['lead_requests']) && is_array($input['lead_requests']) ? $input['lead_requests'] : [];
         $output['lead_requests']['recipient_email'] = sanitize_email((string) ($lead_requests['recipient_email'] ?? ''));
-        $output['lead_requests']['whatsapp_number'] = sanitize_text_field((string) ($lead_requests['whatsapp_number'] ?? ''));
+        $output['lead_requests']['whatsapp_number'] = self::sanitize_whatsapp_number($lead_requests['whatsapp_number'] ?? '');
 
         foreach (['search_bar', 'catalog_filters', 'vehicle_carousel', 'vehicle_grid'] as $key) {
             $current = isset($input[$key]) && is_array($input[$key]) ? $input[$key] : [];
@@ -575,6 +580,18 @@ class GPO_Admin {
         }
 
         return sanitize_email((string) ($raw_settings['style']['lead_email'] ?? ''));
+    }
+
+    protected static function configured_whatsapp_number() {
+        $raw_settings = get_option('gpo_settings', []);
+        $raw_settings = is_array($raw_settings) ? $raw_settings : [];
+
+        $lead_request_settings = $raw_settings['components']['lead_requests'] ?? null;
+        if (is_array($lead_request_settings) && array_key_exists('whatsapp_number', $lead_request_settings)) {
+            return self::sanitize_whatsapp_number($lead_request_settings['whatsapp_number'] ?? '');
+        }
+
+        return '';
     }
 
     public static function vehicle_page_header_options() {
@@ -1966,6 +1983,7 @@ class GPO_Admin {
         $vehicle_records = self::vehicle_records();
         $brand_options = self::brand_options();
         $lead_email = self::configured_lead_email();
+        $lead_whatsapp = self::configured_whatsapp_number();
         $header_options = self::vehicle_page_header_options();
         $selected_header = sanitize_key((string) ($settings['style']['single_header'] ?? 'default'));
         $featured_map = array_column($vehicle_records, 'label', 'id');
@@ -1977,7 +1995,15 @@ class GPO_Admin {
         ];
         $brand_summary = $brand_mode_labels[$components['brand_banner']['mode'] ?? 'inventory'] ?? 'Solo marchi in stock';
         $showcase_summary = !empty($components['showcase_carousel']['vehicle_ids']) ? count((array) $components['showcase_carousel']['vehicle_ids']) . ' veicoli in vetrina' : 'Fallback automatico';
-        $lead_summary = $lead_email ? 'Configurata' : 'Non configurata';
+        if ($lead_email && $lead_whatsapp) {
+            $lead_summary = 'Email e WhatsApp configurati';
+        } elseif ($lead_email) {
+            $lead_summary = 'Email configurata';
+        } elseif ($lead_whatsapp) {
+            $lead_summary = 'WhatsApp configurato';
+        } else {
+            $lead_summary = 'Da configurare';
+        }
         $header_summary = $header_options[$selected_header] ?? ($header_options['default'] ?? 'Header predefinito del tema');
 
         self::render_page_start(
@@ -2090,7 +2116,7 @@ class GPO_Admin {
         echo '</div>';
         self::component_section_end();
 
-        self::component_section_start('lead_requests', 'Richieste informazioni', 'Configura l indirizzo email al quale ricevere le richieste inviate dai visitatori dalle schede veicolo.', $lead_summary);
+        self::component_section_start('lead_requests', 'Richieste informazioni', 'Configura i recapiti che ricevono le richieste inviate dai visitatori dalle schede veicolo.', $lead_summary);
         echo '<div class="gpo-surface-grid gpo-surface-grid--connections">';
         echo '<div class="gpo-surface gpo-surface--compact">';
         echo '<div class="gpo-surface__eyebrow">Recapito commerciale</div><h2>Email destinataria</h2>';
@@ -2103,15 +2129,18 @@ class GPO_Admin {
             'description' => 'Le richieste inviate dalle schede veicolo verranno recapitate a questo indirizzo.',
         ]);
         self::render_setting_field([
-            'label' => 'Numero WhatsApp',
+            'label' => 'Numero WhatsApp Business',
             'name' => 'gpo_settings[components][lead_requests][whatsapp_number]',
             'value' => $components['lead_requests']['whatsapp_number'] ?? '',
             'type' => 'text',
-            'placeholder' => '+39 333 1234567',
-            'description' => 'Numero commerciale usato dal pulsante Contattaci ora nella scheda veicolo. Inserisci il prefisso internazionale.',
+            'placeholder' => '393XXXXXXXXX',
+            'description' => 'Numero WhatsApp che riceverà le richieste dei clienti.',
         ]);
         echo '</div>';
-        echo '<div class="gpo-surface gpo-surface--accent gpo-surface--compact"><div class="gpo-surface__eyebrow">Stato attuale</div><h2>' . esc_html($lead_email ? 'Richieste attive' : 'Richieste non attive') . '</h2><p>' . esc_html($lead_email ? 'Il modulo di contatto delle schede veicolo è pronto a recapitare le richieste al destinatario configurato.' : 'Imposta un indirizzo email per attivare l invio delle richieste informative provenienti dal sito.') . '</p></div>';
+        echo '<div class="gpo-surface gpo-surface--accent gpo-surface--compact"><div class="gpo-surface__eyebrow">Stato attuale</div><h2>' . esc_html(($lead_email || $lead_whatsapp) ? 'Recapiti configurati' : 'Recapiti da completare') . '</h2>';
+        echo '<p>' . wp_kses_post(($lead_email ? '&#10003;' : '&#9888;') . ' ' . esc_html($lead_email ? 'Email destinataria configurata.' : 'Email destinataria non configurata.')) . '</p>';
+        echo '<p>' . wp_kses_post(($lead_whatsapp ? '&#10003;' : '&#9888;') . ' ' . esc_html($lead_whatsapp ? 'Numero WhatsApp Business configurato.' : 'Numero WhatsApp Business non configurato.')) . '</p>';
+        echo '<p>' . esc_html($lead_email ? 'Il modulo delle schede veicolo può inviare le richieste via email al recapito configurato.' : 'Configura almeno l email destinataria per attivare l invio delle richieste informative dal sito.') . '</p></div>';
         echo '</div>';
         self::component_section_end();
 
