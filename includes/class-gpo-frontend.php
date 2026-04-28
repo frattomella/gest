@@ -683,6 +683,7 @@ class GPO_Frontend {
             'primary_button_label' => 'Scheda veicolo',
         ], $atts, 'gestpark_featured_vehicle');
         $display = self::resolve_card_display($atts);
+        $display['context'] = 'featured-single';
 
         $featured_id = self::active_featured_vehicle_id();
         ob_start();
@@ -1331,7 +1332,6 @@ class GPO_Frontend {
         }
 
         $contact_whatsapp_url = self::whatsapp_chat_url($post_id);
-        $phone_url = self::phone_call_url();
         $modal_id = 'gpo-share-modal-' . $post_id;
 
         $html = '<div class="gpo-share-stack">';
@@ -1370,15 +1370,76 @@ class GPO_Frontend {
 
         $html = '<div id="' . esc_attr($modal_id) . '" class="gpo-share-modal" hidden aria-hidden="true">';
         $html .= '<button type="button" class="gpo-share-modal__backdrop" data-gpo-share-close="' . esc_attr($modal_id) . '" aria-label="Chiudi condivisione"></button>';
-        $html .= '<div class="gpo-share-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="' . esc_attr($modal_id . '-title') . '">';
-        $html .= '<div class="gpo-share-modal__head"><h3 id="' . esc_attr($modal_id . '-title') . '">Condividi</h3><button type="button" class="gpo-share-modal__close" data-gpo-share-close="' . esc_attr($modal_id) . '" aria-label="Chiudi">' . self::icon_markup('clear') . '</button></div>';
+        $html .= '<div class="gpo-share-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="' . esc_attr($modal_id . '-title') . '" tabindex="-1">';
+        $html .= '<div class="gpo-share-modal__head"><h3 id="' . esc_attr($modal_id . '-title') . '">Condividi</h3></div>';
         $html .= '<div class="gpo-share-modal__actions">';
-        $html .= '<button type="button" class="gpo-share-modal__action" data-gpo-copy-link="' . esc_url($url) . '" data-gpo-copy-label="Link copiato"><span class="gpo-share-modal__action-icon" aria-hidden="true">' . self::icon_markup('copy') . '</span><span>Copia link</span></button>';
-        $html .= '<a class="gpo-share-modal__action gpo-share-modal__action--whatsapp" href="' . esc_url($whatsapp_url) . '" target="_blank" rel="noopener noreferrer"><span class="gpo-share-modal__action-icon" aria-hidden="true">' . self::icon_markup('whatsapp') . '</span><span>WhatsApp</span></a>';
-        $html .= '<a class="gpo-share-modal__action gpo-share-modal__action--facebook" href="' . esc_url($facebook_url) . '" target="_blank" rel="noopener noreferrer"><span class="gpo-share-modal__action-icon" aria-hidden="true">' . self::icon_markup('facebook') . '</span><span>Facebook</span></a>';
+        $html .= '<button type="button" class="gpo-share-modal__action" data-gpo-copy-link="' . esc_url($url) . '" data-gpo-copy-label="Link copiato" data-gpo-share-dismiss="1"><span class="gpo-share-modal__action-icon" aria-hidden="true">' . self::icon_markup('copy') . '</span><span>Copia link</span></button>';
+        $html .= '<a class="gpo-share-modal__action" href="' . esc_url($whatsapp_url) . '" target="_blank" rel="noopener noreferrer" data-gpo-share-dismiss="1"><span class="gpo-share-modal__action-icon" aria-hidden="true">' . self::icon_markup('whatsapp') . '</span><span>WhatsApp</span></a>';
+        $html .= '<a class="gpo-share-modal__action" href="' . esc_url($facebook_url) . '" target="_blank" rel="noopener noreferrer" data-gpo-share-dismiss="1"><span class="gpo-share-modal__action-icon" aria-hidden="true">' . self::icon_markup('facebook') . '</span><span>Facebook</span></a>';
         $html .= '</div></div></div>';
 
         return $html;
+    }
+
+    protected static function print_text_preview($content, $words = 60) {
+        $content = trim(preg_replace('/\s+/', ' ', wp_strip_all_tags((string) $content)));
+        if ($content === '') {
+            return '';
+        }
+
+        return wp_trim_words($content, max(12, absint($words)), '...');
+    }
+
+    protected static function print_list_preview($items, $limit = 12) {
+        $items = array_values(array_filter(array_map('trim', (array) $items)));
+        if (empty($items)) {
+            return [];
+        }
+
+        $limit = max(4, absint($limit));
+        if (count($items) <= $limit) {
+            return $items;
+        }
+
+        $preview = array_slice($items, 0, $limit);
+        $preview[] = '+' . (count($items) - $limit) . ' altri accessori disponibili su richiesta';
+        return $preview;
+    }
+
+    protected static function site_social_profiles() {
+        $profiles = [];
+        $definitions = [
+            'facebook' => ['facebook_url', 'social_facebook', 'facebook', 'facebook_link'],
+            'instagram' => ['instagram_url', 'social_instagram', 'instagram', 'instagram_link'],
+            'linkedin' => ['linkedin_url', 'social_linkedin', 'linkedin', 'linkedin_link'],
+            'youtube' => ['youtube_url', 'social_youtube', 'youtube', 'youtube_link'],
+        ];
+
+        foreach ($definitions as $platform => $keys) {
+            $value = '';
+            foreach ($keys as $key) {
+                $candidate = get_theme_mod($key, '');
+                if (!is_string($candidate) || trim($candidate) === '') {
+                    $candidate = get_option($key, '');
+                }
+
+                if (!is_string($candidate)) {
+                    continue;
+                }
+
+                $candidate = trim($candidate);
+                if ($candidate !== '') {
+                    $value = esc_url_raw($candidate);
+                    break;
+                }
+            }
+
+            if ($value !== '') {
+                $profiles[$platform] = $value;
+            }
+        }
+
+        return $profiles;
     }
 
     public static function print_sheet_markup($post_id, $data = []) {
@@ -1399,55 +1460,98 @@ class GPO_Frontend {
         $price_note = self::single_price_note($post_id, $data);
         $site_name = get_bloginfo('name');
         $site_url = home_url('/');
+        $site_host = wp_parse_url($site_url, PHP_URL_HOST);
+        $site_host = $site_host ? $site_host : $site_url;
         $custom_logo_id = function_exists('get_theme_mod') ? absint(get_theme_mod('custom_logo')) : 0;
         $logo_url = $custom_logo_id ? wp_get_attachment_image_url($custom_logo_id, 'full') : '';
+        $social_profiles = self::site_social_profiles();
+        $status_badges = self::single_status_badges_markup($post_id, $data);
+        $brand_line = trim(implode(' ', array_filter([
+            (string) ($data['brand'] ?? get_post_meta($post_id, '_gpo_brand', true)),
+            (string) ($data['model'] ?? get_post_meta($post_id, '_gpo_model', true)),
+            (string) ($data['version'] ?? get_post_meta($post_id, '_gpo_version', true)),
+        ])));
+        $description_preview = self::print_text_preview($description, 80);
+        $notes_preview = self::print_text_preview($notes, 36);
+        $accessories_preview = self::print_list_preview($accessories, 12);
+        $main_photo = !empty($gallery_items) ? array_shift($gallery_items) : null;
+        $thumb_count = count($gallery_items);
 
         $html = '<section class="gpo-print-sheet" aria-hidden="true">';
-        $html .= '<header class="gpo-print-sheet__header"><div class="gpo-print-sheet__brand">';
+        $html .= '<header class="gpo-print-sheet__header">';
+        $html .= '<div class="gpo-print-sheet__brand">';
         if ($logo_url) {
             $html .= '<img src="' . esc_url($logo_url) . '" alt="' . esc_attr($site_name) . '" />';
         }
-        $html .= '<div><strong>' . esc_html($site_name) . '</strong><span>' . esc_html($site_url) . '</span></div></div>';
-        $html .= '<div class="gpo-print-sheet__title"><h1>' . esc_html(get_the_title($post_id)) . '</h1><p>' . esc_html(trim((string) ($data['brand'] ?? '') . ' ' . (string) ($data['model'] ?? ''))) . '</p></div></header>';
-        $html .= '<section class="gpo-print-sheet__hero"><div class="gpo-print-sheet__price"><strong>' . esc_html(self::format_price_public($current_price)) . '</strong>';
+        $html .= '<div><strong>' . esc_html($site_name) . '</strong><span>' . esc_html($site_host) . '</span></div>';
+        $html .= '</div>';
+        $html .= '<div class="gpo-print-sheet__meta">';
+        $html .= '<span class="gpo-print-sheet__site"><span class="gpo-print-sheet__site-icon" aria-hidden="true">' . self::icon_markup('globe') . '</span><span>' . esc_html($site_url) . '</span></span>';
+        if (!empty($social_profiles)) {
+            $html .= '<div class="gpo-print-sheet__socials" aria-label="Canali social">';
+            foreach (array_keys($social_profiles) as $platform) {
+                $html .= '<span class="gpo-print-sheet__social" aria-hidden="true">' . self::icon_markup($platform) . '</span>';
+            }
+            $html .= '</div>';
+        }
+        $html .= '</div></header>';
+
+        $html .= '<section class="gpo-print-sheet__hero">';
+        $html .= '<div class="gpo-print-sheet__media">';
+        if (is_array($main_photo)) {
+            $html .= '<figure class="gpo-print-sheet__hero-photo"><img src="' . esc_url($main_photo['large']) . '" alt="' . esc_attr($main_photo['alt']) . '" /></figure>';
+        }
+        if ($thumb_count > 0) {
+            $html .= '<div class="gpo-print-sheet__thumbs gpo-print-sheet__thumbs--count-' . esc_attr((string) min($thumb_count, 12)) . '">';
+            foreach ($gallery_items as $item) {
+                $html .= '<figure class="gpo-print-sheet__photo"><img src="' . esc_url(!empty($item['thumb']) ? $item['thumb'] : $item['large']) . '" alt="' . esc_attr($item['alt']) . '" /></figure>';
+            }
+            $html .= '</div>';
+        }
+        $html .= '</div>';
+
+        $html .= '<div class="gpo-print-sheet__summary">';
+        $html .= '<div class="gpo-print-sheet__title"><h1>' . esc_html(get_the_title($post_id)) . '</h1>';
+        if ($brand_line !== '') {
+            $html .= '<p>' . esc_html($brand_line) . '</p>';
+        }
+        $html .= '</div>';
+        $html .= '<div class="gpo-print-sheet__price"><strong>' . esc_html(self::format_price_public($current_price)) . '</strong>';
         if ($price_note !== '') {
             $html .= '<span>' . esc_html($price_note) . '</span>';
         }
         if (!empty($promotion['formatted_original']) && $promotion['formatted_original'] !== self::format_price_public($current_price)) {
             $html .= '<small>' . esc_html($promotion['formatted_original']) . '</small>';
         }
-        $html .= '</div>' . self::single_status_badges_markup($post_id, $data) . '</section>';
+        $html .= '</div>';
+        if ($status_badges !== '') {
+            $html .= '<div class="gpo-print-sheet__badges">' . $status_badges . '</div>';
+        }
+        if (!empty($overview_items)) {
+            $html .= '<div class="gpo-print-sheet__facts">';
+            foreach ($overview_items as $item) {
+                $html .= '<div class="gpo-print-sheet__fact"><small>' . esc_html($item['label']) . '</small><strong>' . esc_html($item['value']) . '</strong></div>';
+            }
+            $html .= '</div>';
+        }
+        $html .= '</div></section>';
 
-        if (!empty($gallery_items)) {
-            $html .= '<section class="gpo-print-sheet__photos">';
-            foreach ($gallery_items as $item) {
-                $html .= '<figure class="gpo-print-sheet__photo"><img src="' . esc_url($item['large']) . '" alt="' . esc_attr($item['alt']) . '" /></figure>';
+        if ($description_preview !== '' || !empty($accessories_preview) || $notes_preview !== '') {
+            $html .= '<section class="gpo-print-sheet__foot">';
+            if ($description_preview !== '') {
+                $html .= '<section class="gpo-print-sheet__section"><h2>Descrizione</h2><p>' . esc_html($description_preview) . '</p></section>';
+            }
+            if (!empty($accessories_preview)) {
+                $html .= '<section class="gpo-print-sheet__section"><h2>Equipaggiamento</h2><ul class="gpo-print-sheet__list">';
+                foreach ($accessories_preview as $item) {
+                    $html .= '<li>' . esc_html($item) . '</li>';
+                }
+                $html .= '</ul></section>';
+            }
+            if ($notes_preview !== '') {
+                $html .= '<section class="gpo-print-sheet__section"><h2>Note</h2><p>' . esc_html($notes_preview) . '</p></section>';
             }
             $html .= '</section>';
-        }
-
-        if (!empty($overview_items)) {
-            $html .= '<section class="gpo-print-sheet__section"><h2>Panoramica</h2><table class="gpo-print-sheet__table"><tbody>';
-            foreach ($overview_items as $item) {
-                $html .= '<tr><th scope="row">' . esc_html($item['label']) . '</th><td>' . esc_html($item['value']) . '</td></tr>';
-            }
-            $html .= '</tbody></table></section>';
-        }
-
-        if ($description !== '') {
-            $html .= '<section class="gpo-print-sheet__section"><h2>Descrizione</h2><div class="gpo-print-sheet__rich">' . $description . '</div></section>';
-        }
-
-        if (!empty($accessories)) {
-            $html .= '<section class="gpo-print-sheet__section"><h2>Equipaggiamento / Accessori</h2><ul class="gpo-print-sheet__list">';
-            foreach ($accessories as $item) {
-                $html .= '<li>' . esc_html($item) . '</li>';
-            }
-            $html .= '</ul></section>';
-        }
-
-        if ($notes !== '') {
-            $html .= '<section class="gpo-print-sheet__section"><h2>Note</h2><p>' . nl2br(esc_html($notes)) . '</p></section>';
         }
 
         $html .= '</section>';
@@ -2040,7 +2144,7 @@ class GPO_Frontend {
                 echo '<div class="gpo-card-overlay">';
                 if ($badge) {
                     echo '<span class="gpo-badge">' . esc_html($badge) . '</span>';
-                } elseif ($is_featured && !in_array($context, ['showcase', 'catalog'], true)) {
+                } elseif ($is_featured && !in_array($context, ['showcase', 'catalog', 'featured-single'], true)) {
                     echo '<span class="gpo-badge">In vetrina</span>';
                 }
                 if ($promotion) {
@@ -2448,7 +2552,7 @@ class GPO_Frontend {
             echo '</div>';
 
             echo '<div class="gpo-single-gallery-bar">';
-            echo '<div class="gpo-single-gallery-count"><strong>1 / ' . esc_html((string) $count) . '</strong><small>' . esc_html($current['caption']) . '</small></div>';
+            echo '<div class="gpo-single-gallery-count"><strong>1 / ' . esc_html((string) $count) . '</strong></div>';
             echo '</div>';
 
             echo '<div class="gpo-single-thumbs" role="list">';
@@ -2952,6 +3056,22 @@ class GPO_Frontend {
 
         if ($type === 'facebook') {
             return '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M13.5 21v-7h2.4l.4-3h-2.8V9.1c0-.9.3-1.5 1.6-1.5H16V5c-.4-.1-1.3-.2-2.4-.2-2.4 0-4 1.4-4 4.1V11H7v3h2.2v7h4.3Z"/></svg>';
+        }
+
+        if ($type === 'instagram') {
+            return '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"></rect><circle cx="12" cy="12" r="4"></circle><circle cx="17.5" cy="6.5" r="1"></circle></svg>';
+        }
+
+        if ($type === 'linkedin') {
+            return '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M6.94 8.5H3.56V20h3.38V8.5ZM5.25 3A1.97 1.97 0 0 0 3.3 4.97c0 1.08.86 1.97 1.93 1.97h.02A1.97 1.97 0 0 0 7.2 4.97 1.96 1.96 0 0 0 5.25 3ZM20.7 13.02c0-3.38-1.8-4.95-4.21-4.95-1.94 0-2.8 1.08-3.29 1.83V8.5H9.82c.04.92 0 11.5 0 11.5h3.38v-6.42c0-.34.02-.68.12-.92.27-.68.88-1.39 1.9-1.39 1.34 0 1.88 1.05 1.88 2.58V20H20.7v-6.98Z"/></svg>';
+        }
+
+        if ($type === 'youtube') {
+            return '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M21.6 7.2a2.95 2.95 0 0 0-2.08-2.08C17.7 4.6 12 4.6 12 4.6s-5.7 0-7.52.52A2.95 2.95 0 0 0 2.4 7.2 30.7 30.7 0 0 0 1.9 12c0 1.62.17 3.23.5 4.8a2.95 2.95 0 0 0 2.08 2.08C6.3 19.4 12 19.4 12 19.4s5.7 0 7.52-.52a2.95 2.95 0 0 0 2.08-2.08c.33-1.57.5-3.18.5-4.8 0-1.62-.17-3.23-.5-4.8ZM9.9 15.06V8.94L15.2 12l-5.3 3.06Z"/></svg>';
+        }
+
+        if ($type === 'globe') {
+            return '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18"></path><path d="M12 3a15 15 0 0 1 0 18"></path><path d="M12 3a15 15 0 0 0 0 18"></path></svg>';
         }
 
         if ($type === 'phone') {

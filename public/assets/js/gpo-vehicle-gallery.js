@@ -63,7 +63,6 @@
     var main = qs('.gpo-single-main', gallery);
     var mainImage = qs('.gpo-single-main__image', gallery);
     var countLabel = qs('.gpo-single-gallery-count strong', gallery);
-    var captionLabel = qs('.gpo-single-gallery-count small', gallery);
     var prev = qs('.gpo-single-stage__nav.prev', gallery);
     var next = qs('.gpo-single-stage__nav.next', gallery);
     var expand = qs('.gpo-single-gallery-expand', gallery);
@@ -131,10 +130,6 @@
 
       if (countLabel) {
         countLabel.textContent = (activeIndex + 1) + ' / ' + items.length;
-      }
-
-      if (captionLabel) {
-        captionLabel.textContent = item.caption;
       }
 
       if (lightbox && !lightbox.hidden && lightImage) {
@@ -349,9 +344,14 @@
         document.documentElement.classList.add('gpo-share-modal-open');
         document.body.classList.add('gpo-share-modal-open');
 
-        var closeButton = qs('.gpo-share-modal__close', modal);
-        if (closeButton) {
-          closeButton.focus();
+        var firstAction = qs('.gpo-share-modal__action, [data-gpo-copy-link]', modal);
+        if (firstAction) {
+          firstAction.focus();
+        } else {
+          var dialog = qs('.gpo-share-modal__dialog', modal);
+          if (dialog) {
+            dialog.focus();
+          }
         }
       });
     });
@@ -373,6 +373,27 @@
         modal.setAttribute('aria-hidden', 'true');
         document.documentElement.classList.remove('gpo-share-modal-open');
         document.body.classList.remove('gpo-share-modal-open');
+      });
+    });
+
+    qsa('[data-gpo-share-dismiss]').forEach(function (button) {
+      if (!button || button.dataset.shareDismissBound === '1') {
+        return;
+      }
+
+      button.dataset.shareDismissBound = '1';
+      button.addEventListener('click', function () {
+        var modal = button.closest('.gpo-share-modal');
+        if (!modal) {
+          return;
+        }
+
+        window.setTimeout(function () {
+          modal.hidden = true;
+          modal.setAttribute('aria-hidden', 'true');
+          document.documentElement.classList.remove('gpo-share-modal-open');
+          document.body.classList.remove('gpo-share-modal-open');
+        }, 0);
       });
     });
 

@@ -21,6 +21,8 @@
     var dragging = false;
     var dragMoved = false;
     var suppressClick = false;
+    var pressedCard = null;
+    var pressedInteractive = false;
 
     if (!track) {
       return;
@@ -265,6 +267,8 @@
       dragStartScroll = track.scrollLeft;
       dragging = true;
       dragMoved = false;
+      pressedCard = event.target.closest('.gpo-card[data-gpo-card-url]');
+      pressedInteractive = !!event.target.closest('a, button, input, select, textarea, label, summary');
 
       if (track.setPointerCapture) {
         try {
@@ -317,10 +321,22 @@
           suppressClick = false;
         }, 220);
       } else {
+        var releasedInteractive = !!event.target.closest('a, button, input, select, textarea, label, summary');
+        var releasedCard = event.target.closest('.gpo-card[data-gpo-card-url]');
         syncIndex();
         suppressClick = false;
+
+        if (pressedCard && releasedCard === pressedCard && !pressedInteractive && !releasedInteractive) {
+          var url = pressedCard.getAttribute('data-gpo-card-url');
+          if (url) {
+            window.location.href = url;
+            return;
+          }
+        }
       }
 
+      pressedCard = null;
+      pressedInteractive = false;
       restart();
     });
 
@@ -329,6 +345,8 @@
       dragPointerId = null;
       dragMoved = false;
       suppressClick = false;
+      pressedCard = null;
+      pressedInteractive = false;
       track.classList.remove('is-dragging');
       settleToNearestPage();
       restart();
@@ -343,6 +361,8 @@
       dragPointerId = null;
       dragMoved = false;
       suppressClick = false;
+      pressedCard = null;
+      pressedInteractive = false;
       track.classList.remove('is-dragging');
       settleToNearestPage();
       restart();

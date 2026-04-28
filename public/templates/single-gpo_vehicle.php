@@ -80,7 +80,6 @@ if (is_array($promotion)) {
         $promo_copy = '';
     }
 }
-$strengths_markup = $show('strengths') ? GPO_Frontend::single_strengths_card_markup($post_id, $vehicle) : '';
 $contact_markup = '';
 if ($show('contact_box')) {
     $contact_markup = GPO_Frontend::lead_form_markup($post_id, [
@@ -110,7 +109,7 @@ if (class_exists('GPO_Blocks') && method_exists('GPO_Blocks', 'render_vehicle_ca
     <?php echo GPO_Frontend::back_button_markup($post_id); ?>
 
     <section class="gpo-vehicle-single">
-        <div class="gpo-vehicle-single__hero">
+        <div class="gpo-vehicle-single__layout">
             <?php if ($show('gallery')) : ?>
                 <div class="gpo-vehicle-single__gallery">
                     <?php echo GPO_Frontend::gallery_markup($post_id, true); ?>
@@ -118,69 +117,61 @@ if (class_exists('GPO_Blocks') && method_exists('GPO_Blocks', 'render_vehicle_ca
             <?php endif; ?>
 
             <?php if ($show('summary')) : ?>
-                <aside class="gpo-single-summary-card">
-                    <?php if ($status_badges) : ?>
-                        <?php echo $status_badges; ?>
-                    <?php endif; ?>
+                <aside class="gpo-vehicle-single__side-column">
+                    <section class="gpo-single-summary-card">
+                        <?php if ($status_badges) : ?>
+                            <?php echo $status_badges; ?>
+                        <?php endif; ?>
 
-                    <div class="gpo-single-summary-card__copy">
-                        <span class="gpo-kicker">Scheda veicolo</span>
-                        <h1><?php the_title(); ?></h1>
-                        <p class="gpo-single-subtitle"><?php echo esc_html(trim((string) get_post_meta($post_id, '_gpo_brand', true) . ' ' . (string) get_post_meta($post_id, '_gpo_model', true) . ' ' . (string) get_post_meta($post_id, '_gpo_version', true))); ?></p>
-                    </div>
-
-                    <div class="gpo-single-summary-card__pricing<?php echo $promotion ? ' is-promoted' : ''; ?>">
-                        <div class="gpo-single-summary-card__price-wrap">
-                            <?php if ($promo_price && $price && $promo_price !== $price) : ?>
-                                <small class="gpo-single-summary-card__price-original"><?php echo esc_html(GPO_Frontend::format_price_public((float) $price)); ?></small>
-                            <?php endif; ?>
-                            <strong class="gpo-single-summary-card__price-current<?php echo $promotion ? ' gpo-price-current--promo' : ''; ?>">
-                                <?php echo esc_html($current_price ? GPO_Frontend::format_price_public((float) $current_price) : 'Prezzo su richiesta'); ?>
-                            </strong>
+                        <div class="gpo-single-summary-card__copy">
+                            <h1><?php the_title(); ?></h1>
+                            <p class="gpo-single-subtitle"><?php echo esc_html(trim((string) get_post_meta($post_id, '_gpo_brand', true) . ' ' . (string) get_post_meta($post_id, '_gpo_model', true) . ' ' . (string) get_post_meta($post_id, '_gpo_version', true))); ?></p>
                         </div>
-                        <?php if ($price_note !== '') : ?>
-                            <span class="gpo-price-note"><?php echo esc_html($price_note); ?></span>
-                        <?php endif; ?>
-                        <?php if ($promo_copy !== '') : ?>
-                            <span class="gpo-promo-copy"><?php echo esc_html($promo_copy); ?></span>
-                        <?php endif; ?>
-                    </div>
 
-                    <?php if ($share_actions) : ?>
-                        <?php echo $share_actions; ?>
-                    <?php endif; ?>
-                    <?php if ($phone_url) : ?>
-                        <a class="gpo-share-cta gpo-share-cta--phone" href="<?php echo esc_url($phone_url); ?>">
-                            <span class="gpo-share-action__icon" aria-hidden="true">&#9742;</span>
-                            <span>CHIAMA ORA</span>
-                        </a>
-                    <?php endif; ?>
-                    <?php echo $share_modal; ?>
+                        <div class="gpo-single-summary-card__pricing<?php echo $promotion ? ' is-promoted' : ''; ?>">
+                            <div class="gpo-single-summary-card__price-wrap">
+                                <?php if ($promo_price && $price && $promo_price !== $price) : ?>
+                                    <small class="gpo-single-summary-card__price-original"><?php echo esc_html(GPO_Frontend::format_price_public((float) $price)); ?></small>
+                                <?php endif; ?>
+                                <strong class="gpo-single-summary-card__price-current<?php echo $promotion ? ' gpo-price-current--promo' : ''; ?>">
+                                    <?php echo esc_html($current_price ? GPO_Frontend::format_price_public((float) $current_price) : 'Prezzo su richiesta'); ?>
+                                </strong>
+                            </div>
+                            <?php if ($price_note !== '') : ?>
+                                <span class="gpo-price-note"><?php echo esc_html($price_note); ?></span>
+                            <?php endif; ?>
+                            <?php if ($promo_copy !== '') : ?>
+                                <span class="gpo-promo-copy"><?php echo esc_html($promo_copy); ?></span>
+                            <?php endif; ?>
+                        </div>
+
+                        <?php if ($share_actions) : ?>
+                            <?php echo $share_actions; ?>
+                        <?php endif; ?>
+                        <?php if ($phone_url) : ?>
+                            <a class="gpo-share-cta gpo-share-cta--phone" href="<?php echo esc_url($phone_url); ?>">
+                                <span class="gpo-share-action__icon" aria-hidden="true">&#9742;</span>
+                                <span>CHIAMA ORA</span>
+                            </a>
+                        <?php endif; ?>
+                        <?php echo $share_modal; ?>
+                    </section>
                 </aside>
             <?php endif; ?>
-        </div>
 
-        <div class="gpo-single-accordion-stack">
-            <?php echo $overview_markup; ?>
-            <?php echo $description_markup; ?>
-            <?php echo $accessories_markup; ?>
-            <?php echo $notes_markup; ?>
-        </div>
+            <div class="gpo-single-accordion-stack">
+                <?php echo $overview_markup; ?>
+                <?php echo $description_markup; ?>
+                <?php echo $accessories_markup; ?>
+                <?php echo $notes_markup; ?>
+            </div>
 
-        <?php if ($strengths_markup || $contact_markup) : ?>
-            <section class="gpo-single-support-grid">
-                <?php if ($strengths_markup) : ?>
-                    <div class="gpo-single-support-grid__item">
-                        <?php echo $strengths_markup; ?>
-                    </div>
-                <?php endif; ?>
-                <?php if ($contact_markup) : ?>
-                    <div class="gpo-single-support-grid__item">
-                        <?php echo $contact_markup; ?>
-                    </div>
-                <?php endif; ?>
-            </section>
-        <?php endif; ?>
+            <?php if ($contact_markup) : ?>
+                <div class="gpo-vehicle-single__contact">
+                    <?php echo $contact_markup; ?>
+                </div>
+            <?php endif; ?>
+        </div>
 
         <?php if ($followup_markup) : ?>
             <section class="gpo-single-follow-up">

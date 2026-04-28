@@ -6410,3 +6410,553 @@ html.gpo-share-modal-open {
     padding-left: 18px;
   }
 }
+
+/* Final April 2026 single vehicle refinements */
+.single-gpo_vehicle .gpo-vehicle-single__layout {
+  display: grid;
+  gap: clamp(18px, 2vw, 28px);
+}
+
+.single-gpo_vehicle .gpo-vehicle-single__gallery,
+.single-gpo_vehicle .gpo-vehicle-single__side-column,
+.single-gpo_vehicle .gpo-single-accordion-stack,
+.single-gpo_vehicle .gpo-vehicle-single__contact {
+  min-width: 0;
+}
+
+.single-gpo_vehicle .gpo-vehicle-single__side-column {
+  display: grid;
+  gap: 18px;
+  align-content: start;
+}
+
+.single-gpo_vehicle .gpo-single-summary-card__copy .gpo-kicker,
+.single-gpo_vehicle .gpo-share-modal__close,
+.single-gpo_vehicle .gpo-single-gallery-count small {
+  display: none !important;
+}
+
+.single-gpo_vehicle .gpo-single-gallery-bar {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 2px;
+}
+
+.single-gpo_vehicle .gpo-single-gallery-count strong {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.06);
+  color: #0f172a;
+  font-size: 0.86rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.single-gpo_vehicle .gpo-single-gallery-panel {
+  padding: clamp(16px, 1.6vw, 22px);
+  border-radius: 24px;
+}
+
+.single-gpo_vehicle .gpo-single-main,
+.single-gpo_vehicle .gpo-template-shell .gpo-single-main {
+  min-height: clamp(320px, 32vw, 450px);
+}
+
+.single-gpo_vehicle .gpo-single-main img,
+.single-gpo_vehicle .gpo-single-main--fallback .gpo-fallback-image,
+.single-gpo_vehicle .gpo-template-shell .gpo-single-main img,
+.single-gpo_vehicle .gpo-template-shell .gpo-single-main--fallback .gpo-fallback-image {
+  aspect-ratio: 16 / 7.25 !important;
+  min-height: clamp(320px, 32vw, 450px);
+  object-fit: cover;
+  object-position: center;
+}
+
+.single-gpo_vehicle .gpo-single-stage__nav,
+.single-gpo_vehicle .gpo-template-shell .gpo-single-stage__nav {
+  z-index: 3;
+}
+
+.single-gpo_vehicle .gpo-share-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.single-gpo_vehicle .gpo-share-modal__dialog {
+  position: relative;
+  width: min(420px, calc(100vw - 32px));
+  margin: 0;
+  padding: 22px;
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.22);
+}
+
+.single-gpo_vehicle .gpo-share-modal__head {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.single-gpo_vehicle .gpo-share-modal__head h3 {
+  margin: 0;
+  font-size: 1.14rem;
+}
+
+.single-gpo_vehicle .gpo-share-modal__actions {
+  display: grid;
+  gap: 10px;
+}
+
+.single-gpo_vehicle .gpo-share-modal__action {
+  min-height: 50px;
+  border-radius: 15px;
+  background: #ffffff !important;
+  border: 1px solid rgba(15, 23, 42, 0.14) !important;
+  color: #0f172a !important;
+}
+
+.single-gpo_vehicle .gpo-share-modal__action:hover {
+  background: rgba(15, 23, 42, 0.04) !important;
+  border-color: rgba(15, 23, 42, 0.22) !important;
+}
+
+.single-gpo_vehicle .gpo-share-modal__action.is-copied {
+  background: rgba(15, 23, 42, 0.06) !important;
+}
+
+.single-gpo_vehicle .gpo-vehicle-single__contact .gpo-inline-lead-card {
+  margin-top: 0;
+  width: 100%;
+}
+
+.single-gpo_vehicle .gpo-vehicle-single__contact .gpo-lead-grid {
+  grid-template-columns: 1fr;
+}
+
+.single-gpo_vehicle .gpo-vehicle-single__contact .gpo-lead-form textarea {
+  min-height: 116px;
+}
+
+.gpo-carousel--showcase .gpo-card {
+  cursor: pointer;
+}
+
+.gpo-carousel--showcase .gpo-card-overlay {
+  pointer-events: none;
+}
+
+.gpo-carousel--showcase .gpo-quick-info-panel {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding: 8px;
+}
+
+.gpo-carousel--showcase .gpo-quick-info-panel__item {
+  min-width: 0;
+  padding: 8px 9px;
+}
+
+.gpo-carousel--showcase .gpo-quick-info-panel__copy {
+  min-width: 0;
+}
+
+.gpo-carousel--showcase .gpo-quick-info-panel__copy small {
+  font-size: 0.58rem;
+}
+
+.gpo-carousel--showcase .gpo-quick-info-panel__copy strong {
+  display: block;
+  min-width: 0;
+  font-size: 0.82rem;
+  line-height: 1.12;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (min-width: 981px) {
+  .single-gpo_vehicle .gpo-vehicle-single__layout {
+    grid-template-columns: minmax(0, 1.42fr) minmax(320px, 420px);
+    grid-template-areas:
+      "gallery summary"
+      "details contact";
+    align-items: start;
+  }
+
+  .single-gpo_vehicle .gpo-vehicle-single__gallery {
+    grid-area: gallery;
+  }
+
+  .single-gpo_vehicle .gpo-single-accordion-stack {
+    grid-area: details;
+  }
+
+  .single-gpo_vehicle .gpo-vehicle-single__side-column {
+    grid-area: summary;
+  }
+
+  .single-gpo_vehicle .gpo-vehicle-single__contact {
+    grid-area: contact;
+  }
+
+  .single-gpo_vehicle .gpo-single-support-grid {
+    display: none !important;
+  }
+
+  .gpo-featured-single .gpo-card-hero {
+    grid-template-columns: minmax(0, 1.08fr) minmax(300px, 0.92fr);
+    min-height: 0;
+    align-items: stretch;
+  }
+
+  .gpo-featured-single .gpo-card-media {
+    min-height: clamp(260px, 26vw, 360px);
+    max-height: 360px;
+  }
+
+  .gpo-featured-single .gpo-card-image,
+  .gpo-featured-single .gpo-card-image img,
+  .gpo-featured-single .gpo-card-image-placeholder,
+  .gpo-featured-single .gpo-fallback-image {
+    height: 100%;
+    min-height: 100%;
+    object-fit: cover;
+  }
+
+  .gpo-featured-single .gpo-card-body {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 980px) {
+  .single-gpo_vehicle .gpo-vehicle-single__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .single-gpo_vehicle .gpo-vehicle-single__side-column {
+    order: 2;
+  }
+
+  .single-gpo_vehicle .gpo-single-accordion-stack {
+    order: 3;
+  }
+
+  .single-gpo_vehicle .gpo-share-modal {
+    padding: 10px;
+  }
+
+  .single-gpo_vehicle .gpo-share-modal__dialog {
+    width: calc(100vw - 20px);
+    padding: 18px;
+  }
+}
+
+@media (max-width: 720px) {
+  .single-gpo_vehicle .gpo-single-main,
+  .single-gpo_vehicle .gpo-template-shell .gpo-single-main {
+    min-height: 260px;
+  }
+
+  .single-gpo_vehicle .gpo-single-main img,
+  .single-gpo_vehicle .gpo-single-main--fallback .gpo-fallback-image,
+  .single-gpo_vehicle .gpo-template-shell .gpo-single-main img,
+  .single-gpo_vehicle .gpo-template-shell .gpo-single-main--fallback .gpo-fallback-image {
+    aspect-ratio: 4 / 3 !important;
+    min-height: 260px;
+  }
+
+  .gpo-carousel--showcase .gpo-quick-info-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .gpo-carousel--showcase .gpo-quick-info-panel__copy strong {
+    white-space: normal;
+  }
+}
+
+@page {
+  size: A4 portrait;
+  margin: 7mm;
+}
+
+@media print {
+  html,
+  body {
+    width: 210mm;
+    height: 297mm;
+    overflow: hidden !important;
+    background: #ffffff !important;
+  }
+
+  body.single-gpo_vehicle {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .gpo-print-sheet,
+  .gpo-print-sheet * {
+    visibility: visible !important;
+  }
+
+  .gpo-print-sheet {
+    display: grid !important;
+    position: fixed !important;
+    inset: 7mm !important;
+    width: auto !important;
+    height: auto !important;
+    max-height: calc(297mm - 14mm) !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    gap: 4.2mm;
+    overflow: hidden !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .gpo-print-sheet__header {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 7mm;
+    align-items: start;
+    margin: 0 !important;
+  }
+
+  .gpo-print-sheet__brand {
+    display: flex !important;
+    align-items: center;
+    gap: 3mm;
+    min-width: 0;
+  }
+
+  .gpo-print-sheet__brand img {
+    max-height: 12mm !important;
+    width: auto;
+  }
+
+  .gpo-print-sheet__brand strong {
+    display: block;
+    font-size: 10.5pt;
+    line-height: 1.1;
+  }
+
+  .gpo-print-sheet__brand span,
+  .gpo-print-sheet__site span:last-child {
+    color: #475569 !important;
+    font-size: 7pt !important;
+    line-height: 1.2 !important;
+  }
+
+  .gpo-print-sheet__meta {
+    display: grid;
+    justify-items: end;
+    gap: 2mm;
+    min-width: 0;
+  }
+
+  .gpo-print-sheet__site {
+    display: inline-flex;
+    align-items: center;
+    gap: 1.8mm;
+    font-size: 7pt;
+  }
+
+  .gpo-print-sheet__site-icon,
+  .gpo-print-sheet__social {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 7mm;
+    height: 7mm;
+    border: 1px solid rgba(15, 23, 42, 0.14);
+    border-radius: 999px;
+  }
+
+  .gpo-print-sheet__socials {
+    display: flex;
+    align-items: center;
+    gap: 1.8mm;
+  }
+
+  .gpo-print-sheet__hero {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.18fr) minmax(62mm, 0.82fr);
+    gap: 5mm;
+    align-items: start;
+    margin: 0 !important;
+  }
+
+  .gpo-print-sheet__media,
+  .gpo-print-sheet__summary {
+    min-width: 0;
+  }
+
+  .gpo-print-sheet__hero-photo {
+    margin: 0;
+  }
+
+  .gpo-print-sheet__hero-photo img {
+    width: 100%;
+    max-height: 58mm;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    border-radius: 3mm;
+  }
+
+  .gpo-print-sheet__thumbs {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 2mm;
+    margin-top: 2mm;
+  }
+
+  .gpo-print-sheet__photo {
+    margin: 0;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .gpo-print-sheet__photo img {
+    width: 100%;
+    max-height: 17mm;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    border-radius: 2mm;
+  }
+
+  .gpo-print-sheet__summary {
+    display: grid;
+    gap: 2.2mm;
+  }
+
+  .gpo-print-sheet__title h1 {
+    margin: 0;
+    font-size: 14pt !important;
+    line-height: 1.04 !important;
+  }
+
+  .gpo-print-sheet__title p {
+    margin: 1.2mm 0 0;
+    color: #64748b !important;
+    font-size: 7.2pt !important;
+    line-height: 1.25 !important;
+  }
+
+  .gpo-print-sheet__price {
+    display: grid;
+    gap: 1mm;
+  }
+
+  .gpo-print-sheet__price strong {
+    font-size: 18pt !important;
+    line-height: 0.98 !important;
+  }
+
+  .gpo-print-sheet__price small,
+  .gpo-print-sheet__price span {
+    color: #64748b !important;
+    font-size: 7pt !important;
+    line-height: 1.2 !important;
+  }
+
+  .gpo-print-sheet__badges .gpo-single-summary-card__badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.6mm;
+  }
+
+  .gpo-print-sheet .gpo-badge,
+  .gpo-print-sheet .gpo-neo-badge {
+    padding: 1.2mm 2mm !important;
+    border: 1px solid rgba(15, 23, 42, 0.14) !important;
+    border-radius: 999px !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    box-shadow: none !important;
+    font-size: 6.6pt !important;
+    line-height: 1 !important;
+  }
+
+  .gpo-print-sheet__facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.8mm;
+  }
+
+  .gpo-print-sheet__fact {
+    display: grid;
+    gap: 0.6mm;
+    padding: 2mm 2.2mm;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 2.5mm;
+    background: rgba(248, 250, 252, 0.9);
+  }
+
+  .gpo-print-sheet__fact small {
+    color: #64748b !important;
+    font-size: 6.2pt !important;
+    line-height: 1.1 !important;
+  }
+
+  .gpo-print-sheet__fact strong {
+    color: #0f172a !important;
+    font-size: 7.6pt !important;
+    line-height: 1.15 !important;
+  }
+
+  .gpo-print-sheet__foot {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4mm;
+    align-items: start;
+  }
+
+  .gpo-print-sheet__section {
+    margin: 0 !important;
+    padding-top: 2mm;
+    border-top: 1px solid rgba(15, 23, 42, 0.1);
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .gpo-print-sheet__section h2 {
+    margin: 0 0 1.5mm !important;
+    font-size: 8.5pt !important;
+    line-height: 1.2 !important;
+  }
+
+  .gpo-print-sheet__section p,
+  .gpo-print-sheet__list {
+    margin: 0 !important;
+    color: #1f2937 !important;
+    font-size: 7pt !important;
+    line-height: 1.32 !important;
+  }
+
+  .gpo-print-sheet__list {
+    padding-left: 4mm !important;
+    display: grid;
+    gap: 1mm;
+  }
+
+  .gpo-print-sheet__list li {
+    margin: 0;
+  }
+}
