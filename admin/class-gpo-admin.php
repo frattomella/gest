@@ -58,6 +58,7 @@ class GPO_Admin {
                 'single_layout' => 'classic',
                 'single_header' => 'default',
                 'single_template_id' => 0,
+                'single_price_note' => '',
                 'card_gap' => '24',
                 'card_padding' => '22',
                 'content_max_width' => '1280',
@@ -239,7 +240,7 @@ class GPO_Admin {
         }
 
         if (!empty($input['style']) && is_array($input['style'])) {
-            foreach (['primary_color', 'accent_color', 'card_bg', 'radius', 'title_font', 'body_font', 'card_layout', 'single_layout', 'single_header', 'single_template_id', 'card_gap', 'card_padding', 'content_max_width', 'outer_margin_y', 'outer_padding_x', 'section_gap', 'filter_columns'] as $key) {
+            foreach (['primary_color', 'accent_color', 'card_bg', 'radius', 'title_font', 'body_font', 'card_layout', 'single_layout', 'single_header', 'single_template_id', 'single_price_note', 'card_gap', 'card_padding', 'content_max_width', 'outer_margin_y', 'outer_padding_x', 'section_gap', 'filter_columns'] as $key) {
                 if (isset($input['style'][$key])) {
                     $output['style'][$key] = sanitize_text_field($input['style'][$key]);
                 }
@@ -312,6 +313,7 @@ class GPO_Admin {
             'lead_requests' => [
                 'recipient_email' => '',
                 'whatsapp_number' => '',
+                'phone_number' => '',
             ],
             'vehicle_carousel' => [
                 'notes' => '',
@@ -445,6 +447,7 @@ class GPO_Admin {
         $lead_requests = isset($input['lead_requests']) && is_array($input['lead_requests']) ? $input['lead_requests'] : [];
         $output['lead_requests']['recipient_email'] = sanitize_email((string) ($lead_requests['recipient_email'] ?? ''));
         $output['lead_requests']['whatsapp_number'] = self::sanitize_whatsapp_number($lead_requests['whatsapp_number'] ?? '');
+        $output['lead_requests']['phone_number'] = self::sanitize_whatsapp_number($lead_requests['phone_number'] ?? '');
 
         foreach (['search_bar', 'catalog_filters', 'vehicle_carousel', 'vehicle_grid'] as $key) {
             $current = isset($input[$key]) && is_array($input[$key]) ? $input[$key] : [];
@@ -589,6 +592,18 @@ class GPO_Admin {
         $lead_request_settings = $raw_settings['components']['lead_requests'] ?? null;
         if (is_array($lead_request_settings) && array_key_exists('whatsapp_number', $lead_request_settings)) {
             return self::sanitize_whatsapp_number($lead_request_settings['whatsapp_number'] ?? '');
+        }
+
+        return '';
+    }
+
+    protected static function configured_phone_number() {
+        $raw_settings = get_option('gpo_settings', []);
+        $raw_settings = is_array($raw_settings) ? $raw_settings : [];
+
+        $lead_request_settings = $raw_settings['components']['lead_requests'] ?? null;
+        if (is_array($lead_request_settings) && array_key_exists('phone_number', $lead_request_settings)) {
+            return self::sanitize_whatsapp_number($lead_request_settings['phone_number'] ?? '');
         }
 
         return '';
@@ -1984,8 +1999,10 @@ class GPO_Admin {
         $brand_options = self::brand_options();
         $lead_email = self::configured_lead_email();
         $lead_whatsapp = self::configured_whatsapp_number();
+        $lead_phone = self::configured_phone_number();
         $header_options = self::vehicle_page_header_options();
         $selected_header = sanitize_key((string) ($settings['style']['single_header'] ?? 'default'));
+        $single_price_note = sanitize_text_field((string) ($settings['style']['single_price_note'] ?? ''));
         $featured_map = array_column($vehicle_records, 'label', 'id');
         $featured_summary = !empty($components['featured_vehicle']['vehicle_id']) && isset($featured_map[$components['featured_vehicle']['vehicle_id']]) ? $featured_map[$components['featured_vehicle']['vehicle_id']] : 'Fallback automatico';
         $brand_mode_labels = [
@@ -1995,12 +2012,20 @@ class GPO_Admin {
         ];
         $brand_summary = $brand_mode_labels[$components['brand_banner']['mode'] ?? 'inventory'] ?? 'Solo marchi in stock';
         $showcase_summary = !empty($components['showcase_carousel']['vehicle_ids']) ? count((array) $components['showcase_carousel']['vehicle_ids']) . ' veicoli in vetrina' : 'Fallback automatico';
-        if ($lead_email && $lead_whatsapp) {
+        if ($lead_email && $lead_whatsapp && $lead_phone) {
+            $lead_summary = 'Email, WhatsApp e telefono configurati';
+        } elseif ($lead_email && $lead_whatsapp) {
             $lead_summary = 'Email e WhatsApp configurati';
+        } elseif ($lead_email && $lead_phone) {
+            $lead_summary = 'Email e telefono configurati';
         } elseif ($lead_email) {
             $lead_summary = 'Email configurata';
+        } elseif ($lead_whatsapp && $lead_phone) {
+            $lead_summary = 'WhatsApp e telefono configurati';
         } elseif ($lead_whatsapp) {
             $lead_summary = 'WhatsApp configurato';
+        } elseif ($lead_phone) {
+            $lead_summary = 'Telefono configurato';
         } else {
             $lead_summary = 'Da configurare';
         }
@@ -2136,10 +2161,19 @@ class GPO_Admin {
             'placeholder' => '393XXXXXXXXX',
             'description' => 'Numero WhatsApp che riceverà le richieste dei clienti.',
         ]);
+        self::render_setting_field([
+            'label' => 'Telefono concessionaria',
+            'name' => 'gpo_settings[components][lead_requests][phone_number]',
+            'value' => $components['lead_requests']['phone_number'] ?? '',
+            'type' => 'text',
+            'placeholder' => '3902XXXXXXX',
+            'description' => 'Numero telefonico usato per le chiamate rapide dalle schede veicolo.',
+        ]);
         echo '</div>';
-        echo '<div class="gpo-surface gpo-surface--accent gpo-surface--compact"><div class="gpo-surface__eyebrow">Stato attuale</div><h2>' . esc_html(($lead_email || $lead_whatsapp) ? 'Recapiti configurati' : 'Recapiti da completare') . '</h2>';
+        echo '<div class="gpo-surface gpo-surface--accent gpo-surface--compact"><div class="gpo-surface__eyebrow">Stato attuale</div><h2>' . esc_html(($lead_email || $lead_whatsapp || $lead_phone) ? 'Recapiti configurati' : 'Recapiti da completare') . '</h2>';
         echo '<p>' . wp_kses_post(($lead_email ? '&#10003;' : '&#9888;') . ' ' . esc_html($lead_email ? 'Email destinataria configurata.' : 'Email destinataria non configurata.')) . '</p>';
         echo '<p>' . wp_kses_post(($lead_whatsapp ? '&#10003;' : '&#9888;') . ' ' . esc_html($lead_whatsapp ? 'Numero WhatsApp Business configurato.' : 'Numero WhatsApp Business non configurato.')) . '</p>';
+        echo '<p>' . wp_kses_post(($lead_phone ? '&#10003;' : '&#9888;') . ' ' . esc_html($lead_phone ? 'Telefono concessionaria configurato.' : 'Telefono concessionaria non configurato.')) . '</p>';
         echo '<p>' . esc_html($lead_email ? 'Il modulo delle schede veicolo può inviare le richieste via email al recapito configurato.' : 'Configura almeno l email destinataria per attivare l invio delle richieste informative dal sito.') . '</p></div>';
         echo '</div>';
         self::component_section_end();
@@ -2155,6 +2189,14 @@ class GPO_Admin {
             'type' => 'select',
             'options' => $header_options,
             'description' => 'Nei block theme usiamo il template part header selezionato. Nei temi classici usiamo il file header corrispondente quando esiste.',
+        ]);
+        self::render_setting_field([
+            'label' => 'Nota prezzo',
+            'name' => 'gpo_settings[style][single_price_note]',
+            'value' => $single_price_note,
+            'type' => 'text',
+            'placeholder' => 'IVA esposta',
+            'description' => 'Testo opzionale mostrato accanto al prezzo della scheda veicolo quando non è presente una nota IVA specifica nel veicolo.',
         ]);
         echo '</div>';
         echo '<div class="gpo-surface gpo-surface--accent gpo-surface--compact"><div class="gpo-surface__eyebrow">Compatibilità</div><h2>Come viene applicato</h2><p>Se il tema espone più header, la scheda veicolo usa quello scelto. Se l opzione selezionata non è disponibile nel tema attivo, il plugin torna automaticamente all header predefinito.</p></div>';

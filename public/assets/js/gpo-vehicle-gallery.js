@@ -278,27 +278,39 @@
     update(0);
   }
 
-  function boot() {
-    qsa('[data-gpo-gallery="1"]').forEach(initGallery);
-    qsa('[data-gpo-copy-link]').forEach(function(button){
+  function copyButtonLabelTarget(button) {
+    if (!button) {
+      return null;
+    }
+
+    return button.querySelector('span:last-child') || button.lastElementChild || button;
+  }
+
+  function initCopyButtons() {
+    qsa('[data-gpo-copy-link]').forEach(function (button) {
       if (!button || button.dataset.bound === '1') {
         return;
       }
 
       button.dataset.bound = '1';
-      button.addEventListener('click', function(){
+      button.addEventListener('click', function () {
         var url = button.getAttribute('data-gpo-copy-link') || window.location.href;
-        var originalText = button.dataset.originalText || button.textContent;
+        var labelTarget = copyButtonLabelTarget(button);
+        var originalText = button.dataset.originalText || (labelTarget ? labelTarget.textContent : button.textContent);
         var copiedLabel = button.getAttribute('data-gpo-copy-label') || 'Link copiato';
 
         button.dataset.originalText = originalText;
 
         function markCopied() {
           button.classList.add('is-copied');
-          button.lastElementChild.textContent = copiedLabel;
-          window.setTimeout(function(){
+          if (labelTarget) {
+            labelTarget.textContent = copiedLabel;
+          }
+          window.setTimeout(function () {
             button.classList.remove('is-copied');
-            button.lastElementChild.textContent = originalText;
+            if (labelTarget) {
+              labelTarget.textContent = originalText;
+            }
           }, 1800);
         }
 
@@ -316,6 +328,94 @@
         markCopied();
       });
     });
+  }
+
+  function initShareModals() {
+    qsa('[data-gpo-share-open]').forEach(function (trigger) {
+      if (!trigger || trigger.dataset.shareBound === '1') {
+        return;
+      }
+
+      trigger.dataset.shareBound = '1';
+      trigger.addEventListener('click', function () {
+        var modalId = trigger.getAttribute('data-gpo-share-open');
+        var modal = modalId ? document.getElementById(modalId) : null;
+        if (!modal) {
+          return;
+        }
+
+        modal.hidden = false;
+        modal.setAttribute('aria-hidden', 'false');
+        document.documentElement.classList.add('gpo-share-modal-open');
+        document.body.classList.add('gpo-share-modal-open');
+
+        var closeButton = qs('.gpo-share-modal__close', modal);
+        if (closeButton) {
+          closeButton.focus();
+        }
+      });
+    });
+
+    qsa('[data-gpo-share-close]').forEach(function (button) {
+      if (!button || button.dataset.shareCloseBound === '1') {
+        return;
+      }
+
+      button.dataset.shareCloseBound = '1';
+      button.addEventListener('click', function () {
+        var modalId = button.getAttribute('data-gpo-share-close');
+        var modal = modalId ? document.getElementById(modalId) : button.closest('.gpo-share-modal');
+        if (!modal) {
+          return;
+        }
+
+        modal.hidden = true;
+        modal.setAttribute('aria-hidden', 'true');
+        document.documentElement.classList.remove('gpo-share-modal-open');
+        document.body.classList.remove('gpo-share-modal-open');
+      });
+    });
+
+    if (document.documentElement.dataset.gpoShareEscapeBound !== '1') {
+      document.documentElement.dataset.gpoShareEscapeBound = '1';
+      document.addEventListener('keydown', function (event) {
+        if (event.key !== 'Escape') {
+          return;
+        }
+
+        qsa('.gpo-share-modal').forEach(function (modal) {
+          if (modal.hidden) {
+            return;
+          }
+
+          modal.hidden = true;
+          modal.setAttribute('aria-hidden', 'true');
+        });
+
+        document.documentElement.classList.remove('gpo-share-modal-open');
+        document.body.classList.remove('gpo-share-modal-open');
+      });
+    }
+  }
+
+  function initPrintButtons() {
+    qsa('[data-gpo-print-sheet]').forEach(function (button) {
+      if (!button || button.dataset.printBound === '1') {
+        return;
+      }
+
+      button.dataset.printBound = '1';
+      button.addEventListener('click', function () {
+        window.print();
+      });
+    });
+  }
+
+  function boot() {
+    qsa('[data-gpo-gallery="1"]').forEach(initGallery);
+    initCopyButtons();
+    initShareModals();
+    initPrintButtons();
   }
 
   document.addEventListener('DOMContentLoaded', boot);

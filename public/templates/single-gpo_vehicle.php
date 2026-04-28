@@ -32,24 +32,60 @@ $visible = $display['visible'];
 $layout = $display['layout'];
 $specs = array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', (string) get_post_meta($post_id, '_gpo_specs', true))));
 $accessories = array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', (string) get_post_meta($post_id, '_gpo_accessories', true))));
-$public_notes = get_post_meta($post_id, '_gpo_public_notes', true);
-$badge = $vehicle['badge'] ?? get_post_meta($post_id, '_gpo_badge', true);
+$public_notes = trim((string) get_post_meta($post_id, '_gpo_public_notes', true));
 $price = $vehicle['price'] ?? get_post_meta($post_id, '_gpo_price', true);
 $promo_price = $vehicle['promo_price'] ?? get_post_meta($post_id, '_gpo_price_promo', true);
 $current_price = $vehicle['current_price'] ?? ($promo_price ?: $price);
-$neo_badge = GPO_Frontend::neopatentati_badge_markup($post_id, 'gpo-neo-badge gpo-neo-badge--single', $vehicle);
-$quick_panel = GPO_Frontend::quick_info_panel_markup($post_id, 'gpo-quick-info-panel gpo-quick-info-panel--single', [], $vehicle);
-$technical_badges = GPO_Frontend::single_technical_badges_markup($post_id, $vehicle);
+$price_note = GPO_Frontend::single_price_note($post_id, $vehicle);
+$status_badges = GPO_Frontend::single_status_badges_markup($post_id, $vehicle);
 $share_actions = GPO_Frontend::share_actions_markup($post_id);
+$share_modal = GPO_Frontend::single_share_modal_markup($post_id);
+$phone_url = GPO_Frontend::phone_call_url();
+$description_html = GPO_Frontend::single_description_content_html($post_id);
+$overview_markup = GPO_Frontend::single_overview_section_markup($post_id, $vehicle, in_array('specs', $visible, true) ? $specs : []);
+$description_markup = in_array('description', $visible, true)
+    ? GPO_Frontend::single_text_section_markup(
+        'Descrizione',
+        $description_html,
+        [
+            'summary' => 'Dettagli editoriali e commerciali del veicolo',
+            'open' => true,
+            'class' => 'gpo-single-accordion--description',
+        ]
+    )
+    : '';
+$accessories_markup = in_array('accessories', $visible, true)
+    ? GPO_Frontend::single_list_section_markup(
+        'Equipaggiamento / Accessori',
+        $accessories,
+        [
+            'summary' => count($accessories) > 0 ? count($accessories) . ' elementi' : 'Nessun accessorio',
+            'open' => false,
+            'class' => 'gpo-single-accordion--accessories',
+        ]
+    )
+    : '';
+$notes_markup = in_array('notes', $visible, true) ? GPO_Frontend::single_notes_section_markup($public_notes) : '';
+$print_sheet = GPO_Frontend::print_sheet_markup($post_id, $vehicle);
 $show = function ($key) use ($visible) {
     return in_array($key, $visible, true);
 };
+$promo_copy = '';
+if (is_array($promotion)) {
+    $promo_copy = trim((string) ($promotion['promo_text'] ?? ''));
+    if ($promo_copy === '' && !empty($promotion['discount_label'])) {
+        $promo_copy = trim((string) $promotion['discount_label']);
+    }
+    if ($promo_copy !== '' && strtolower(remove_accents($promo_copy)) === 'promo attiva') {
+        $promo_copy = '';
+    }
+}
 $strengths_markup = $show('strengths') ? GPO_Frontend::single_strengths_card_markup($post_id, $vehicle) : '';
 $contact_markup = '';
 if ($show('contact_box')) {
     $contact_markup = GPO_Frontend::lead_form_markup($post_id, [
         'title' => 'Richiedi informazioni',
-        'text' => 'Compila il modulo per ricevere disponibilita, valutazione permuta e proposta commerciale personalizzata su questo veicolo.',
+        'text' => 'Compila il modulo per ricevere disponibilita, proposta commerciale e dettagli aggiuntivi su questo veicolo.',
         'button_label' => 'Invia richiesta',
         'wrapper_class' => 'gpo-inline-lead-card gpo-inline-lead-card--single',
     ]);
@@ -72,103 +108,89 @@ if (class_exists('GPO_Blocks') && method_exists('GPO_Blocks', 'render_vehicle_ca
 <div class="gpo-page-shell">
 <div class="gpo-single-wrap gpo-single-layout-<?php echo esc_attr($layout); ?>">
     <?php echo GPO_Frontend::back_button_markup($post_id); ?>
-    <section class="gpo-single-hero">
-        <?php if ($show('gallery')) : ?>
-            <?php echo GPO_Frontend::gallery_markup($post_id, true); ?>
-        <?php endif; ?>
 
-        <?php if ($show('summary')) : ?>
-            <div class="gpo-single-summary">
-                <div class="gpo-single-hero-top">
-                    <div>
-                        <span class="gpo-kicker">Scheda veicolo</span>
-                        <p class="gpo-single-subtitle"><?php echo esc_html(trim(get_post_meta($post_id, '_gpo_brand', true) . ' ' . get_post_meta($post_id, '_gpo_model', true))); ?></p>
-                    </div>
-                    <div class="gpo-single-summary__badges">
-                        <?php if ($badge) : ?>
-                            <span class="gpo-badge"><?php echo esc_html($badge); ?></span>
-                        <?php endif; ?>
-                        <?php if ($promotion) : ?>
-                            <span class="gpo-badge gpo-badge--promo"><?php echo esc_html($promotion['badge']); ?></span>
-                        <?php endif; ?>
-                    </div>
+    <section class="gpo-vehicle-single">
+        <div class="gpo-vehicle-single__hero">
+            <?php if ($show('gallery')) : ?>
+                <div class="gpo-vehicle-single__gallery">
+                    <?php echo GPO_Frontend::gallery_markup($post_id, true); ?>
                 </div>
+            <?php endif; ?>
 
-                <h1><?php the_title(); ?></h1>
-
-                <div class="gpo-single-price-row">
-                    <div class="<?php echo $promotion ? 'is-promoted' : ''; ?>">
-                        <?php if ($promo_price && $price && $promo_price !== $price) : ?>
-                            <small><?php echo esc_html(GPO_Frontend::format_price_public((float) $price)); ?></small>
-                        <?php endif; ?>
-                        <strong class="<?php echo $promotion ? 'gpo-price-current--promo' : ''; ?>"><?php echo esc_html($current_price ? GPO_Frontend::format_price_public((float) $current_price) : 'Prezzo su richiesta'); ?></strong>
-                        <?php if ($promotion) : ?>
-                            <span class="gpo-promo-copy"><?php echo esc_html($promotion['promo_text'] ?: $promotion['discount_label']); ?></span>
-                        <?php endif; ?>
-                    </div>
-                    <?php if ($quick_panel || $neo_badge) : ?>
-                        <div class="gpo-single-summary__highlights">
-                            <?php echo $quick_panel; ?>
-                            <?php echo $neo_badge; ?>
-                        </div>
+            <?php if ($show('summary')) : ?>
+                <aside class="gpo-single-summary-card">
+                    <?php if ($status_badges) : ?>
+                        <?php echo $status_badges; ?>
                     <?php endif; ?>
-                </div>
 
-                <?php if ($technical_badges) : ?>
-                    <?php echo $technical_badges; ?>
-                <?php endif; ?>
+                    <div class="gpo-single-summary-card__copy">
+                        <span class="gpo-kicker">Scheda veicolo</span>
+                        <h1><?php the_title(); ?></h1>
+                        <p class="gpo-single-subtitle"><?php echo esc_html(trim((string) get_post_meta($post_id, '_gpo_brand', true) . ' ' . (string) get_post_meta($post_id, '_gpo_model', true) . ' ' . (string) get_post_meta($post_id, '_gpo_version', true))); ?></p>
+                    </div>
 
-                <?php if ($share_actions) : ?>
-                    <?php echo $share_actions; ?>
-                <?php endif; ?>
-            </div>
-        <?php endif; ?>
-    </section>
-
-    <section class="gpo-content-grid">
-        <div class="gpo-main-stack">
-            <?php if ($show('description')) : ?>
-                <div class="gpo-content-block gpo-content-block--description">
-                    <h2>Descrizione</h2>
-                    <?php the_content(); ?>
-                </div>
-            <?php endif; ?>
-
-            <?php if ($show('notes') && $public_notes) : ?>
-                <div class="gpo-content-block gpo-content-block--notes"><h2>Note</h2><p><?php echo nl2br(esc_html($public_notes)); ?></p></div>
-            <?php endif; ?>
-
-            <?php if ($show('specs') && !empty($specs)) : ?>
-                <div class="gpo-content-block gpo-content-block--specs"><h2>Specifiche</h2><ul class="gpo-icon-list"><?php foreach ($specs as $item) { echo '<li>' . esc_html($item) . '</li>'; } ?></ul></div>
-            <?php endif; ?>
-
-            <?php if ($show('accessories') && !empty($accessories)) : ?>
-                <div class="gpo-content-block gpo-content-block--accessories">
-                    <details class="gpo-content-disclosure">
-                        <summary class="gpo-content-disclosure__summary">
-                            <span class="gpo-content-disclosure__title">Accessori</span>
-                            <span class="gpo-content-disclosure__meta"><?php echo esc_html((string) count($accessories)); ?> accessori</span>
-                        </summary>
-                        <div class="gpo-content-disclosure__body">
-                            <ul class="gpo-icon-list"><?php foreach ($accessories as $item) { echo '<li>' . esc_html($item) . '</li>'; } ?></ul>
+                    <div class="gpo-single-summary-card__pricing<?php echo $promotion ? ' is-promoted' : ''; ?>">
+                        <div class="gpo-single-summary-card__price-wrap">
+                            <?php if ($promo_price && $price && $promo_price !== $price) : ?>
+                                <small class="gpo-single-summary-card__price-original"><?php echo esc_html(GPO_Frontend::format_price_public((float) $price)); ?></small>
+                            <?php endif; ?>
+                            <strong class="gpo-single-summary-card__price-current<?php echo $promotion ? ' gpo-price-current--promo' : ''; ?>">
+                                <?php echo esc_html($current_price ? GPO_Frontend::format_price_public((float) $current_price) : 'Prezzo su richiesta'); ?>
+                            </strong>
                         </div>
-                    </details>
-                </div>
+                        <?php if ($price_note !== '') : ?>
+                            <span class="gpo-price-note"><?php echo esc_html($price_note); ?></span>
+                        <?php endif; ?>
+                        <?php if ($promo_copy !== '') : ?>
+                            <span class="gpo-promo-copy"><?php echo esc_html($promo_copy); ?></span>
+                        <?php endif; ?>
+                    </div>
+
+                    <?php if ($share_actions) : ?>
+                        <?php echo $share_actions; ?>
+                    <?php endif; ?>
+                    <?php if ($phone_url) : ?>
+                        <a class="gpo-share-cta gpo-share-cta--phone" href="<?php echo esc_url($phone_url); ?>">
+                            <span class="gpo-share-action__icon" aria-hidden="true">&#9742;</span>
+                            <span>CHIAMA ORA</span>
+                        </a>
+                    <?php endif; ?>
+                    <?php echo $share_modal; ?>
+                </aside>
             <?php endif; ?>
         </div>
 
-        <aside class="gpo-side-stack">
-            <?php echo $strengths_markup; ?>
-            <?php echo $contact_markup; ?>
-        </aside>
-    </section>
+        <div class="gpo-single-accordion-stack">
+            <?php echo $overview_markup; ?>
+            <?php echo $description_markup; ?>
+            <?php echo $accessories_markup; ?>
+            <?php echo $notes_markup; ?>
+        </div>
 
-    <?php if ($followup_markup) : ?>
-        <section class="gpo-single-follow-up">
-            <div class="gpo-single-follow-up__divider" aria-hidden="true"></div>
-            <?php echo $followup_markup; ?>
-        </section>
-    <?php endif; ?>
+        <?php if ($strengths_markup || $contact_markup) : ?>
+            <section class="gpo-single-support-grid">
+                <?php if ($strengths_markup) : ?>
+                    <div class="gpo-single-support-grid__item">
+                        <?php echo $strengths_markup; ?>
+                    </div>
+                <?php endif; ?>
+                <?php if ($contact_markup) : ?>
+                    <div class="gpo-single-support-grid__item">
+                        <?php echo $contact_markup; ?>
+                    </div>
+                <?php endif; ?>
+            </section>
+        <?php endif; ?>
+
+        <?php if ($followup_markup) : ?>
+            <section class="gpo-single-follow-up">
+                <div class="gpo-single-follow-up__divider" aria-hidden="true"></div>
+                <?php echo $followup_markup; ?>
+            </section>
+        <?php endif; ?>
+
+        <?php echo $print_sheet; ?>
+    </section>
 </div>
 </div>
 </main>
