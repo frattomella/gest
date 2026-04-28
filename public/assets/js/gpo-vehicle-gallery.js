@@ -419,6 +419,46 @@
     }
   }
 
+  function cleanupPrintPortal() {
+    var portal = document.querySelector('.gpo-print-sheet-portal');
+
+    document.documentElement.classList.remove('gpo-printing-sheet');
+    document.body.classList.remove('gpo-printing-sheet');
+
+    if (portal && portal.parentNode) {
+      portal.parentNode.removeChild(portal);
+    }
+  }
+
+  function buildPrintPortal(button) {
+    var source = null;
+    var scope = button ? button.closest('.gpo-vehicle-single') : null;
+    var portal;
+
+    cleanupPrintPortal();
+
+    if (scope) {
+      source = scope.querySelector('.gpo-print-sheet');
+    }
+
+    if (!source) {
+      source = document.querySelector('.gpo-print-sheet');
+    }
+
+    if (!source) {
+      return null;
+    }
+
+    portal = source.cloneNode(true);
+    portal.hidden = false;
+    portal.removeAttribute('hidden');
+    portal.setAttribute('aria-hidden', 'false');
+    portal.classList.add('gpo-print-sheet-portal');
+    document.body.appendChild(portal);
+
+    return portal;
+  }
+
   function initPrintButtons() {
     qsa('[data-gpo-print-sheet]').forEach(function (button) {
       if (!button || button.dataset.printBound === '1') {
@@ -427,6 +467,31 @@
 
       button.dataset.printBound = '1';
       button.addEventListener('click', function () {
+        var portal = buildPrintPortal(button);
+        var cleaned = false;
+
+        function cleanup() {
+          if (cleaned) {
+            return;
+          }
+
+          cleaned = true;
+          cleanupPrintPortal();
+        }
+
+        if (!portal) {
+          window.print();
+          return;
+        }
+
+        document.documentElement.classList.add('gpo-printing-sheet');
+        document.body.classList.add('gpo-printing-sheet');
+
+        window.addEventListener('afterprint', cleanup, { once: true });
+        window.addEventListener('focus', function () {
+          window.setTimeout(cleanup, 0);
+        }, { once: true });
+
         window.print();
       });
     });

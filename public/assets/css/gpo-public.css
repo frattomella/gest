@@ -7074,3 +7074,404 @@ html.gpo-share-modal-open {
     object-fit: cover;
   }
 }
+
+/* Final April 2026 single-vehicle layout, print and showcase refinements */
+.single-gpo_vehicle .gpo-single-summary-card__actions {
+  display: grid;
+  gap: 12px;
+}
+
+.single-gpo_vehicle .gpo-badge--soft {
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  background: #ffffff;
+  color: #334155;
+}
+
+.single-gpo_vehicle .gpo-share-modal__dialog {
+  margin: 0 !important;
+  padding: 20px !important;
+}
+
+.single-gpo_vehicle .gpo-share-modal__head {
+  justify-content: center !important;
+  text-align: center;
+}
+
+.single-gpo_vehicle .gpo-share-modal__action,
+.single-gpo_vehicle .gpo-share-modal__action:visited {
+  font-size: 0.97rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0 !important;
+  color: #0f172a !important;
+  background: #ffffff !important;
+  border: 1px solid rgba(15, 23, 42, 0.14) !important;
+}
+
+.single-gpo_vehicle .gpo-share-modal__action span {
+  font-size: inherit !important;
+  font-weight: inherit !important;
+  color: inherit !important;
+}
+
+@media (min-width: 981px) {
+  .single-gpo_vehicle .gpo-vehicle-single__side-column {
+    display: flex;
+  }
+
+  .single-gpo_vehicle .gpo-single-summary-card {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 18px;
+    height: 100%;
+  }
+
+  .single-gpo_vehicle .gpo-single-summary-card__actions {
+    margin-top: auto;
+  }
+
+  .single-gpo_vehicle .gpo-share-stack {
+    margin-top: 0;
+  }
+
+  .single-gpo_vehicle .gpo-single-main,
+  .single-gpo_vehicle .gpo-template-shell .gpo-single-main {
+    min-height: clamp(390px, 34vw, 560px);
+  }
+
+  .single-gpo_vehicle .gpo-single-main img,
+  .single-gpo_vehicle .gpo-single-main--fallback .gpo-fallback-image,
+  .single-gpo_vehicle .gpo-template-shell .gpo-single-main img,
+  .single-gpo_vehicle .gpo-template-shell .gpo-single-main--fallback .gpo-fallback-image {
+    aspect-ratio: 16 / 7 !important;
+    min-height: clamp(390px, 34vw, 560px);
+  }
+
+  .single-gpo_vehicle .gpo-single-thumbs {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+    padding: 12px 0 0 !important;
+  }
+
+  .single-gpo_vehicle .gpo-single-thumb {
+    aspect-ratio: 4 / 3;
+  }
+
+  .single-gpo_vehicle .gpo-single-thumb img {
+    width: 100%;
+    height: 100% !important;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+  }
+}
+
+@media (max-width: 980px) {
+  .single-gpo_vehicle .gpo-vehicle-single__gallery {
+    order: 1;
+  }
+
+  .single-gpo_vehicle .gpo-vehicle-single__side-column {
+    order: 2;
+  }
+
+  .single-gpo_vehicle .gpo-single-accordion-stack {
+    order: 3;
+  }
+
+  .single-gpo_vehicle .gpo-vehicle-single__contact {
+    order: 4;
+  }
+
+  .single-gpo_vehicle .gpo-share-modal {
+    padding: 14px;
+  }
+
+  .single-gpo_vehicle .gpo-share-modal__dialog {
+    width: min(420px, calc(100vw - 28px)) !important;
+    padding: 20px !important;
+  }
+}
+
+@page {
+  size: A4 portrait;
+  margin: 8mm;
+}
+
+@media print {
+  html.gpo-printing-sheet,
+  body.gpo-printing-sheet {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    background: #ffffff !important;
+  }
+
+  body.gpo-printing-sheet > * {
+    display: none !important;
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal {
+    display: grid !important;
+    position: relative !important;
+    inset: auto !important;
+    width: 100% !important;
+    max-width: 194mm !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    gap: 3mm !important;
+    overflow: hidden !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    box-shadow: none !important;
+    visibility: visible !important;
+    break-inside: avoid-page;
+    page-break-inside: avoid;
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal * {
+    visibility: visible !important;
+    box-shadow: none !important;
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__header {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 5mm;
+    align-items: start;
+    margin: 0 !important;
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__brand {
+    display: flex !important;
+    align-items: center;
+    min-height: 14mm;
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__brand img {
+    max-height: 14mm !important;
+    width: auto;
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__brand strong {
+    font-size: 12pt !important;
+    line-height: 1.1 !important;
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__meta {
+    display: grid;
+    justify-items: end;
+    gap: 1.6mm;
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__site {
+    display: inline-flex;
+    align-items: center;
+    gap: 1.8mm;
+    color: #475569 !important;
+    font-size: 7.2pt !important;
+    line-height: 1.2 !important;
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__site-icon,
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__social {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 6.5mm;
+    height: 6.5mm;
+    border: 1px solid rgba(15, 23, 42, 0.14);
+    border-radius: 999px;
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__socials {
+    display: flex;
+    gap: 1.6mm;
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__hero {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.24fr) minmax(58mm, 0.76fr);
+    gap: 4mm;
+    align-items: start;
+    margin: 0 !important;
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__hero-photo,
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__photo {
+    margin: 0;
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__hero-photo img {
+    width: 100%;
+    max-height: 56mm;
+    aspect-ratio: 16 / 7;
+    object-fit: cover;
+    border-radius: 3mm;
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__thumbs {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1.6mm;
+    margin-top: 1.8mm;
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__photo {
+    position: relative;
+    overflow: hidden;
+    border-radius: 2mm;
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__photo img {
+    width: 100%;
+    height: auto;
+    max-height: 15mm;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    border-radius: inherit;
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__photo--more::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.06), rgba(15, 23, 42, 0.76));
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__photo-more {
+    position: absolute;
+    inset: auto 2mm 2mm 2mm;
+    z-index: 1;
+    color: #ffffff !important;
+    font-size: 6.5pt !important;
+    font-weight: 700 !important;
+    text-align: center;
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__summary {
+    display: grid;
+    gap: 1.8mm;
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__title h1 {
+    margin: 0;
+    font-size: 13pt !important;
+    line-height: 1.04 !important;
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__title p,
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__price span,
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__price small {
+    margin: 0;
+    color: #64748b !important;
+    font-size: 7pt !important;
+    line-height: 1.2 !important;
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__price {
+    display: grid;
+    gap: 0.8mm;
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__price strong {
+    font-size: 18pt !important;
+    line-height: 0.98 !important;
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__status {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.6mm;
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__status span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 6mm;
+    padding: 0 2.6mm;
+    border: 1px solid rgba(15, 23, 42, 0.14);
+    border-radius: 999px;
+    color: #0f172a !important;
+    font-size: 6.5pt !important;
+    line-height: 1 !important;
+    background: #ffffff !important;
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__body {
+    display: grid;
+    gap: 3mm;
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__section {
+    margin: 0 !important;
+    padding-top: 2mm;
+    border-top: 1px solid rgba(15, 23, 42, 0.12);
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__section h2 {
+    margin: 0 0 1.6mm !important;
+    font-size: 8.5pt !important;
+    line-height: 1.2 !important;
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__overview-table {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 4mm;
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__overview-row {
+    display: grid;
+    grid-template-columns: 30mm minmax(0, 1fr);
+    gap: 2mm;
+    align-items: start;
+    padding: 1.4mm 0;
+    border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__overview-row span,
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__overview-row strong,
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__section p,
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__list {
+    font-size: 7pt !important;
+    line-height: 1.28 !important;
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__overview-row span {
+    color: #475569 !important;
+    font-weight: 600;
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__overview-row strong {
+    color: #0f172a !important;
+    font-weight: 700;
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__content-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4mm;
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__section--notes {
+    grid-column: 1 / -1;
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__list {
+    margin: 0 !important;
+    padding-left: 4mm !important;
+    display: grid;
+    gap: 1mm;
+  }
+
+  body.gpo-printing-sheet > .gpo-print-sheet-portal .gpo-print-sheet__list li {
+    margin: 0;
+  }
+}

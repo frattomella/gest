@@ -1442,6 +1442,24 @@ class GPO_Frontend {
         return $profiles;
     }
 
+    protected static function print_domain_label($url = '') {
+        $url = trim((string) $url);
+        if ($url === '') {
+            return '';
+        }
+
+        $host = wp_parse_url($url, PHP_URL_HOST);
+        if (!is_string($host) || $host === '') {
+            $host = preg_replace('#^https?://#i', '', $url);
+            $host = preg_replace('#^www\.#i', '', (string) $host);
+            $host = preg_replace('#/.*$#', '', (string) $host);
+            return trim((string) $host, " \t\n\r\0\x0B/");
+        }
+
+        $host = preg_replace('#^www\.#i', '', $host);
+        return strtolower(trim((string) $host));
+    }
+
     public static function print_sheet_markup($post_id, $data = []) {
         $post_id = absint($post_id);
         if (!$post_id) {
@@ -1460,33 +1478,55 @@ class GPO_Frontend {
         $price_note = self::single_price_note($post_id, $data);
         $site_name = get_bloginfo('name');
         $site_url = home_url('/');
-        $site_host = wp_parse_url($site_url, PHP_URL_HOST);
-        $site_host = $site_host ? $site_host : $site_url;
+        $site_domain = self::print_domain_label($site_url);
         $custom_logo_id = function_exists('get_theme_mod') ? absint(get_theme_mod('custom_logo')) : 0;
         $logo_url = $custom_logo_id ? wp_get_attachment_image_url($custom_logo_id, 'full') : '';
         $social_profiles = self::site_social_profiles();
-        $status_badges = self::single_status_badges_markup($post_id, $data);
         $brand_line = trim(implode(' ', array_filter([
             (string) ($data['brand'] ?? get_post_meta($post_id, '_gpo_brand', true)),
             (string) ($data['model'] ?? get_post_meta($post_id, '_gpo_model', true)),
             (string) ($data['version'] ?? get_post_meta($post_id, '_gpo_version', true)),
         ])));
-        $description_preview = self::print_text_preview($description, 80);
-        $notes_preview = self::print_text_preview($notes, 36);
-        $accessories_preview = self::print_list_preview($accessories, 12);
+        $condition = trim((string) ($data['condition'] ?? get_post_meta($post_id, '_gpo_condition', true)));
+        $status = trim((string) ($data['status'] ?? get_post_meta($post_id, '_gpo_status', true)));
+        $is_neo = self::truthy_value($data['neopatentati'] ?? get_post_meta($post_id, '_gpo_neopatentati', true));
+        $description_preview = self::print_text_preview($description, 56);
+        $notes_preview = self::print_text_preview($notes, 24);
+        $accessories_preview = self::print_list_preview($accessories, 10);
         $main_photo = !empty($gallery_items) ? array_shift($gallery_items) : null;
-        $thumb_count = count($gallery_items);
+        $thumb_items = array_slice($gallery_items, 0, 8);
+        $remaining_photo_count = max(0, count($gallery_items) - count($thumb_items));
+        $status_items = array_values(array_unique(array_filter([
+            $condition,
+            ($status !== '' && strtolower(remove_accents($status)) !== strtolower(remove_accents($condition))) ? $status : '',
+            $is_neo ? 'Neopatentati' : '',
+            !empty($promotion['badge']) ? trim((string) $promotion['badge']) : '',
+        ])));
+        $overview_rows = !empty($overview_items) ? $overview_items : [
+            ['label' => 'Panoramica', 'value' => 'Dettagli tecnici disponibili su richiesta.'],
+        ];
+        $description_output = $description_preview !== '' ? $description_preview : 'Descrizione in aggiornamento.';
+        $accessories_output = !empty($accessories_preview) ? $accessories_preview : ['Dotazione in aggiornamento.'];
+        $current_price_display = (is_numeric($current_price) && (float) $current_price > 0)
+            ? self::format_price_public((float) $current_price)
+            : 'Prezzo su richiesta';
+        $original_price_display = (!empty($promotion['formatted_original']) && $promotion['formatted_original'] !== $current_price_display)
+            ? trim((string) $promotion['formatted_original'])
+            : '';
 
         $html = '<section class="gpo-print-sheet" aria-hidden="true">';
         $html .= '<header class="gpo-print-sheet__header">';
         $html .= '<div class="gpo-print-sheet__brand">';
         if ($logo_url) {
             $html .= '<img src="' . esc_url($logo_url) . '" alt="' . esc_attr($site_name) . '" />';
+        } else {
+            $html .= '<strong>' . esc_html($site_name) . '</strong>';
         }
-        $html .= '<div><strong>' . esc_html($site_name) . '</strong><span>' . esc_html($site_host) . '</span></div>';
         $html .= '</div>';
         $html .= '<div class="gpo-print-sheet__meta">';
-        $html .= '<span class="gpo-print-sheet__site"><span class="gpo-print-sheet__site-icon" aria-hidden="true">' . self::icon_markup('globe') . '</span><span>' . esc_html($site_url) . '</span></span>';
+        if ($site_domain !== '') {
+            $html .= '<span class="gpo-print-sheet__site"><span class="gpo-print-sheet__site-icon" aria-hidden="true">' . self::icon_markup('globe') . '</span><span>' . esc_html($site_domain) . '</span></span>';
+        }
         if (!empty($social_profiles)) {
             $html .= '<div class="gpo-print-sheet__socials" aria-label="Canali social">';
             foreach (array_keys($social_profiles) as $platform) {
@@ -1501,10 +1541,15 @@ class GPO_Frontend {
         if (is_array($main_photo)) {
             $html .= '<figure class="gpo-print-sheet__hero-photo"><img src="' . esc_url($main_photo['large']) . '" alt="' . esc_attr($main_photo['alt']) . '" /></figure>';
         }
-        if ($thumb_count > 0) {
-            $html .= '<div class="gpo-print-sheet__thumbs gpo-print-sheet__thumbs--count-' . esc_attr((string) min($thumb_count, 12)) . '">';
-            foreach ($gallery_items as $item) {
-                $html .= '<figure class="gpo-print-sheet__photo"><img src="' . esc_url(!empty($item['thumb']) ? $item['thumb'] : $item['large']) . '" alt="' . esc_attr($item['alt']) . '" /></figure>';
+        if (!empty($thumb_items)) {
+            $html .= '<div class="gpo-print-sheet__thumbs gpo-print-sheet__thumbs--count-' . esc_attr((string) min(count($thumb_items), 8)) . '">';
+            foreach ($thumb_items as $index => $item) {
+                $is_more_tile = $remaining_photo_count > 0 && $index === count($thumb_items) - 1;
+                $html .= '<figure class="gpo-print-sheet__photo' . ($is_more_tile ? ' gpo-print-sheet__photo--more' : '') . '"><img src="' . esc_url(!empty($item['thumb']) ? $item['thumb'] : $item['large']) . '" alt="' . esc_attr($item['alt']) . '" />';
+                if ($is_more_tile) {
+                    $html .= '<span class="gpo-print-sheet__photo-more">+' . esc_html((string) $remaining_photo_count) . ' foto</span>';
+                }
+                $html .= '</figure>';
             }
             $html .= '</div>';
         }
@@ -1516,43 +1561,41 @@ class GPO_Frontend {
             $html .= '<p>' . esc_html($brand_line) . '</p>';
         }
         $html .= '</div>';
-        $html .= '<div class="gpo-print-sheet__price"><strong>' . esc_html(self::format_price_public($current_price)) . '</strong>';
+        $html .= '<div class="gpo-print-sheet__price"><strong>' . esc_html($current_price_display) . '</strong>';
         if ($price_note !== '') {
             $html .= '<span>' . esc_html($price_note) . '</span>';
         }
-        if (!empty($promotion['formatted_original']) && $promotion['formatted_original'] !== self::format_price_public($current_price)) {
-            $html .= '<small>' . esc_html($promotion['formatted_original']) . '</small>';
+        if ($original_price_display !== '') {
+            $html .= '<small>' . esc_html($original_price_display) . '</small>';
         }
         $html .= '</div>';
-        if ($status_badges !== '') {
-            $html .= '<div class="gpo-print-sheet__badges">' . $status_badges . '</div>';
-        }
-        if (!empty($overview_items)) {
-            $html .= '<div class="gpo-print-sheet__facts">';
-            foreach ($overview_items as $item) {
-                $html .= '<div class="gpo-print-sheet__fact"><small>' . esc_html($item['label']) . '</small><strong>' . esc_html($item['value']) . '</strong></div>';
+        if (!empty($status_items)) {
+            $html .= '<div class="gpo-print-sheet__status">';
+            foreach ($status_items as $item) {
+                $html .= '<span>' . esc_html($item) . '</span>';
             }
             $html .= '</div>';
         }
         $html .= '</div></section>';
 
-        if ($description_preview !== '' || !empty($accessories_preview) || $notes_preview !== '') {
-            $html .= '<section class="gpo-print-sheet__foot">';
-            if ($description_preview !== '') {
-                $html .= '<section class="gpo-print-sheet__section"><h2>Descrizione</h2><p>' . esc_html($description_preview) . '</p></section>';
-            }
-            if (!empty($accessories_preview)) {
-                $html .= '<section class="gpo-print-sheet__section"><h2>Equipaggiamento</h2><ul class="gpo-print-sheet__list">';
-                foreach ($accessories_preview as $item) {
-                    $html .= '<li>' . esc_html($item) . '</li>';
-                }
-                $html .= '</ul></section>';
-            }
-            if ($notes_preview !== '') {
-                $html .= '<section class="gpo-print-sheet__section"><h2>Note</h2><p>' . esc_html($notes_preview) . '</p></section>';
-            }
-            $html .= '</section>';
+        $html .= '<section class="gpo-print-sheet__body">';
+        $html .= '<section class="gpo-print-sheet__section gpo-print-sheet__section--overview"><h2>Panoramica</h2><div class="gpo-print-sheet__overview-table">';
+        foreach ($overview_rows as $item) {
+            $html .= '<div class="gpo-print-sheet__overview-row"><span>' . esc_html((string) ($item['label'] ?? 'Dettaglio')) . '</span><strong>' . esc_html((string) ($item['value'] ?? '')) . '</strong></div>';
         }
+        $html .= '</div></section>';
+
+        $html .= '<div class="gpo-print-sheet__content-grid">';
+        $html .= '<section class="gpo-print-sheet__section"><h2>Descrizione</h2><p>' . esc_html($description_output) . '</p></section>';
+        $html .= '<section class="gpo-print-sheet__section"><h2>Equipaggiamento</h2><ul class="gpo-print-sheet__list">';
+        foreach ($accessories_output as $item) {
+            $html .= '<li>' . esc_html($item) . '</li>';
+        }
+        $html .= '</ul></section>';
+        if ($notes_preview !== '') {
+            $html .= '<section class="gpo-print-sheet__section gpo-print-sheet__section--notes"><h2>Note</h2><p>' . esc_html($notes_preview) . '</p></section>';
+        }
+        $html .= '</div></section>';
 
         $html .= '</section>';
         return $html;

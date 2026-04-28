@@ -23,6 +23,7 @@
     var suppressClick = false;
     var pressedCard = null;
     var pressedInteractive = false;
+    var dragThreshold = 6;
 
     if (!track) {
       return;
@@ -267,6 +268,7 @@
       dragStartScroll = track.scrollLeft;
       dragging = true;
       dragMoved = false;
+      dragThreshold = event.pointerType === 'mouse' ? 10 : 6;
       pressedCard = event.target.closest('.gpo-card[data-gpo-card-url]');
       pressedInteractive = !!event.target.closest('a, button, input, select, textarea, label, summary');
 
@@ -290,7 +292,7 @@
 
       delta = event.clientX - dragStartX;
 
-      if (Math.abs(delta) > 6) {
+      if (Math.abs(delta) > dragThreshold) {
         if (!dragMoved && track.setPointerCapture) {
           track.setPointerCapture(event.pointerId);
         }
@@ -321,8 +323,9 @@
           suppressClick = false;
         }, 220);
       } else {
-        var releasedInteractive = !!event.target.closest('a, button, input, select, textarea, label, summary');
-        var releasedCard = event.target.closest('.gpo-card[data-gpo-card-url]');
+        var releasedElement = document.elementFromPoint(event.clientX, event.clientY) || event.target;
+        var releasedInteractive = !!(releasedElement && releasedElement.closest('a, button, input, select, textarea, label, summary'));
+        var releasedCard = releasedElement ? releasedElement.closest('.gpo-card[data-gpo-card-url]') : null;
         syncIndex();
         suppressClick = false;
 

@@ -145,15 +145,17 @@ if (class_exists('GPO_Blocks') && method_exists('GPO_Blocks', 'render_vehicle_ca
                             <?php endif; ?>
                         </div>
 
-                        <?php if ($share_actions) : ?>
-                            <?php echo $share_actions; ?>
-                        <?php endif; ?>
-                        <?php if ($phone_url) : ?>
-                            <a class="gpo-share-cta gpo-share-cta--phone" href="<?php echo esc_url($phone_url); ?>">
-                                <span class="gpo-share-action__icon" aria-hidden="true">&#9742;</span>
-                                <span>CHIAMA ORA</span>
-                            </a>
-                        <?php endif; ?>
+                        <div class="gpo-single-summary-card__actions">
+                            <?php if ($share_actions) : ?>
+                                <?php echo $share_actions; ?>
+                            <?php endif; ?>
+                            <?php if ($phone_url) : ?>
+                                <a class="gpo-share-cta gpo-share-cta--phone" href="<?php echo esc_url($phone_url); ?>">
+                                    <span class="gpo-share-action__icon" aria-hidden="true">&#9742;</span>
+                                    <span>CHIAMA ORA</span>
+                                </a>
+                            <?php endif; ?>
+                        </div>
                         <?php echo $share_modal; ?>
                     </section>
                 </aside>
