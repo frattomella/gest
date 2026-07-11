@@ -304,3 +304,89 @@
   max-width: 100% !important;
   flex: 1 1 auto !important;
 }
+
+/* Shared media proportions with editor-safe manual carousel previews */
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-carousel-track,
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-brand-viewport {
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scroll-snap-type: x proximity !important;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.editor-styles-wrapper .wp-block[data-type^="gestpark/"] .gpo-brand-track {
+  animation: none !important;
+  transform: none !important;
+}
+
+.editor-styles-wrapper .wp-block[data-type="gestpark/featured-vehicle"] .gpo-card-media {
+  position: relative;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+}
+
+.editor-styles-wrapper .wp-block[data-type="gestpark/featured-vehicle"] .gpo-card-image,
+.editor-styles-wrapper .wp-block[data-type="gestpark/featured-vehicle"] .gpo-card-image-placeholder {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100% !important;
+}
+
+.editor-styles-wrapper .wp-block[data-type="gestpark/featured-vehicle"] .gpo-card-image img,
+.editor-styles-wrapper .wp-block[data-type="gestpark/featured-vehicle"] .gpo-fallback-image {
+  width: 100%;
+  height: 100% !important;
+  min-height: 0 !important;
+  object-fit: cover !important;
+}
+
+.editor-styles-wrapper .wp-block[data-type="gestpark/vehicle-gallery"] .gpo-single-main {
+  min-height: 0 !important;
+  aspect-ratio: 3 / 2 !important;
+  background: #eef2f7;
+}
+
+.editor-styles-wrapper .wp-block[data-type="gestpark/vehicle-gallery"] .gpo-single-main img {
+  width: 100%;
+  height: 100% !important;
+  min-height: 0 !important;
+  object-fit: contain !important;
+}
+
+.editor-styles-wrapper .wp-block[data-type="gestpark/vehicle-gallery"] .gpo-single-thumbs {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+@media (max-width: 980px) {
+  .editor-styles-wrapper .wp-block[data-type="gestpark/featured-vehicle"] .gpo-card-media {
+    aspect-ratio: 16 / 10;
+  }
+}
+
+@media (max-width: 720px) {
+  .editor-styles-wrapper .wp-block[data-type="gestpark/featured-vehicle"] .gpo-card-media,
+  .editor-styles-wrapper .wp-block[data-type="gestpark/vehicle-gallery"] .gpo-single-main {
+    aspect-ratio: 4 / 3 !important;
+  }
+
+  .editor-styles-wrapper .wp-block[data-type="gestpark/vehicle-gallery"] .gpo-single-thumbs {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .editor-styles-wrapper .wp-block[data-type="gestpark/vehicle-gallery"] .gpo-single-thumb:nth-child(n + 3) {
+    display: none;
+  }
+
+  .editor-styles-wrapper .wp-block[data-type="gestpark/vehicle-gallery"] .gpo-single-thumb__more--desktop {
+    display: none;
+  }
+
+  .editor-styles-wrapper .wp-block[data-type="gestpark/vehicle-gallery"] .gpo-single-thumb__more--mobile {
+    display: grid;
+  }
+}

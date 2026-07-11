@@ -439,8 +439,13 @@
     var suppressClick = false;
     var autoScrolling = false;
     var lastAutoScrollAt = 0;
+    var hasPointerQuery = !!(window.matchMedia && (window.matchMedia('(pointer: coarse)').matches || window.matchMedia('(pointer: fine)').matches));
+    var coarsePointer = hasPointerQuery ? window.matchMedia('(pointer: coarse)').matches : navigator.maxTouchPoints > 0;
+    var nativeInteracting = false;
+    var inViewport = true;
+    var pageVisible = !document.hidden;
     var speed = carousel ? parseInt(carousel.dataset.speed || '900', 10) : 900;
-    var pxPerSecond = Math.max(14, Math.min(42, 32000 / Math.max(speed, 260)));
+    var pxPerSecond = coarsePointer ? 8 : Math.max(14, Math.min(42, 32000 / Math.max(speed, 260)));
 
     if (!carousel || !viewport || !track || !runs.length) {
       return;
@@ -483,7 +488,7 @@
     }
 
     function isPaused(now) {
-      return prefersReducedMotion || hoverPaused || focusPaused || dragging || now < pauseUntil;
+      return prefersReducedMotion || hoverPaused || focusPaused || dragging || nativeInteracting || !inViewport || !pageVisible || now < pauseUntil;
     }
 
     function stopLoop() {
@@ -522,7 +527,7 @@
     function startLoop() {
       stopLoop();
       measure();
-      if (!autoplay || prefersReducedMotion) {
+      if (!autoplay || prefersReducedMotion || !inViewport || !pageVisible) {
         return;
       }
       rafId = window.requestAnimationFrame(frame);
@@ -540,6 +545,10 @@
     }
 
     function beginDrag(event) {
+      if (event.pointerType === 'touch') {
+        return;
+      }
+
       if (typeof event.button === 'number' && event.button !== 0) {
         return;
       }
@@ -609,17 +618,55 @@
     viewport.addEventListener('scroll', function () {
       normalizeLoopPosition();
       if (!autoScrolling && !dragging && performance.now() - lastAutoScrollAt > 120) {
-        queueResume(900);
+        queueResume(coarsePointer ? 4200 : 900);
       }
     }, { passive: true });
 
-    viewport.addEventListener('mouseenter', function () {
-      hoverPaused = true;
-    });
-    viewport.addEventListener('mouseleave', function () {
-      hoverPaused = false;
-      queueResume(220);
-    });
+    viewport.addEventListener('pointerdown', function (event) {
+      if (event.pointerType === 'mouse') {
+        return;
+      }
+
+      nativeInteracting = true;
+      queueResume(4200);
+    }, { passive: true });
+    viewport.addEventListener('pointerup', function (event) {
+      if (event.pointerType === 'mouse') {
+        return;
+      }
+
+      nativeInteracting = false;
+      queueResume(4200);
+    }, { passive: true });
+    viewport.addEventListener('pointercancel', function (event) {
+      if (event.pointerType === 'mouse') {
+        return;
+      }
+
+      nativeInteracting = false;
+      queueResume(4200);
+    }, { passive: true });
+
+    if (!window.PointerEvent) {
+      viewport.addEventListener('touchstart', function () {
+        nativeInteracting = true;
+        queueResume(4200);
+      }, { passive: true });
+      viewport.addEventListener('touchend', function () {
+        nativeInteracting = false;
+        queueResume(4200);
+      }, { passive: true });
+    }
+
+    if (window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+      viewport.addEventListener('mouseenter', function () {
+        hoverPaused = true;
+      });
+      viewport.addEventListener('mouseleave', function () {
+        hoverPaused = false;
+        queueResume(220);
+      });
+    }
     viewport.addEventListener('focusin', function () {
       focusPaused = true;
     });
@@ -655,6 +702,32 @@
       measure();
       normalizeLoopPosition();
     });
+
+    document.addEventListener('visibilitychange', function () {
+      pageVisible = !document.hidden;
+      if (pageVisible) {
+        startLoop();
+      } else {
+        stopLoop();
+      }
+    });
+
+    if ('IntersectionObserver' in window) {
+      new window.IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.target !== carousel) {
+            return;
+          }
+
+          inViewport = entry.isIntersecting && entry.intersectionRatio > 0;
+          if (inViewport) {
+            startLoop();
+          } else {
+            stopLoop();
+          }
+        });
+      }, { threshold: 0.05 }).observe(carousel);
+    }
 
     measure();
     normalizeLoopPosition();

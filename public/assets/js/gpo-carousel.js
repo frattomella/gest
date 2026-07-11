@@ -24,6 +24,13 @@
     var pressedCard = null;
     var pressedInteractive = false;
     var dragThreshold = 6;
+    var hasPointerQuery = !!(window.matchMedia && (window.matchMedia('(pointer: coarse)').matches || window.matchMedia('(pointer: fine)').matches));
+    var coarsePointer = hasPointerQuery ? window.matchMedia('(pointer: coarse)').matches : navigator.maxTouchPoints > 0;
+    var effectiveInterval = coarsePointer ? Math.max(interval, 7000) : interval;
+    var nativeInteracting = false;
+    var resumeTimer = null;
+    var inViewport = true;
+    var pageVisible = !document.hidden;
 
     if (!track) {
       return;
@@ -232,16 +239,25 @@
     function start() {
       stop();
 
-      if (!autoplay || slideCount() <= 1) {
+      if (!autoplay || slideCount() <= 1 || nativeInteracting || !inViewport || !pageVisible) {
         return;
       }
 
-      timer = window.setInterval(nextSlide, interval);
+      timer = window.setInterval(nextSlide, effectiveInterval);
     }
 
     function restart() {
       stop();
       start();
+    }
+
+    function restartAfter(delay) {
+      window.clearTimeout(resumeTimer);
+      stop();
+      resumeTimer = window.setTimeout(function () {
+        nativeInteracting = false;
+        start();
+      }, delay);
     }
 
     if (prev) {
@@ -259,6 +275,10 @@
     }
 
     track.addEventListener('pointerdown', function (event) {
+      if (event.pointerType === 'touch') {
+        return;
+      }
+
       if (event.pointerType === 'mouse' && event.button !== 0) {
         return;
       }
@@ -367,6 +387,44 @@
       restart();
     });
 
+    track.addEventListener('pointerdown', function (event) {
+      if (event.pointerType === 'mouse') {
+        return;
+      }
+
+      nativeInteracting = true;
+      window.clearTimeout(resumeTimer);
+      stop();
+    }, { passive: true });
+
+    track.addEventListener('pointerup', function (event) {
+      if (event.pointerType === 'mouse') {
+        return;
+      }
+
+      restartAfter(4500);
+    }, { passive: true });
+
+    track.addEventListener('pointercancel', function (event) {
+      if (event.pointerType === 'mouse') {
+        return;
+      }
+
+      restartAfter(4500);
+    }, { passive: true });
+
+    if (!window.PointerEvent) {
+      track.addEventListener('touchstart', function () {
+        nativeInteracting = true;
+        window.clearTimeout(resumeTimer);
+        stop();
+      }, { passive: true });
+
+      track.addEventListener('touchend', function () {
+        restartAfter(4500);
+      }, { passive: true });
+    }
+
     track.addEventListener('click', function (event) {
       if (!suppressClick) {
         var card = event.target.closest('.gpo-card[data-gpo-card-url]');
@@ -395,10 +453,38 @@
       scrollFrame = window.requestAnimationFrame(syncIndex);
     }, { passive: true });
 
-    track.addEventListener('mouseenter', stop);
-    track.addEventListener('mouseleave', start);
+    if (window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+      track.addEventListener('mouseenter', stop);
+      track.addEventListener('mouseleave', start);
+    }
     track.addEventListener('focusin', stop);
     track.addEventListener('focusout', start);
+
+    document.addEventListener('visibilitychange', function () {
+      pageVisible = !document.hidden;
+      if (pageVisible) {
+        restart();
+      } else {
+        stop();
+      }
+    });
+
+    if ('IntersectionObserver' in window) {
+      new window.IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.target !== carousel) {
+            return;
+          }
+
+          inViewport = entry.isIntersecting && entry.intersectionRatio > 0;
+          if (inViewport) {
+            restart();
+          } else {
+            stop();
+          }
+        });
+      }, { threshold: 0.05 }).observe(carousel);
+    }
 
     window.addEventListener('resize', function () {
       buildDots();

@@ -75,9 +75,9 @@
     var closeButtons = qsa('[data-gpo-gallery-close="1"]', gallery);
     var activeIndex = 0;
     var lastFocused = null;
-    var visibleThumbLastIndex = -1;
+    var compactThumbMedia = window.matchMedia ? window.matchMedia('(max-width: 720px)') : null;
 
-    if (!thumbs.length || !main || !mainImage) {
+    if (!main || !mainImage) {
       return;
     }
 
@@ -96,7 +96,20 @@
       });
     }
 
-    visibleThumbLastIndex = thumbs.length ? parseInt(thumbs[thumbs.length - 1].getAttribute('data-index') || (thumbs.length - 1), 10) : -1;
+    function usesCompactThumbs() {
+      return !!(compactThumbMedia && compactThumbMedia.matches);
+    }
+
+    function syncThumbAccessibility() {
+      var compact = usesCompactThumbs();
+
+      thumbs.forEach(function (thumb) {
+        var remaining = parseInt(thumb.getAttribute(compact ? 'data-gpo-more-mobile' : 'data-gpo-more-desktop') || '0', 10);
+        var defaultLabel = thumb.getAttribute('data-default-label') || 'Seleziona fotografia';
+
+        thumb.setAttribute('aria-label', remaining > 0 ? 'Apri le altre ' + remaining + ' fotografie' : defaultLabel);
+      });
+    }
 
     function wrapIndex(index) {
       if (index < 0) {
@@ -118,8 +131,11 @@
 
       thumbs.forEach(function (thumb, thumbIndex) {
         var thumbTargetIndex = parseInt(thumb.getAttribute('data-index') || thumbIndex, 10);
-        var isOverflowThumb = thumbIndex === (thumbs.length - 1) && visibleThumbLastIndex >= 0 && items.length > thumbs.length;
-        var isActive = thumbTargetIndex === activeIndex || (isOverflowThumb && activeIndex >= visibleThumbLastIndex);
+        var compact = usesCompactThumbs();
+        var overflowIndex = compact ? 1 : 2;
+        var overflowCount = parseInt(thumb.getAttribute(compact ? 'data-gpo-more-mobile' : 'data-gpo-more-desktop') || '0', 10);
+        var isOverflowThumb = overflowCount > 0 && thumbTargetIndex === overflowIndex;
+        var isActive = thumbTargetIndex === activeIndex || (isOverflowThumb && activeIndex >= overflowIndex);
         thumb.classList.toggle('is-active', isActive);
         thumb.setAttribute('aria-current', isActive ? 'true' : 'false');
       });
@@ -197,7 +213,14 @@
 
     thumbs.forEach(function (thumb, index) {
       thumb.addEventListener('click', function () {
-        update(parseInt(thumb.getAttribute('data-index') || index, 10) || 0);
+        var targetIndex = parseInt(thumb.getAttribute('data-index') || index, 10) || 0;
+        var moreAttribute = usesCompactThumbs() ? 'data-gpo-more-mobile' : 'data-gpo-more-desktop';
+        var opensMore = parseInt(thumb.getAttribute(moreAttribute) || '0', 10) > 0;
+
+        update(targetIndex);
+        if (opensMore) {
+          openLightbox();
+        }
       });
     });
 
@@ -270,6 +293,21 @@
       }
     });
 
+    if (compactThumbMedia) {
+      if (typeof compactThumbMedia.addEventListener === 'function') {
+        compactThumbMedia.addEventListener('change', function () {
+          syncThumbAccessibility();
+          update(activeIndex);
+        });
+      } else if (typeof compactThumbMedia.addListener === 'function') {
+        compactThumbMedia.addListener(function () {
+          syncThumbAccessibility();
+          update(activeIndex);
+        });
+      }
+    }
+
+    syncThumbAccessibility();
     update(0);
   }
 
