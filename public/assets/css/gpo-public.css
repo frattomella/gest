@@ -834,7 +834,7 @@
 
 .gpo-block.alignwide,
 .gpo-block.gpo-breakout-block {
-  --gpo-wide-width: min(calc(100vw - max(24px, 3vw)), calc(var(--gpo-content-max-width) + clamp(48px, 8vw, 180px)));
+  --gpo-wide-width: min(calc(100vw - max(24px, 3vw)), max(var(--gpo-content-max-width), 1680px));
   --gpo-shell-effective-max: var(--gpo-wide-width);
   position: static;
   left: auto;
@@ -1255,6 +1255,7 @@ body .post-content > .gpo-block.alignfull {
     padding-right: clamp(12px, 1.4vw, 22px);
   }
 }
+
 
 @media (max-width: 1180px) {
   .gpo-catalog-shell {
@@ -7582,5 +7583,270 @@ html.gpo-share-modal-open {
     object-fit: cover !important;
     object-position: center;
     display: block;
+  }
+}
+
+/* July 2026 shared wide layout, vehicle cards and single page refinements */
+.gpo-catalog-shell,
+.gpo-single-wrap,
+.gpo-template-shell,
+.gpo-featured-single,
+.gpo-carousel-shell,
+.gpo-brand-carousel-shell {
+  --gpo-shell-effective-max: max(var(--gpo-content-max-width, 1680px), 1680px);
+  width: min(100%, var(--gpo-shell-effective-max));
+  max-width: var(--gpo-shell-effective-max);
+  box-sizing: border-box;
+}
+
+.gpo-card {
+  border-color: rgba(148, 163, 184, 0.26);
+  border-radius: clamp(18px, 1.5vw, 24px);
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.08);
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.gpo-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(100, 116, 139, 0.32);
+  box-shadow: 0 24px 54px rgba(15, 23, 42, 0.12);
+}
+
+.gpo-card:not(.gpo-card-hero) .gpo-card-media {
+  aspect-ratio: 16 / 10;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.gpo-card:not(.gpo-card-hero) .gpo-card-image,
+.gpo-card:not(.gpo-card-hero) .gpo-card-image-placeholder,
+.gpo-card:not(.gpo-card-hero) .gpo-card-image img,
+.gpo-card:not(.gpo-card-hero) .gpo-fallback-image {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  aspect-ratio: auto;
+  object-fit: cover;
+  display: block;
+}
+
+.gpo-card-image img {
+  transition: transform 420ms ease;
+}
+
+.gpo-card:hover .gpo-card-image img {
+  transform: scale(1.025);
+}
+
+.gpo-card-overlay {
+  z-index: 2;
+  pointer-events: none;
+}
+
+.gpo-card-body {
+  gap: 14px;
+  padding: clamp(18px, 1.5vw, 24px);
+}
+
+.gpo-card-brand {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.76rem;
+  letter-spacing: 0.1em;
+}
+
+.gpo-card-title {
+  font-size: clamp(1.28rem, 1.02rem + 0.55vw, 1.72rem);
+  line-height: 1.12;
+}
+
+.gpo-card-version {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.9rem;
+  line-height: 1.35;
+  font-weight: 600;
+}
+
+.gpo-price-current {
+  font-size: clamp(1.7rem, 1.35rem + 0.65vw, 2.2rem);
+  letter-spacing: -0.025em;
+}
+
+.gpo-card-actions,
+.gpo-card-actions .gpo-button {
+  width: 100%;
+}
+
+.gpo-card-actions .gpo-button {
+  min-height: 48px;
+  border-radius: 14px;
+}
+
+.gpo-card a:focus-visible,
+.gpo-card button:focus-visible,
+.gpo-brand-item:focus-visible,
+.gpo-single-list-toggle:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--gpo-accent) 38%, transparent);
+  outline-offset: 3px;
+}
+
+.gpo-catalog-shell--layout-marketplace-sidebar .gpo-catalog-layout {
+  grid-template-columns: minmax(280px, 330px) minmax(0, 1fr);
+  gap: clamp(22px, 2vw, 34px);
+}
+
+.gpo-catalog-shell--layout-marketplace-sidebar .gpo-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.single-gpo_vehicle .gpo-page-shell {
+  width: min(100%, 1760px);
+  max-width: 1760px;
+  padding-inline: 20px;
+}
+
+.single-gpo_vehicle .gpo-single-overview-groups {
+  display: grid;
+  gap: 22px;
+}
+
+.single-gpo_vehicle .gpo-single-overview-group {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.single-gpo_vehicle .gpo-single-overview-group + .gpo-single-overview-group {
+  padding-top: 20px;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.single-gpo_vehicle .gpo-single-overview-group__title {
+  margin: 0;
+  color: #0f172a;
+  font-size: 0.82rem;
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.single-gpo_vehicle .gpo-single-overview-group .gpo-single-overview-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.single-gpo_vehicle .gpo-single-plain-list--collapsible:not(.is-expanded) .gpo-single-plain-list__item--extra {
+  display: none;
+}
+
+.single-gpo_vehicle .gpo-single-list-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  margin-top: 16px;
+  padding: 0 16px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  border-radius: 12px;
+  background: #ffffff;
+  color: #0f172a;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.single-gpo_vehicle .gpo-single-list-toggle:hover {
+  background: #f8fafc;
+}
+
+.gpo-brand-carousel.is-enhanced .gpo-brand-viewport {
+  cursor: grab;
+  touch-action: pan-y pinch-zoom;
+}
+
+.gpo-brand-carousel.is-enhanced .gpo-brand-viewport.is-dragging {
+  cursor: grabbing;
+}
+
+@media (min-width: 1181px) {
+  .gpo-catalog-shell,
+  .gpo-single-wrap,
+  .gpo-template-shell,
+  .gpo-featured-single,
+  .gpo-carousel-shell,
+  .gpo-brand-carousel-shell {
+    padding-inline: 20px;
+  }
+
+  .single-gpo_vehicle .gpo-vehicle-single__layout {
+    grid-template-columns: minmax(0, 1.55fr) minmax(340px, 440px);
+  }
+}
+
+@media (max-width: 1180px) {
+  .gpo-catalog-shell,
+  .gpo-single-wrap,
+  .gpo-template-shell,
+  .gpo-featured-single,
+  .gpo-carousel-shell,
+  .gpo-brand-carousel-shell,
+  .single-gpo_vehicle .gpo-page-shell {
+    padding-inline: 16px;
+  }
+
+  .gpo-grid.columns-3,
+  .gpo-grid.columns-4,
+  .gpo-catalog-shell--layout-marketplace-sidebar .gpo-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .gpo-catalog-shell--layout-marketplace-sidebar .gpo-catalog-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .single-gpo_vehicle .gpo-single-overview-group .gpo-single-overview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .gpo-catalog-shell,
+  .gpo-single-wrap,
+  .gpo-template-shell,
+  .gpo-featured-single,
+  .gpo-carousel-shell,
+  .gpo-brand-carousel-shell,
+  .single-gpo_vehicle .gpo-page-shell {
+    padding-inline: 12px;
+  }
+
+  .gpo-grid.columns-2,
+  .gpo-grid.columns-3,
+  .gpo-grid.columns-4,
+  .gpo-catalog-shell--layout-marketplace-sidebar .gpo-grid,
+  .single-gpo_vehicle .gpo-single-overview-group .gpo-single-overview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .gpo-card:not(.gpo-card-hero) .gpo-card-media {
+    aspect-ratio: 4 / 3;
+  }
+
+  .single-gpo_vehicle .gpo-single-overview-groups {
+    gap: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gpo-card,
+  .gpo-card-image img {
+    transition: none;
+  }
+
+  .gpo-card:hover,
+  .gpo-card:hover .gpo-card-image img {
+    transform: none;
   }
 }

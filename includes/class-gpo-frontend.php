@@ -77,9 +77,9 @@ class GPO_Frontend {
             '--gpo-body-font:' . esc_attr($style['body_font'] ?? 'inherit') . ';' .
             '--gpo-card-gap:' . absint($style['card_gap'] ?? 24) . 'px;' .
             '--gpo-card-padding:' . absint($style['card_padding'] ?? 22) . 'px;' .
-            '--gpo-content-max-width:' . absint($style['content_max_width'] ?? 1280) . 'px;' .
+            '--gpo-content-max-width:' . absint($style['content_max_width'] ?? 1680) . 'px;' .
             '--gpo-shell-margin-y:' . absint($style['outer_margin_y'] ?? 0) . 'px;' .
-            '--gpo-shell-padding-x:' . absint($style['outer_padding_x'] ?? 18) . 'px;' .
+            '--gpo-shell-padding-x:' . absint($style['outer_padding_x'] ?? 20) . 'px;' .
             '--gpo-section-gap:' . absint($style['section_gap'] ?? 24) . 'px;' .
             '--gpo-filter-columns:' . max(2, min(6, absint($style['filter_columns'] ?? 5))) . ';' .
             '--gpo-muted:#6b7280;' .
@@ -574,9 +574,9 @@ class GPO_Frontend {
             'card_layout' => 'default',
             'card_gap' => self::display_settings()['style']['card_gap'] ?? '24',
             'card_padding' => self::display_settings()['style']['card_padding'] ?? '22',
-            'content_max_width' => self::display_settings()['style']['content_max_width'] ?? '1280',
+            'content_max_width' => self::display_settings()['style']['content_max_width'] ?? '1680',
             'outer_margin_y' => self::display_settings()['style']['outer_margin_y'] ?? '0',
-            'outer_padding_x' => self::display_settings()['style']['outer_padding_x'] ?? '18',
+            'outer_padding_x' => self::display_settings()['style']['outer_padding_x'] ?? '20',
             'section_gap' => self::display_settings()['style']['section_gap'] ?? '24',
             'filter_fields' => '',
             'filter_fields_desktop' => '',
@@ -670,9 +670,9 @@ class GPO_Frontend {
             'card_layout' => 'default',
             'card_gap' => self::display_settings()['style']['card_gap'] ?? '24',
             'card_padding' => self::display_settings()['style']['card_padding'] ?? '22',
-            'content_max_width' => self::display_settings()['style']['content_max_width'] ?? '1280',
+            'content_max_width' => self::display_settings()['style']['content_max_width'] ?? '1680',
             'outer_margin_y' => self::display_settings()['style']['outer_margin_y'] ?? '0',
-            'outer_padding_x' => self::display_settings()['style']['outer_padding_x'] ?? '18',
+            'outer_padding_x' => self::display_settings()['style']['outer_padding_x'] ?? '20',
             'section_gap' => self::display_settings()['style']['section_gap'] ?? '24',
             'primary_color' => '',
             'accent_color' => '',
@@ -722,9 +722,9 @@ class GPO_Frontend {
             'section_title' => 'Veicoli selezionati',
             'card_gap' => self::display_settings()['style']['card_gap'] ?? '24',
             'card_padding' => self::display_settings()['style']['card_padding'] ?? '22',
-            'content_max_width' => self::display_settings()['style']['content_max_width'] ?? '1280',
+            'content_max_width' => self::display_settings()['style']['content_max_width'] ?? '1680',
             'outer_margin_y' => self::display_settings()['style']['outer_margin_y'] ?? '0',
-            'outer_padding_x' => self::display_settings()['style']['outer_padding_x'] ?? '18',
+            'outer_padding_x' => self::display_settings()['style']['outer_padding_x'] ?? '20',
             'section_gap' => self::display_settings()['style']['section_gap'] ?? '24',
             'primary_color' => '',
             'accent_color' => '',
@@ -792,9 +792,9 @@ class GPO_Frontend {
             'card_layout' => 'default',
             'card_gap' => self::display_settings()['style']['card_gap'] ?? '24',
             'card_padding' => self::display_settings()['style']['card_padding'] ?? '22',
-            'content_max_width' => self::display_settings()['style']['content_max_width'] ?? '1280',
+            'content_max_width' => self::display_settings()['style']['content_max_width'] ?? '1680',
             'outer_margin_y' => self::display_settings()['style']['outer_margin_y'] ?? '0',
-            'outer_padding_x' => self::display_settings()['style']['outer_padding_x'] ?? '18',
+            'outer_padding_x' => self::display_settings()['style']['outer_padding_x'] ?? '20',
             'section_gap' => self::display_settings()['style']['section_gap'] ?? '24',
             'filter_fields' => '',
             'filter_fields_desktop' => '',
@@ -841,9 +841,9 @@ class GPO_Frontend {
         $merged = wp_parse_args($atts, [
             'card_gap' => $style_defaults['card_gap'] ?? 24,
             'card_padding' => $style_defaults['card_padding'] ?? 22,
-            'content_max_width' => $style_defaults['content_max_width'] ?? 1280,
+            'content_max_width' => $style_defaults['content_max_width'] ?? 1680,
             'outer_margin_y' => $style_defaults['outer_margin_y'] ?? 0,
-            'outer_padding_x' => $style_defaults['outer_padding_x'] ?? 18,
+            'outer_padding_x' => $style_defaults['outer_padding_x'] ?? 20,
             'section_gap' => $style_defaults['section_gap'] ?? 24,
             'primary_color' => '',
             'accent_color' => '',
@@ -1088,7 +1088,7 @@ class GPO_Frontend {
             }
 
             $value = trim((string) $data[$key]);
-            if ($value !== '') {
+            if (self::single_value_is_displayable($value)) {
                 return $value;
             }
         }
@@ -1099,12 +1099,22 @@ class GPO_Frontend {
             }
 
             $value = trim((string) get_post_meta($post_id, $meta_key, true));
-            if ($value !== '') {
+            if (self::single_value_is_displayable($value)) {
                 return $value;
             }
         }
 
         return '';
+    }
+
+    protected static function single_value_is_displayable($value) {
+        if ($value === null || is_array($value) || is_object($value)) {
+            return false;
+        }
+
+        $normalized = strtolower(trim(remove_accents(wp_strip_all_tags((string) $value))));
+
+        return !in_array($normalized, ['', '0', '0.0', 'n/d', 'nd', 'null', 'undefined', '-', '--'], true);
     }
 
     public static function single_status_badges_markup($post_id, $data = []) {
@@ -1118,10 +1128,6 @@ class GPO_Frontend {
 
         if ($condition !== '') {
             $badges[] = '<span class="gpo-badge">' . esc_html($condition) . '</span>';
-        }
-
-        if ($status === '') {
-            $status = 'Disponibile';
         }
 
         if ($status !== '' && strtolower(remove_accents($status)) !== strtolower(remove_accents($condition))) {
@@ -1146,29 +1152,30 @@ class GPO_Frontend {
     public static function single_overview_items($post_id, $data = []) {
         $post_id = absint($post_id);
         $data = is_array($data) ? $data : [];
-        $mileage = $data['mileage'] ?? get_post_meta($post_id, '_gpo_mileage', true);
-        $engine_size = $data['engine_size'] ?? get_post_meta($post_id, '_gpo_engine_size', true);
+        $mileage = self::single_meta_candidate_value($post_id, $data, ['mileage'], ['_gpo_mileage']);
+        $engine_size = self::single_meta_candidate_value($post_id, $data, ['engine_size'], ['_gpo_engine_size']);
 
         $items = [
-            ['label' => 'Carrozzeria', 'value' => self::single_meta_candidate_value($post_id, $data, ['body_type'], ['_gpo_body_type']), 'icon' => 'car'],
-            ['label' => 'Chilometraggio', 'value' => self::format_number($mileage, ' km'), 'icon' => 'road'],
-            ['label' => 'Cambio', 'value' => self::single_meta_candidate_value($post_id, $data, ['transmission'], ['_gpo_transmission']), 'icon' => 'gear'],
-            ['label' => 'Immatricolazione', 'value' => self::single_meta_candidate_value($post_id, $data, ['year', 'registration_year'], ['_gpo_year', '_gpo_registration_year']), 'icon' => 'calendar'],
-            ['label' => 'Alimentazione', 'value' => self::single_meta_candidate_value($post_id, $data, ['fuel'], ['_gpo_fuel']), 'icon' => 'fuel'],
-            ['label' => 'Potenza', 'value' => self::single_meta_candidate_value($post_id, $data, ['power'], ['_gpo_power']), 'icon' => 'bolt'],
-            ['label' => 'Lunghezza', 'value' => self::single_meta_candidate_value($post_id, $data, ['length', 'vehicle_length'], ['_gpo_length', '_gpo_vehicle_length']), 'icon' => 'ruler'],
-            ['label' => 'Larghezza', 'value' => self::single_meta_candidate_value($post_id, $data, ['width', 'vehicle_width'], ['_gpo_width', '_gpo_vehicle_width']), 'icon' => 'ruler'],
-            ['label' => 'Potenza fiscale', 'value' => self::single_meta_candidate_value($post_id, $data, ['fiscal_power'], ['_gpo_fiscal_power']), 'icon' => 'badge'],
-            ['label' => 'Cilindrata', 'value' => self::format_engine_size($engine_size), 'icon' => 'engine'],
-            ['label' => 'Colore', 'value' => self::single_meta_candidate_value($post_id, $data, ['color'], ['_gpo_color']), 'icon' => 'palette'],
-            ['label' => 'Porte', 'value' => self::single_meta_candidate_value($post_id, $data, ['doors'], ['_gpo_doors']), 'icon' => 'door'],
-            ['label' => 'Posti', 'value' => self::single_meta_candidate_value($post_id, $data, ['seats'], ['_gpo_seats']), 'icon' => 'users'],
-            ['label' => 'Neopatentati', 'value' => self::is_neopatentati_vehicle($post_id, $data) ? 'Si' : '', 'icon' => 'check-circle'],
-            ['label' => 'Sede', 'value' => self::single_meta_candidate_value($post_id, $data, ['location'], ['_gpo_location']), 'icon' => 'pin'],
+            ['group' => 'Informazioni veicolo', 'label' => 'Condizione', 'value' => self::single_meta_candidate_value($post_id, $data, ['condition'], ['_gpo_condition']), 'icon' => 'badge'],
+            ['group' => 'Informazioni veicolo', 'label' => 'Immatricolazione', 'value' => self::single_meta_candidate_value($post_id, $data, ['year', 'registration_year'], ['_gpo_year', '_gpo_registration_year']), 'icon' => 'calendar'],
+            ['group' => 'Informazioni veicolo', 'label' => 'Chilometraggio', 'value' => $mileage !== '' ? self::format_number($mileage, ' km') : '', 'icon' => 'road'],
+            ['group' => 'Informazioni veicolo', 'label' => 'Sede', 'value' => self::single_meta_candidate_value($post_id, $data, ['location'], ['_gpo_location']), 'icon' => 'pin'],
+            ['group' => 'Informazioni veicolo', 'label' => 'Neopatentati', 'value' => self::is_neopatentati_vehicle($post_id, $data) ? 'Si' : '', 'icon' => 'check-circle'],
+            ['group' => 'Motore', 'label' => 'Alimentazione', 'value' => self::single_meta_candidate_value($post_id, $data, ['fuel'], ['_gpo_fuel']), 'icon' => 'fuel'],
+            ['group' => 'Motore', 'label' => 'Cambio', 'value' => self::single_meta_candidate_value($post_id, $data, ['transmission'], ['_gpo_transmission']), 'icon' => 'gear'],
+            ['group' => 'Motore', 'label' => 'Cilindrata', 'value' => $engine_size !== '' ? self::format_engine_size($engine_size) : '', 'icon' => 'engine'],
+            ['group' => 'Prestazioni', 'label' => 'Potenza', 'value' => self::single_meta_candidate_value($post_id, $data, ['power'], ['_gpo_power']), 'icon' => 'bolt'],
+            ['group' => 'Prestazioni', 'label' => 'Potenza fiscale', 'value' => self::single_meta_candidate_value($post_id, $data, ['fiscal_power'], ['_gpo_fiscal_power']), 'icon' => 'badge'],
+            ['group' => 'Carrozzeria', 'label' => 'Carrozzeria', 'value' => self::single_meta_candidate_value($post_id, $data, ['body_type'], ['_gpo_body_type']), 'icon' => 'car'],
+            ['group' => 'Carrozzeria', 'label' => 'Colore', 'value' => self::single_meta_candidate_value($post_id, $data, ['color'], ['_gpo_color']), 'icon' => 'palette'],
+            ['group' => 'Carrozzeria', 'label' => 'Porte', 'value' => self::single_meta_candidate_value($post_id, $data, ['doors'], ['_gpo_doors']), 'icon' => 'door'],
+            ['group' => 'Carrozzeria', 'label' => 'Posti', 'value' => self::single_meta_candidate_value($post_id, $data, ['seats'], ['_gpo_seats']), 'icon' => 'users'],
+            ['group' => 'Carrozzeria', 'label' => 'Lunghezza', 'value' => self::single_meta_candidate_value($post_id, $data, ['length', 'vehicle_length'], ['_gpo_length', '_gpo_vehicle_length']), 'icon' => 'ruler'],
+            ['group' => 'Carrozzeria', 'label' => 'Larghezza', 'value' => self::single_meta_candidate_value($post_id, $data, ['width', 'vehicle_width'], ['_gpo_width', '_gpo_vehicle_width']), 'icon' => 'ruler'],
         ];
 
         return array_values(array_filter($items, function ($item) {
-            return trim((string) ($item['value'] ?? '')) !== '';
+            return self::single_value_is_displayable($item['value'] ?? '');
         }));
     }
 
@@ -1181,16 +1188,28 @@ class GPO_Frontend {
         }
 
         $html = '<details class="gpo-single-accordion gpo-single-accordion--overview" open>';
-        $html .= '<summary class="gpo-single-accordion__summary"><span class="gpo-single-accordion__title-wrap"><strong>Panoramica</strong><small>Caratteristiche principali del veicolo</small></span><span class="gpo-single-accordion__caret" aria-hidden="true">' . self::icon_markup('chevron-right') . '</span></summary>';
+        $html .= '<summary class="gpo-single-accordion__summary"><span class="gpo-single-accordion__title-wrap"><strong>Panoramica</strong><small>Dati tecnici disponibili suddivisi per categoria</small></span><span class="gpo-single-accordion__caret" aria-hidden="true">' . self::icon_markup('chevron-right') . '</span></summary>';
         $html .= '<div class="gpo-single-accordion__body">';
 
         if (!empty($items)) {
-            $html .= '<div class="gpo-single-overview-grid">';
+            $groups = [];
             foreach ($items as $item) {
-                $html .= '<div class="gpo-single-overview-item">';
-                $html .= '<span class="gpo-single-overview-item__icon" aria-hidden="true">' . self::icon_markup($item['icon']) . '</span>';
-                $html .= '<span class="gpo-single-overview-item__copy"><small>' . esc_html($item['label']) . '</small><strong>' . esc_html($item['value']) . '</strong></span>';
-                $html .= '</div>';
+                $group = trim((string) ($item['group'] ?? 'Informazioni veicolo'));
+                $groups[$group][] = $item;
+            }
+
+            $html .= '<div class="gpo-single-overview-groups">';
+            foreach ($groups as $group_label => $group_items) {
+                $html .= '<section class="gpo-single-overview-group" aria-label="' . esc_attr($group_label) . '">';
+                $html .= '<h3 class="gpo-single-overview-group__title">' . esc_html($group_label) . '</h3>';
+                $html .= '<div class="gpo-single-overview-grid">';
+                foreach ($group_items as $item) {
+                    $html .= '<div class="gpo-single-overview-item">';
+                    $html .= '<span class="gpo-single-overview-item__icon" aria-hidden="true">' . self::icon_markup($item['icon']) . '</span>';
+                    $html .= '<span class="gpo-single-overview-item__copy"><small>' . esc_html($item['label']) . '</small><strong>' . esc_html($item['value']) . '</strong></span>';
+                    $html .= '</div>';
+                }
+                $html .= '</div></section>';
             }
             $html .= '</div>';
         }
@@ -1256,15 +1275,24 @@ class GPO_Frontend {
             'summary' => count($items) . ' elementi',
             'open' => false,
             'class' => '',
+            'collapse_after' => 0,
         ]);
+
+        $collapse_after = max(0, absint($options['collapse_after']));
+        $is_collapsible = $collapse_after > 0 && count($items) > $collapse_after;
 
         $html = '<details class="' . esc_attr(trim('gpo-single-accordion ' . $options['class'])) . '"' . (!empty($options['open']) ? ' open' : '') . '>';
         $html .= '<summary class="gpo-single-accordion__summary"><span class="gpo-single-accordion__title-wrap"><strong>' . esc_html($title) . '</strong><small>' . esc_html((string) $options['summary']) . '</small></span><span class="gpo-single-accordion__caret" aria-hidden="true">' . self::icon_markup('chevron-right') . '</span></summary>';
-        $html .= '<div class="gpo-single-accordion__body"><ul class="gpo-single-plain-list">';
-        foreach ($items as $item) {
-            $html .= '<li>' . esc_html($item) . '</li>';
+        $html .= '<div class="gpo-single-accordion__body"><ul class="gpo-single-plain-list' . ($is_collapsible ? ' gpo-single-plain-list--collapsible' : '') . '">';
+        foreach ($items as $index => $item) {
+            $item_class = $is_collapsible && $index >= $collapse_after ? ' class="gpo-single-plain-list__item--extra"' : '';
+            $html .= '<li' . $item_class . '>' . esc_html($item) . '</li>';
         }
-        $html .= '</ul></div></details>';
+        $html .= '</ul>';
+        if ($is_collapsible) {
+            $html .= '<button type="button" class="gpo-single-list-toggle" aria-expanded="false" data-gpo-list-toggle data-more-label="Mostra tutti" data-less-label="Mostra meno">Mostra tutti</button>';
+        }
+        $html .= '</div></details>';
 
         return $html;
     }
@@ -2161,6 +2189,13 @@ class GPO_Frontend {
         $is_featured = get_post_meta($post_id, '_gpo_featured', true) === '1';
         $permalink = get_permalink($post_id);
         $specs = array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', (string) get_post_meta($post_id, '_gpo_specs', true))));
+        $brand_name = trim((string) ($data['brand'] ?? get_post_meta($post_id, '_gpo_brand', true)));
+        $model_name = trim((string) ($data['model'] ?? get_post_meta($post_id, '_gpo_model', true)));
+        $version_name = trim((string) ($data['version'] ?? get_post_meta($post_id, '_gpo_version', true)));
+        $brand_name = self::single_value_is_displayable($brand_name) ? $brand_name : '';
+        $model_name = self::single_value_is_displayable($model_name) ? $model_name : '';
+        $version_name = self::single_value_is_displayable($version_name) ? $version_name : '';
+        $card_title = $model_name !== '' ? $model_name : get_the_title($post_id);
 
         $meta = [
             'year' => ['label' => 'Anno', 'value' => $data['year'] ?? get_post_meta($post_id, '_gpo_year', true), 'icon' => 'calendar'],
@@ -2201,11 +2236,14 @@ class GPO_Frontend {
         echo '<div class="gpo-card-body">';
         echo '<div class="gpo-card-topline">';
         echo '<div>';
-        if (self::is_visible($display, 'brand')) {
-            echo '<p class="' . esc_attr('gpo-card-brand ' . self::visibility_classes($display, 'brand')) . '">' . esc_html(trim(get_post_meta($post_id, '_gpo_brand', true) . ' ' . get_post_meta($post_id, '_gpo_model', true))) . '</p>';
+        if (self::is_visible($display, 'brand') && $brand_name !== '') {
+            echo '<p class="' . esc_attr('gpo-card-brand ' . self::visibility_classes($display, 'brand')) . '">' . esc_html($brand_name) . '</p>';
         }
         if (self::is_visible($display, 'title')) {
-            echo '<h3 class="' . esc_attr('gpo-card-title ' . self::visibility_classes($display, 'title')) . '"><a href="' . esc_url($permalink) . '">' . esc_html(get_the_title($post_id)) . '</a></h3>';
+            echo '<h3 class="' . esc_attr('gpo-card-title ' . self::visibility_classes($display, 'title')) . '"><a href="' . esc_url($permalink) . '">' . esc_html($card_title) . '</a></h3>';
+            if ($version_name !== '') {
+                echo '<p class="' . esc_attr('gpo-card-version ' . self::visibility_classes($display, 'title')) . '">' . esc_html($version_name) . '</p>';
+            }
         }
         echo '</div>';
         if (self::is_visible($display, 'price')) {

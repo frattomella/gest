@@ -272,14 +272,6 @@
       pressedCard = event.target.closest('.gpo-card[data-gpo-card-url]');
       pressedInteractive = !!event.target.closest('a, button, input, select, textarea, label, summary');
 
-      if (track.setPointerCapture) {
-        try {
-          track.setPointerCapture(event.pointerId);
-        } catch (error) {
-          // Ignore browsers that reject pointer capture for this event.
-        }
-      }
-
       stop();
     });
 
@@ -294,7 +286,11 @@
 
       if (Math.abs(delta) > dragThreshold) {
         if (!dragMoved && track.setPointerCapture) {
-          track.setPointerCapture(event.pointerId);
+          try {
+            track.setPointerCapture(event.pointerId);
+          } catch (error) {
+            // Ignore browsers that reject pointer capture for this event.
+          }
         }
         dragMoved = true;
         suppressClick = true;

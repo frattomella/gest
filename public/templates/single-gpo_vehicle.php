@@ -62,6 +62,7 @@ $accessories_markup = in_array('accessories', $visible, true)
             'summary' => count($accessories) > 0 ? count($accessories) . ' elementi' : 'Nessun accessorio',
             'open' => false,
             'class' => 'gpo-single-accordion--accessories',
+            'collapse_after' => 8,
         ]
     )
     : '';

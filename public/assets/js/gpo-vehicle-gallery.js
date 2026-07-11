@@ -497,11 +497,39 @@
     });
   }
 
+  function initExpandableLists() {
+    qsa('[data-gpo-list-toggle]').forEach(function (button) {
+      if (!button || button.dataset.bound === '1') {
+        return;
+      }
+
+      var body = button.closest('.gpo-single-accordion__body');
+      var list = body ? qs('.gpo-single-plain-list--collapsible', body) : null;
+
+      if (!list) {
+        return;
+      }
+
+      button.dataset.bound = '1';
+      button.addEventListener('click', function () {
+        var expanded = button.getAttribute('aria-expanded') === 'true';
+        var nextExpanded = !expanded;
+
+        list.classList.toggle('is-expanded', nextExpanded);
+        button.setAttribute('aria-expanded', nextExpanded ? 'true' : 'false');
+        button.textContent = nextExpanded
+          ? (button.getAttribute('data-less-label') || 'Mostra meno')
+          : (button.getAttribute('data-more-label') || 'Mostra tutti');
+      });
+    });
+  }
+
   function boot() {
     qsa('[data-gpo-gallery="1"]').forEach(initGallery);
     initCopyButtons();
     initShareModals();
     initPrintButtons();
+    initExpandableLists();
   }
 
   document.addEventListener('DOMContentLoaded', boot);

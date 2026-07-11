@@ -438,6 +438,7 @@
     var activePointerId = null;
     var suppressClick = false;
     var autoScrolling = false;
+    var lastAutoScrollAt = 0;
     var speed = carousel ? parseInt(carousel.dataset.speed || '900', 10) : 900;
     var pxPerSecond = Math.max(14, Math.min(42, 32000 / Math.max(speed, 260)));
 
@@ -457,6 +458,7 @@
 
       if (autoplay && runs.length > 1 && viewport.scrollLeft < runWidth * 0.2) {
         autoScrolling = true;
+        lastAutoScrollAt = performance.now();
         viewport.scrollLeft = runWidth;
         autoScrolling = false;
       }
@@ -472,8 +474,10 @@
       maxScroll = (runWidth * 2) - viewport.clientWidth - 2;
 
       if (viewport.scrollLeft <= 1) {
+        lastAutoScrollAt = performance.now();
         viewport.scrollLeft += runWidth;
       } else if (viewport.scrollLeft >= maxScroll) {
+        lastAutoScrollAt = performance.now();
         viewport.scrollLeft -= runWidth;
       }
     }
@@ -506,6 +510,7 @@
 
       if (autoplay && runs.length > 1 && !isPaused(timestamp)) {
         autoScrolling = true;
+        lastAutoScrollAt = timestamp;
         viewport.scrollLeft += (pxPerSecond * delta) / 1000;
         normalizeLoopPosition();
         autoScrolling = false;
@@ -535,10 +540,6 @@
     }
 
     function beginDrag(event) {
-      if (event.pointerType === 'mouse') {
-        return;
-      }
-
       if (typeof event.button === 'number' && event.button !== 0) {
         return;
       }
@@ -549,10 +550,6 @@
       dragStartX = event.clientX;
       dragStartScroll = viewport.scrollLeft;
       viewport.classList.add('is-dragging');
-
-      if (viewport.setPointerCapture) {
-        viewport.setPointerCapture(event.pointerId);
-      }
 
       queueResume(1600);
     }
@@ -567,6 +564,13 @@
       deltaX = event.clientX - dragStartX;
 
       if (Math.abs(deltaX) > 4) {
+        if (!dragMoved && viewport.setPointerCapture) {
+          try {
+            viewport.setPointerCapture(event.pointerId);
+          } catch (error) {
+            // Ignore browsers that reject pointer capture for this event.
+          }
+        }
         dragMoved = true;
         suppressClick = true;
       }
@@ -604,7 +608,7 @@
     viewport.addEventListener('lostpointercapture', endDrag);
     viewport.addEventListener('scroll', function () {
       normalizeLoopPosition();
-      if (!autoScrolling && !dragging) {
+      if (!autoScrolling && !dragging && performance.now() - lastAutoScrollAt > 120) {
         queueResume(900);
       }
     }, { passive: true });
