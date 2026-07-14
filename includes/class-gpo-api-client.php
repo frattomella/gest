@@ -334,6 +334,9 @@ class GPO_API_Client {
         $response = $login_response['json'];
         $token = self::extract_login_token($response);
         if (!$token) {
+            $token = self::extract_response_token(isset($login_response['headers']) ? $login_response['headers'] : []);
+        }
+        if (!$token) {
             return new WP_Error('gpo_missing_login_token', self::describe_missing_login_token($response, $login_response));
         }
 
@@ -366,6 +369,17 @@ class GPO_API_Client {
         }
 
         return '';
+    }
+
+    protected static function extract_response_token($headers) {
+        $headers = is_array($headers) ? $headers : [];
+        $authorization = isset($headers['authorization']) ? trim((string) $headers['authorization']) : '';
+
+        if (preg_match('/^Bearer\s+(.+)$/i', $authorization, $matches)) {
+            return trim((string) $matches[1]);
+        }
+
+        return isset($headers['x-auth-token']) ? trim((string) $headers['x-auth-token']) : '';
     }
 
     protected static function describe_missing_login_token($response, $meta = []) {
@@ -439,34 +453,50 @@ class GPO_API_Client {
     }
 
     protected static function normalize_gestpark_item($list_item, $detail_item) {
-        $vehicle = array_replace_recursive((array) $list_item, (array) $detail_item);
+        $vehicle = array_replace((array) $list_item, (array) $detail_item);
         $year = self::extract_year(isset($vehicle['immatricolazione']) ? $vehicle['immatricolazione'] : '');
-        if (!$year) {
-            $year = self::extract_year(isset($vehicle['dataArrivo']) ? $vehicle['dataArrivo'] : '');
-        }
-
-        $gallery = !empty($detail_item['listaFoto']) && is_array($detail_item['listaFoto'])
-            ? $detail_item['listaFoto']
+        $gallery_payload_present = array_key_exists('listaFoto', (array) $detail_item) || array_key_exists('listaFoto', (array) $list_item);
+        $gallery = array_key_exists('listaFoto', (array) $detail_item)
+            ? (is_array($detail_item['listaFoto']) ? $detail_item['listaFoto'] : [])
             : (isset($list_item['listaFoto']) && is_array($list_item['listaFoto']) ? $list_item['listaFoto'] : []);
 
         return [
             'id' => isset($vehicle['idGestionale']) ? (string) $vehicle['idGestionale'] : '',
+            'vehicle_type' => isset($vehicle['tipoVeicoloPark']) ? $vehicle['tipoVeicoloPark'] : '',
             'brand' => isset($vehicle['marca']) ? $vehicle['marca'] : '',
             'model' => isset($vehicle['modello']) ? $vehicle['modello'] : '',
             'version' => isset($vehicle['versione']) ? $vehicle['versione'] : '',
             'description' => self::build_vehicle_description($vehicle),
             'condition' => self::infer_condition($vehicle),
             'year' => $year,
+            'registration_date' => self::normalize_date(isset($vehicle['immatricolazione']) ? $vehicle['immatricolazione'] : ''),
+            'arrival_date' => self::normalize_date(isset($vehicle['dataArrivo']) ? $vehicle['dataArrivo'] : ''),
             'price' => isset($vehicle['prezzo']) ? (string) $vehicle['prezzo'] : '',
+            'dealer_price' => isset($vehicle['prezzoDealer']) ? (string) $vehicle['prezzoDealer'] : '',
+            'price_negotiable' => self::normalize_boolean_field($vehicle, 'prezzoTrattabile'),
+            'vat_deductible' => self::normalize_boolean_field($vehicle, 'ivaDeducibile'),
             'fuel' => isset($vehicle['descrizioneAlimentazione']) ? $vehicle['descrizioneAlimentazione'] : '',
             'mileage' => isset($vehicle['kmPercorsi']) ? (string) $vehicle['kmPercorsi'] : '',
+            'accidented' => self::normalize_boolean_field($vehicle, 'incidentato'),
+            'non_smoker' => self::normalize_boolean_field($vehicle, 'noFumatori'),
+            'company_vehicle' => self::normalize_boolean_field($vehicle, 'isVeicoloAziendale'),
+            'classic_vehicle' => self::normalize_boolean_field($vehicle, 'isVeicoloEpoca'),
             'body_type' => isset($vehicle['tipoCarrozzeria']) ? $vehicle['tipoCarrozzeria'] : '',
             'transmission' => isset($vehicle['tipoCambio']) ? $vehicle['tipoCambio'] : '',
             'engine_size' => isset($vehicle['cilindrata']) ? (string) $vehicle['cilindrata'] : '',
+            'cylinders' => isset($vehicle['numeroCilindri']) ? (string) $vehicle['numeroCilindri'] : '',
+            'power_kw' => isset($vehicle['potenzakW']) ? (string) $vehicle['potenzakW'] : '',
             'power' => self::format_power(isset($vehicle['potenzakW']) ? $vehicle['potenzakW'] : ''),
+            'gears' => isset($vehicle['numeroMarce']) ? (string) $vehicle['numeroMarce'] : '',
+            'drive' => isset($vehicle['trazione']) ? $vehicle['trazione'] : '',
             'color' => isset($vehicle['coloreCarrozzeria']) ? $vehicle['coloreCarrozzeria'] : '',
             'doors' => isset($vehicle['numeroPorte']) ? (string) $vehicle['numeroPorte'] : '',
             'seats' => isset($vehicle['numeroPosti']) ? (string) $vehicle['numeroPosti'] : '',
+            'co2_emissions' => isset($vehicle['emissioniCo2']) ? (string) $vehicle['emissioniCo2'] : '',
+            'emission_standard' => isset($vehicle['standardUEEmissioni']) ? $vehicle['standardUEEmissioni'] : '',
+            'urban_consumption' => isset($vehicle['consumoUrbano']) ? (string) $vehicle['consumoUrbano'] : '',
+            'highway_consumption' => isset($vehicle['consumoAutostradale']) ? (string) $vehicle['consumoAutostradale'] : '',
+            'combined_consumption' => isset($vehicle['consumoMisto']) ? (string) $vehicle['consumoMisto'] : '',
             'plate' => isset($vehicle['targa']) ? $vehicle['targa'] : '',
             'vin' => isset($vehicle['telaio']) ? $vehicle['telaio'] : '',
             'location' => '',
@@ -475,8 +505,10 @@ class GPO_API_Client {
             'internal_notes' => self::build_internal_notes($vehicle),
             'specs_list' => self::build_specs_list($vehicle),
             'accessories_list' => self::build_accessories_list($vehicle),
+            'gestpark_optionals' => self::normalize_gestpark_optionals(isset($vehicle['optionals']) ? $vehicle['optionals'] : []),
             'gestpark_images' => self::normalize_gestpark_images($gallery, isset($vehicle['idGestionale']) ? $vehicle['idGestionale'] : ''),
-            'raw_payload' => $vehicle,
+            'gestpark_images_present' => $gallery_payload_present,
+            'raw_payload' => self::raw_payload_without_image_data($vehicle),
         ];
     }
 
@@ -497,6 +529,17 @@ class GPO_API_Client {
     }
 
     protected static function infer_condition($vehicle) {
+        $vehicle_type = strtolower(trim(remove_accents((string) ($vehicle['tipoVeicoloPark'] ?? ''))));
+        if (strpos($vehicle_type, 'km0') !== false || strpos($vehicle_type, 'km 0') !== false) {
+            return 'Km0';
+        }
+        if (strpos($vehicle_type, 'usat') !== false) {
+            return 'Usato';
+        }
+        if (strpos($vehicle_type, 'nuov') !== false) {
+            return 'Nuovo';
+        }
+
         $mileage = isset($vehicle['kmPercorsi']) ? (int) $vehicle['kmPercorsi'] : 0;
 
         if ($mileage <= 0) {
@@ -615,13 +658,56 @@ class GPO_API_Client {
             }
 
             $label = trim((string) $optional['descrizione']);
-            if (!empty($optional['diSerie'])) {
+            if (isset($optional['diSerie']) && self::boolean_value($optional['diSerie'])) {
                 $label .= ' (di serie)';
             }
             $items[] = $label;
         }
 
         return $items;
+    }
+
+    protected static function normalize_gestpark_optionals($optionals) {
+        $normalized = [];
+
+        foreach ((array) $optionals as $optional) {
+            if (!is_array($optional)) {
+                continue;
+            }
+
+            $description = trim((string) ($optional['descrizione'] ?? ''));
+            if ($description === '') {
+                continue;
+            }
+
+            $normalized[] = [
+                'optional_id' => isset($optional['optionalId']) ? absint($optional['optionalId']) : 0,
+                'description' => $description,
+                'standard' => isset($optional['diSerie']) ? self::boolean_value($optional['diSerie']) : false,
+                'source_code' => trim((string) ($optional['codiceFonte'] ?? '')),
+                'autoscout_code' => trim((string) ($optional['codiceAutoscout'] ?? '')),
+            ];
+        }
+
+        return $normalized;
+    }
+
+    protected static function raw_payload_without_image_data($vehicle) {
+        $payload = is_array($vehicle) ? $vehicle : [];
+        if (empty($payload['listaFoto']) || !is_array($payload['listaFoto'])) {
+            return $payload;
+        }
+
+        foreach ($payload['listaFoto'] as $index => $image) {
+            if (!is_array($image) || !array_key_exists('immagine', $image)) {
+                continue;
+            }
+
+            $payload['listaFoto'][$index]['immagineDisponibile'] = trim((string) $image['immagine']) !== '';
+            unset($payload['listaFoto'][$index]['immagine']);
+        }
+
+        return $payload;
     }
 
     protected static function normalize_gestpark_images($images, $external_id) {
@@ -631,13 +717,25 @@ class GPO_API_Client {
             if (!is_array($image) || empty($image['immagine'])) {
                 continue;
             }
+            if (array_key_exists('attiva', $image) && !self::boolean_value($image['attiva'])) {
+                continue;
+            }
+
+            $mime = self::image_mime_from_type(isset($image['tipoFoto']) ? $image['tipoFoto'] : '', (string) $image['immagine']);
+            $extension = self::image_extension_from_mime($mime);
+            $position = isset($image['posizione']) ? (int) $image['posizione'] : ($index + 1);
 
             $gallery[] = [
                 'reference' => !empty($image['idGestionaleImmagine']) ? (string) $image['idGestionaleImmagine'] : (string) $external_id . '-' . ($index + 1),
-                'is_primary' => !empty($image['principale']),
-                'position' => isset($image['posizione']) ? (int) $image['posizione'] : ($index + 1),
-                'mime' => self::image_mime_from_type(isset($image['tipoFoto']) ? $image['tipoFoto'] : ''),
-                'filename' => strtolower(trim((string) $external_id)) . '-' . ($index + 1) . '.jpg',
+                'is_primary' => isset($image['principale']) ? self::boolean_value($image['principale']) : false,
+                'position' => $position,
+                'mime' => $mime,
+                'filename' => strtolower(trim((string) $external_id)) . '-' . max(1, $position) . '.' . $extension,
+                'source_type' => isset($image['tipoFoto']) ? (string) $image['tipoFoto'] : '',
+                'caption' => isset($image['descrizione']) ? (string) $image['descrizione'] : '',
+                'description' => isset($image['note']) ? (string) $image['note'] : '',
+                'source_size' => isset($image['dimensioniByte']) ? (string) $image['dimensioniByte'] : '',
+                'source_modified' => self::normalize_date(isset($image['dataUltimaModifica']) ? $image['dataUltimaModifica'] : '', true),
                 'image' => (string) $image['immagine'],
             ];
         }
@@ -819,10 +917,40 @@ class GPO_API_Client {
         return 'Risposta API non valida: ' . $code;
     }
 
-    protected static function extract_year($value) {
-        $timestamp = $value ? strtotime((string) $value) : false;
+    protected static function normalize_boolean_field($values, $key) {
+        return array_key_exists($key, (array) $values) ? (self::boolean_value($values[$key]) ? '1' : '0') : '';
+    }
 
-        return $timestamp ? gmdate('Y', $timestamp) : '';
+    protected static function boolean_value($value) {
+        if (is_bool($value)) {
+            return $value;
+        }
+        if (is_numeric($value)) {
+            return (int) $value === 1;
+        }
+
+        return in_array(strtolower(trim(remove_accents((string) $value))), ['1', 'true', 'yes', 'si', 'on'], true);
+    }
+
+    protected static function normalize_date($value, $with_time = false) {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return '';
+        }
+
+        try {
+            $date = new DateTimeImmutable($value);
+        } catch (Exception $exception) {
+            return '';
+        }
+
+        return $date->format($with_time ? 'Y-m-d H:i:s' : 'Y-m-d');
+    }
+
+    protected static function extract_year($value) {
+        $date = self::normalize_date($value);
+
+        return $date !== '' ? substr($date, 0, 4) : '';
     }
 
     protected static function format_power($kw) {
@@ -840,14 +968,29 @@ class GPO_API_Client {
         return rtrim(rtrim(number_format($kw_value, 0, '.', ''), '0'), '.') . ' kW / ' . $cv . ' CV';
     }
 
-    protected static function image_mime_from_type($type) {
+    protected static function image_mime_from_type($type, $payload = '') {
         $type = strtolower((string) $type);
+        $payload = trim((string) $payload);
 
-        if ($type === 'png') {
+        if (strpos($type, 'png') !== false || strpos($payload, 'data:image/png') === 0 || strpos($payload, 'iVBORw0KGgo') === 0) {
             return 'image/png';
+        }
+        if (strpos($type, 'webp') !== false || strpos($payload, 'data:image/webp') === 0 || strpos($payload, 'UklGR') === 0) {
+            return 'image/webp';
         }
 
         return 'image/jpeg';
+    }
+
+    protected static function image_extension_from_mime($mime) {
+        if ($mime === 'image/png') {
+            return 'png';
+        }
+        if ($mime === 'image/webp') {
+            return 'webp';
+        }
+
+        return 'jpg';
     }
 
     protected static function looks_like_gestpark_endpoint($endpoint) {

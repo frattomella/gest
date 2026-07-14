@@ -1154,16 +1154,40 @@ class GPO_Frontend {
         $data = is_array($data) ? $data : [];
         $mileage = self::single_meta_candidate_value($post_id, $data, ['mileage'], ['_gpo_mileage']);
         $engine_size = self::single_meta_candidate_value($post_id, $data, ['engine_size'], ['_gpo_engine_size']);
+        $registration = self::single_meta_candidate_value($post_id, $data, ['registration_date', 'year', 'registration_year'], ['_gpo_registration_date', '_gpo_year', '_gpo_registration_year']);
+        $positive_flag = static function ($key) use ($post_id, $data) {
+            $value = array_key_exists($key, $data) ? $data[$key] : get_post_meta($post_id, '_gpo_' . $key, true);
+            return self::truthy_value($value) ? 'Si' : '';
+        };
+        $with_unit = static function ($value, $unit) {
+            $value = trim((string) $value);
+            if (!self::single_value_is_displayable($value)) {
+                return '';
+            }
+
+            return preg_match('/[a-z%]/i', $value) ? $value : $value . $unit;
+        };
 
         $items = [
+            ['group' => 'Informazioni veicolo', 'label' => 'Tipologia', 'value' => self::single_meta_candidate_value($post_id, $data, ['vehicle_type'], ['_gpo_vehicle_type']), 'icon' => 'car'],
             ['group' => 'Informazioni veicolo', 'label' => 'Condizione', 'value' => self::single_meta_candidate_value($post_id, $data, ['condition'], ['_gpo_condition']), 'icon' => 'badge'],
-            ['group' => 'Informazioni veicolo', 'label' => 'Immatricolazione', 'value' => self::single_meta_candidate_value($post_id, $data, ['year', 'registration_year'], ['_gpo_year', '_gpo_registration_year']), 'icon' => 'calendar'],
+            ['group' => 'Informazioni veicolo', 'label' => 'Immatricolazione', 'value' => $registration, 'icon' => 'calendar'],
+            ['group' => 'Informazioni veicolo', 'label' => 'Data arrivo', 'value' => self::single_meta_candidate_value($post_id, $data, ['arrival_date'], ['_gpo_arrival_date']), 'icon' => 'calendar'],
             ['group' => 'Informazioni veicolo', 'label' => 'Chilometraggio', 'value' => $mileage !== '' ? self::format_number($mileage, ' km') : '', 'icon' => 'road'],
             ['group' => 'Informazioni veicolo', 'label' => 'Sede', 'value' => self::single_meta_candidate_value($post_id, $data, ['location'], ['_gpo_location']), 'icon' => 'pin'],
             ['group' => 'Informazioni veicolo', 'label' => 'Neopatentati', 'value' => self::is_neopatentati_vehicle($post_id, $data) ? 'Si' : '', 'icon' => 'check-circle'],
+            ['group' => 'Informazioni veicolo', 'label' => 'Prezzo trattabile', 'value' => $positive_flag('price_negotiable'), 'icon' => 'check-circle'],
+            ['group' => 'Informazioni veicolo', 'label' => 'IVA deducibile', 'value' => $positive_flag('vat_deductible'), 'icon' => 'check-circle'],
+            ['group' => 'Informazioni veicolo', 'label' => 'Non fumatori', 'value' => $positive_flag('non_smoker'), 'icon' => 'check-circle'],
+            ['group' => 'Informazioni veicolo', 'label' => 'Veicolo aziendale', 'value' => $positive_flag('company_vehicle'), 'icon' => 'check-circle'],
+            ['group' => 'Informazioni veicolo', 'label' => 'Veicolo d epoca', 'value' => $positive_flag('classic_vehicle'), 'icon' => 'check-circle'],
+            ['group' => 'Informazioni veicolo', 'label' => 'Incidentato', 'value' => $positive_flag('accidented'), 'icon' => 'badge'],
             ['group' => 'Motore', 'label' => 'Alimentazione', 'value' => self::single_meta_candidate_value($post_id, $data, ['fuel'], ['_gpo_fuel']), 'icon' => 'fuel'],
             ['group' => 'Motore', 'label' => 'Cambio', 'value' => self::single_meta_candidate_value($post_id, $data, ['transmission'], ['_gpo_transmission']), 'icon' => 'gear'],
             ['group' => 'Motore', 'label' => 'Cilindrata', 'value' => $engine_size !== '' ? self::format_engine_size($engine_size) : '', 'icon' => 'engine'],
+            ['group' => 'Motore', 'label' => 'Cilindri', 'value' => self::single_meta_candidate_value($post_id, $data, ['cylinders'], ['_gpo_cylinders']), 'icon' => 'engine'],
+            ['group' => 'Motore', 'label' => 'Marce', 'value' => self::single_meta_candidate_value($post_id, $data, ['gears'], ['_gpo_gears']), 'icon' => 'gear'],
+            ['group' => 'Motore', 'label' => 'Trazione', 'value' => self::single_meta_candidate_value($post_id, $data, ['drive'], ['_gpo_drive']), 'icon' => 'road'],
             ['group' => 'Prestazioni', 'label' => 'Potenza', 'value' => self::single_meta_candidate_value($post_id, $data, ['power'], ['_gpo_power']), 'icon' => 'bolt'],
             ['group' => 'Prestazioni', 'label' => 'Potenza fiscale', 'value' => self::single_meta_candidate_value($post_id, $data, ['fiscal_power'], ['_gpo_fiscal_power']), 'icon' => 'badge'],
             ['group' => 'Carrozzeria', 'label' => 'Carrozzeria', 'value' => self::single_meta_candidate_value($post_id, $data, ['body_type'], ['_gpo_body_type']), 'icon' => 'car'],
@@ -1172,6 +1196,11 @@ class GPO_Frontend {
             ['group' => 'Carrozzeria', 'label' => 'Posti', 'value' => self::single_meta_candidate_value($post_id, $data, ['seats'], ['_gpo_seats']), 'icon' => 'users'],
             ['group' => 'Carrozzeria', 'label' => 'Lunghezza', 'value' => self::single_meta_candidate_value($post_id, $data, ['length', 'vehicle_length'], ['_gpo_length', '_gpo_vehicle_length']), 'icon' => 'ruler'],
             ['group' => 'Carrozzeria', 'label' => 'Larghezza', 'value' => self::single_meta_candidate_value($post_id, $data, ['width', 'vehicle_width'], ['_gpo_width', '_gpo_vehicle_width']), 'icon' => 'ruler'],
+            ['group' => 'Consumi ed emissioni', 'label' => 'Emissioni CO2', 'value' => $with_unit(self::single_meta_candidate_value($post_id, $data, ['co2_emissions'], ['_gpo_co2_emissions']), ' g/km'), 'icon' => 'badge'],
+            ['group' => 'Consumi ed emissioni', 'label' => 'Standard emissioni', 'value' => self::single_meta_candidate_value($post_id, $data, ['emission_standard'], ['_gpo_emission_standard']), 'icon' => 'badge'],
+            ['group' => 'Consumi ed emissioni', 'label' => 'Consumo urbano', 'value' => $with_unit(self::single_meta_candidate_value($post_id, $data, ['urban_consumption'], ['_gpo_urban_consumption']), ' l/100 km'), 'icon' => 'fuel'],
+            ['group' => 'Consumi ed emissioni', 'label' => 'Consumo autostradale', 'value' => $with_unit(self::single_meta_candidate_value($post_id, $data, ['highway_consumption'], ['_gpo_highway_consumption']), ' l/100 km'), 'icon' => 'fuel'],
+            ['group' => 'Consumi ed emissioni', 'label' => 'Consumo misto', 'value' => $with_unit(self::single_meta_candidate_value($post_id, $data, ['combined_consumption'], ['_gpo_combined_consumption']), ' l/100 km'), 'icon' => 'fuel'],
         ];
 
         return array_values(array_filter($items, function ($item) {
@@ -1525,6 +1554,14 @@ class GPO_Frontend {
                 ];
             }, $definitions)));
         };
+        $with_unit = static function ($value, $unit) {
+            $value = trim((string) $value);
+            if (!self::single_value_is_displayable($value)) {
+                return '';
+            }
+
+            return preg_match('/[a-z%]/i', $value) ? $value : $value . $unit;
+        };
 
         $price = $data['price'] ?? get_post_meta($post_id, '_gpo_price', true);
         $current_price = $data['current_price'] ?? $price;
@@ -1586,7 +1623,7 @@ class GPO_Frontend {
             ]),
             'Caratteristiche generali' => $rows([
                 ['Chilometraggio', $mileage !== '' ? self::format_number($mileage, ' km') : ''],
-                ['Immatricolazione', $value_for(['year', 'registration_year'])],
+                ['Immatricolazione', $value_for(['registration_date', 'year', 'registration_year'])],
                 ['Veicolo incidentato', $positive_flag(['accidented', 'damaged_vehicle'])],
                 ['Non fumatori', $positive_flag(['non_smoker', 'smoke_free'])],
                 ['Veicolo aziendale', $positive_flag(['company_vehicle', 'business_vehicle'])],
@@ -1599,7 +1636,7 @@ class GPO_Frontend {
                 ['Cilindrata', $engine_size !== '' ? self::format_engine_size($engine_size) : ''],
                 ['Numero cilindri', $value_for(['cylinders', 'cylinder_count'])],
                 ['Potenza', $value_for(['power'])],
-                ['Potenza kW', $value_for(['power_kw', 'kw'])],
+                ['Potenza kW', $with_unit($value_for(['power_kw', 'kw']), ' kW')],
                 ['Cambio', $value_for(['transmission'])],
                 ['Numero marce', $value_for(['gears', 'gear_count'])],
                 ['Trazione', $value_for(['drive', 'drivetrain'])],
@@ -1613,11 +1650,11 @@ class GPO_Frontend {
                 ['Larghezza', $value_for(['width', 'vehicle_width'])],
             ]),
             'Consumi ed emissioni' => $rows([
-                ['Emissioni CO2', $value_for(['co2_emissions', 'emissions_co2'])],
+                ['Emissioni CO2', $with_unit($value_for(['co2_emissions', 'emissions_co2']), ' g/km')],
                 ['Standard emissioni', $value_for(['emission_standard', 'euro_standard'])],
-                ['Consumo urbano', $value_for(['urban_consumption', 'consumption_urban'])],
-                ['Consumo autostradale', $value_for(['highway_consumption', 'consumption_highway'])],
-                ['Consumo misto', $value_for(['combined_consumption', 'consumption_combined'])],
+                ['Consumo urbano', $with_unit($value_for(['urban_consumption', 'consumption_urban']), ' l/100 km')],
+                ['Consumo autostradale', $with_unit($value_for(['highway_consumption', 'consumption_highway']), ' l/100 km')],
+                ['Consumo misto', $with_unit($value_for(['combined_consumption', 'consumption_combined']), ' l/100 km')],
             ]),
         ]);
 

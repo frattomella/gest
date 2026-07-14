@@ -61,17 +61,23 @@ class GPO_Image_Manager {
             require_once ABSPATH . 'wp-admin/includes/image.php';
         }
 
+        $images = array_values(array_filter((array) $images, function ($image) {
+            return is_array($image) && !empty($image['image']);
+        }));
         $attachment_ids = [];
         $primary_id = 0;
 
-        foreach ((array) $images as $index => $image) {
-            if (!is_array($image) || empty($image['image'])) {
-                continue;
-            }
+        if (empty($images)) {
+            update_post_meta($post_id, '_gpo_gallery_ids', []);
+            delete_post_thumbnail($post_id);
+            return [];
+        }
 
+        foreach ($images as $index => $image) {
             $reference = !empty($image['reference']) ? sanitize_text_field((string) $image['reference']) : sanitize_text_field((string) $external_id . '-' . ($index + 1));
             $existing = self::find_attachment_by_reference($reference);
             if ($existing) {
+                self::update_attachment_source_data($existing, $image);
                 $attachment_ids[] = $existing;
                 if (!empty($image['is_primary'])) {
                     $primary_id = $existing;
@@ -114,6 +120,7 @@ class GPO_Image_Manager {
             }
 
             update_post_meta($attachment_id, '_gpo_source_reference', $reference);
+            self::update_attachment_source_data($attachment_id, $image);
             $attachment_ids[] = (int) $attachment_id;
 
             if (!empty($image['is_primary'])) {
@@ -130,6 +137,40 @@ class GPO_Image_Manager {
         }
 
         return $attachment_ids;
+    }
+
+    protected static function update_attachment_source_data($attachment_id, $image) {
+        $attachment_id = absint($attachment_id);
+        if (!$attachment_id || !is_array($image)) {
+            return;
+        }
+
+        $caption = sanitize_text_field((string) ($image['caption'] ?? ''));
+        $description = sanitize_textarea_field((string) ($image['description'] ?? ''));
+        $postarr = ['ID' => $attachment_id];
+
+        if ($caption !== '') {
+            $postarr['post_title'] = $caption;
+            $postarr['post_excerpt'] = $caption;
+        }
+        if ($description !== '') {
+            $postarr['post_content'] = $description;
+        }
+        if (count($postarr) > 1) {
+            wp_update_post(wp_slash($postarr));
+        }
+
+        $source_meta = [
+            '_gpo_source_position' => isset($image['position']) ? absint($image['position']) : 0,
+            '_gpo_source_primary' => !empty($image['is_primary']) ? '1' : '0',
+            '_gpo_source_type' => sanitize_text_field((string) ($image['source_type'] ?? '')),
+            '_gpo_source_size' => isset($image['source_size']) ? absint($image['source_size']) : 0,
+            '_gpo_source_modified' => sanitize_text_field((string) ($image['source_modified'] ?? '')),
+        ];
+
+        foreach ($source_meta as $meta_key => $meta_value) {
+            update_post_meta($attachment_id, $meta_key, $meta_value);
+        }
     }
 
     protected static function find_attachment_by_source($url) {

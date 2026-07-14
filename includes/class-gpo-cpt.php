@@ -101,22 +101,41 @@ class GPO_CPT {
 
     public static function fields() {
         return [
+            'vehicle_type' => 'Tipologia veicolo Park',
             'condition' => 'Condizione',
             'year' => 'Anno',
+            'registration_date' => 'Data immatricolazione',
+            'arrival_date' => 'Data arrivo',
             'price' => 'Prezzo',
+            'dealer_price' => 'Prezzo dealer (interno)',
+            'price_negotiable' => 'Prezzo trattabile',
+            'vat_deductible' => 'IVA deducibile',
             'fuel' => 'Alimentazione',
             'neopatentati' => 'Neopatentati',
             'mileage' => 'Chilometraggio',
+            'accidented' => 'Veicolo incidentato',
+            'non_smoker' => 'Veicolo non fumatori',
+            'company_vehicle' => 'Veicolo aziendale',
+            'classic_vehicle' => 'Veicolo d\'epoca',
             'body_type' => 'Carrozzeria',
             'transmission' => 'Cambio',
             'engine_size' => 'Cilindrata',
+            'cylinders' => 'Numero cilindri',
             'brand' => 'Marca',
             'model' => 'Modello',
             'version' => 'Versione',
             'power' => 'Potenza',
+            'power_kw' => 'Potenza kW',
+            'gears' => 'Numero marce',
+            'drive' => 'Trazione',
             'color' => 'Colore',
             'doors' => 'Porte',
             'seats' => 'Posti',
+            'co2_emissions' => 'Emissioni CO2',
+            'emission_standard' => 'Standard UE emissioni',
+            'urban_consumption' => 'Consumo urbano',
+            'highway_consumption' => 'Consumo autostradale',
+            'combined_consumption' => 'Consumo misto',
             'plate' => 'Targa',
             'vin' => 'Telaio',
             'location' => 'Sede',
@@ -126,6 +145,18 @@ class GPO_CPT {
             'promo_end' => 'Fine promo',
             'external_id' => 'ID esterno',
             'gallery_urls' => 'URL galleria',
+        ];
+    }
+
+    protected static function boolean_fields() {
+        return [
+            'neopatentati',
+            'price_negotiable',
+            'vat_deductible',
+            'accidented',
+            'non_smoker',
+            'company_vehicle',
+            'classic_vehicle',
         ];
     }
 
@@ -142,11 +173,14 @@ class GPO_CPT {
             if ($key === 'gallery_urls') {
                 echo '<textarea style="width:100%;min-height:90px;" id="gpo_' . esc_attr($key) . '" name="gpo_meta[' . esc_attr($key) . ']">' . esc_textarea($value) . '</textarea>';
                 echo '<p class="description">Inserisci un URL per riga. Questo campo viene usato anche in fase di test senza import automatico immagini.</p>';
-            } elseif ($key === 'neopatentati') {
-                echo '<label><input type="checkbox" id="gpo_' . esc_attr($key) . '" name="gpo_meta[' . esc_attr($key) . ']" value="1" ' . checked($value, '1', false) . ' /> Veicolo adatto a neopatentati</label>';
+            } elseif (in_array($key, self::boolean_fields(), true)) {
+                echo '<label><input type="checkbox" id="gpo_' . esc_attr($key) . '" name="gpo_meta[' . esc_attr($key) . ']" value="1" ' . checked($value, '1', false) . ' /> ' . esc_html($label) . '</label>';
             } else {
-                $type = in_array($key, ['price', 'price_promo'], true) ? 'number' : 'text';
-                echo '<input style="width:100%;" type="' . esc_attr($type) . '" id="gpo_' . esc_attr($key) . '" name="gpo_meta[' . esc_attr($key) . ']" value="' . esc_attr($value) . '" />';
+                $type = in_array($key, ['registration_date', 'arrival_date'], true)
+                    ? 'date'
+                    : (in_array($key, ['price', 'dealer_price', 'price_promo', 'mileage', 'engine_size', 'cylinders', 'power_kw', 'gears', 'doors', 'seats', 'co2_emissions', 'urban_consumption', 'highway_consumption', 'combined_consumption'], true) ? 'number' : 'text');
+                $step = in_array($key, ['price', 'dealer_price', 'price_promo', 'co2_emissions', 'urban_consumption', 'highway_consumption', 'combined_consumption'], true) ? ' step="any"' : '';
+                echo '<input style="width:100%;" type="' . esc_attr($type) . '"' . $step . ' id="gpo_' . esc_attr($key) . '" name="gpo_meta[' . esc_attr($key) . ']" value="' . esc_attr($value) . '" />';
             }
             if (!in_array($key, ['external_id', 'gallery_urls'], true)) {
                 echo '<p><label><input type="checkbox" name="gpo_lock[' . esc_attr($key) . ']" value="1" ' . checked($lock, '1', false) . ' /> Mantieni questo campo locale e non sovrascriverlo alla prossima sincronizzazione</label></p>';
@@ -203,7 +237,7 @@ class GPO_CPT {
 
         foreach ($fields as $key => $label) {
             $value = isset($meta_values[$key]) ? $meta_values[$key] : '';
-            if ($key === 'neopatentati') {
+            if (in_array($key, self::boolean_fields(), true)) {
                 update_post_meta($post_id, '_gpo_' . $key, !empty($value) ? '1' : '0');
             } else {
                 update_post_meta($post_id, '_gpo_' . $key, is_array($value) ? array_map('sanitize_text_field', $value) : sanitize_textarea_field($value));

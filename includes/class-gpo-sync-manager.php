@@ -147,22 +147,41 @@ class GPO_Sync_Manager {
         if (self::is_gestpark_sync($settings)) {
             return [
                 'external_id' => 'id',
+                'vehicle_type' => 'vehicle_type',
                 'brand' => 'brand',
                 'model' => 'model',
                 'version' => 'version',
                 'description' => 'description',
                 'condition' => 'condition',
                 'year' => 'year',
+                'registration_date' => 'registration_date',
+                'arrival_date' => 'arrival_date',
                 'price' => 'price',
+                'dealer_price' => 'dealer_price',
+                'price_negotiable' => 'price_negotiable',
+                'vat_deductible' => 'vat_deductible',
                 'fuel' => 'fuel',
                 'mileage' => 'mileage',
+                'accidented' => 'accidented',
+                'non_smoker' => 'non_smoker',
+                'company_vehicle' => 'company_vehicle',
+                'classic_vehicle' => 'classic_vehicle',
                 'body_type' => 'body_type',
                 'transmission' => 'transmission',
                 'engine_size' => 'engine_size',
+                'cylinders' => 'cylinders',
                 'power' => 'power',
+                'power_kw' => 'power_kw',
+                'gears' => 'gears',
+                'drive' => 'drive',
                 'color' => 'color',
                 'doors' => 'doors',
                 'seats' => 'seats',
+                'co2_emissions' => 'co2_emissions',
+                'emission_standard' => 'emission_standard',
+                'urban_consumption' => 'urban_consumption',
+                'highway_consumption' => 'highway_consumption',
+                'combined_consumption' => 'combined_consumption',
                 'plate' => 'plate',
                 'vin' => 'vin',
                 'location' => 'location',
@@ -252,11 +271,12 @@ class GPO_Sync_Manager {
             ? implode("\n", array_map('sanitize_text_field', $item['accessories_list']))
             : '';
         update_post_meta($post_id, '_gpo_accessories', sanitize_textarea_field($accessories));
+        update_post_meta($post_id, '_gpo_optionals', !empty($item['gestpark_optionals']) && is_array($item['gestpark_optionals']) ? wp_json_encode($item['gestpark_optionals']) : '');
 
         update_post_meta($post_id, '_gpo_raw_payload', !empty($item['raw_payload']) && is_array($item['raw_payload']) ? wp_json_encode($item['raw_payload']) : '');
 
-        if (!empty($item['gestpark_images']) && get_post_meta($post_id, '_gpo_lock_gallery_urls', true) !== '1') {
-            GPO_Image_Manager::sideload_base64_gallery($post_id, $item['gestpark_images'], isset($item['id']) ? $item['id'] : '');
+        if (!empty($item['gestpark_images_present']) && get_post_meta($post_id, '_gpo_lock_gallery_urls', true) !== '1') {
+            GPO_Image_Manager::sideload_base64_gallery($post_id, isset($item['gestpark_images']) ? $item['gestpark_images'] : [], isset($item['id']) ? $item['id'] : '');
             update_post_meta($post_id, '_gpo_gallery_urls', '');
         }
     }
