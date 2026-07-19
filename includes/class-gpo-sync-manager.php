@@ -4,86 +4,267 @@ if (!defined('ABSPATH')) {
 }
 
 class GPO_Sync_Manager {
+    const LOCK_OPTION = 'gpo_sync_process_lock';
+    const LOCK_TTL = 7200;
+
     public static function run_scheduled_sync() {
         $settings = self::settings();
         if (empty($settings['sync']['enabled'])) {
             return;
         }
-        self::sync();
+        $connection = GPO_API_Client::connection_summary(isset($settings['api']) ? $settings['api'] : []);
+        if (empty($connection['ready'])) {
+            return;
+        }
+        self::sync('cron');
     }
 
-    public static function sync() {
-        $settings = self::settings();
-        $mapping = self::effective_mapping($settings);
-        $items = GPO_API_Client::fetch_remote_data();
-
-        if (is_wp_error($items)) {
-            GPO_Logger::add('Sincronizzazione fallita', ['errore' => $items->get_error_message()]);
-            return $items;
+    public static function sync($context = 'manual') {
+        $lock_token = self::acquire_lock();
+        if (is_wp_error($lock_token)) {
+            return $lock_token;
         }
 
-        if (is_wp_error($mapping)) {
-            GPO_Logger::add('Sincronizzazione bloccata', ['errore' => $mapping->get_error_message()]);
-            return $mapping;
-        }
-
-        $processed = 0;
-        foreach ($items as $item) {
-            if (!is_array($item)) {
-                continue;
-            }
-
-            $external_id = self::extract_value($item, isset($mapping['external_id']) ? $mapping['external_id'] : 'id');
-            if (!$external_id) {
-                continue;
-            }
-
-            $post_id = self::find_vehicle_by_external_id($external_id);
-            $postarr = [
-                'post_type'   => 'gpo_vehicle',
-                'post_status' => 'publish',
-                'post_title'  => self::build_title($item, $mapping),
-                'post_content'=> wp_kses_post((string) self::extract_value($item, isset($mapping['description']) ? $mapping['description'] : '')),
-            ];
-
-            if ($post_id) {
-                $postarr['ID'] = $post_id;
-                wp_update_post(wp_slash($postarr));
-            } else {
-                $post_id = wp_insert_post(wp_slash($postarr));
-            }
-
-            if (is_wp_error($post_id) || !$post_id) {
-                GPO_Logger::add('Creazione veicolo fallita', ['external_id' => $external_id]);
-                continue;
-            }
-
-            update_post_meta($post_id, '_gpo_external_id', sanitize_text_field((string) $external_id));
-
-            self::sync_core_fields($post_id, $item, $mapping);
-            self::sync_taxonomies($post_id);
-
-            if (self::is_gestpark_item($item)) {
-                self::sync_gestpark_extras($post_id, $item);
-            } else {
-                self::sync_url_gallery($post_id, $item, $mapping);
-            }
-
-            update_post_meta($post_id, '_gpo_last_sync', current_time('mysql'));
-            $processed++;
-        }
-
-        update_option('gpo_last_sync_result', [
-            'time' => current_time('mysql'),
-            'processed' => $processed,
-            'source' => self::is_gestpark_sync($settings) ? 'gestpark' : 'manual',
-        ], false);
-
-        GPO_Logger::add('Sincronizzazione completata', ['veicoli' => $processed]);
-        return [
-            'success' => true,
-            'processed' => $processed,
+        $started_at = microtime(true);
+        $stats = [
+            'created' => 0,
+            'updated' => 0,
+            'unchanged' => 0,
+            'deleted' => 0,
+            'errors' => 0,
         ];
+        GPO_Logger::add('Sincronizzazione avviata', ['modalita' => sanitize_key((string) $context)]);
+
+        try {
+            $settings = self::settings();
+            $mapping = self::effective_mapping($settings);
+            if (is_wp_error($mapping)) {
+                return self::failed_sync($mapping, $stats, $started_at, $settings);
+            }
+
+            $items = GPO_API_Client::fetch_remote_data();
+            if (is_wp_error($items)) {
+                return self::failed_sync($items, $stats, $started_at, $settings);
+            }
+
+            $remote_items = [];
+            $snapshot_valid = true;
+            foreach ((array) $items as $item) {
+                if (!is_array($item)) {
+                    $stats['errors']++;
+                    $snapshot_valid = false;
+                    continue;
+                }
+
+                $external_id = sanitize_text_field((string) self::extract_value($item, isset($mapping['external_id']) ? $mapping['external_id'] : 'id'));
+                if ($external_id === '') {
+                    $stats['errors']++;
+                    $snapshot_valid = false;
+                    continue;
+                }
+                $remote_items[$external_id] = $item;
+            }
+
+            if (!empty($items) && empty($remote_items)) {
+                $error = new WP_Error('gpo_invalid_remote_snapshot', 'La risposta ParkPlatform non contiene identificativi idGestionale validi. I veicoli locali non sono stati modificati.');
+                return self::failed_sync($error, $stats, $started_at, $settings);
+            }
+
+            $local_vehicles = self::load_imported_vehicle_map();
+            foreach ($remote_items as $external_id => $item) {
+                $post_id = isset($local_vehicles[$external_id]) ? absint($local_vehicles[$external_id]) : 0;
+                $is_new = !$post_id;
+                $post_changed = false;
+
+                if ($is_new) {
+                    $post_id = wp_insert_post(wp_slash([
+                        'post_type' => 'gpo_vehicle',
+                        'post_status' => 'publish',
+                        'post_title' => self::build_title($item, $mapping),
+                        'post_content' => wp_kses_post((string) self::extract_value($item, isset($mapping['description']) ? $mapping['description'] : '')),
+                    ]));
+                } else {
+                    $post_result = self::sync_post_record($post_id, $item, $mapping);
+                    if (is_wp_error($post_result)) {
+                        $stats['errors']++;
+                        GPO_Logger::add('Errore aggiornamento veicolo', ['idGestionale' => $external_id, 'errore' => $post_result->get_error_message()]);
+                        continue;
+                    }
+                    $post_changed = $post_result;
+                }
+
+                if (is_wp_error($post_id) || !$post_id) {
+                    $stats['errors']++;
+                    GPO_Logger::add('Errore creazione veicolo', ['idGestionale' => $external_id]);
+                    continue;
+                }
+
+                $meta_changed = self::update_meta_if_changed($post_id, '_gpo_external_id', $external_id);
+                $changed_fields = self::sync_core_fields($post_id, $item, $mapping);
+                $taxonomy_changed = self::sync_taxonomies($post_id, $changed_fields, $is_new);
+                $extra_changed = self::is_gestpark_item($item)
+                    ? self::sync_gestpark_extras($post_id, $item, $stats['errors'])
+                    : self::sync_url_gallery($post_id, $item, $mapping);
+                $vehicle_changed = $is_new || $post_changed || $meta_changed || !empty($changed_fields) || $taxonomy_changed || $extra_changed;
+
+                if ($vehicle_changed) {
+                    self::update_meta_if_changed($post_id, '_gpo_last_sync', current_time('mysql'));
+                }
+
+                if ($is_new) {
+                    $stats['created']++;
+                } elseif ($vehicle_changed) {
+                    $stats['updated']++;
+                } else {
+                    $stats['unchanged']++;
+                }
+            }
+
+            if (self::is_gestpark_sync($settings) && $snapshot_valid) {
+                self::reconcile_removed_vehicles($local_vehicles, array_keys($remote_items), $stats);
+            } elseif (self::is_gestpark_sync($settings) && !$snapshot_valid) {
+                GPO_Logger::add('Riconciliazione veicoli saltata', ['errore' => 'Snapshot ParkPlatform incompleto']);
+            }
+
+            return self::complete_sync($stats, $started_at, $settings);
+        } catch (Throwable $exception) {
+            $error = new WP_Error('gpo_sync_exception', 'Sincronizzazione interrotta: ' . $exception->getMessage());
+            return self::failed_sync($error, $stats, $started_at, isset($settings) ? $settings : self::settings());
+        } finally {
+            self::release_lock($lock_token);
+        }
+    }
+
+    protected static function acquire_lock() {
+        $token = function_exists('wp_generate_uuid4') ? wp_generate_uuid4() : uniqid('gpo-sync-', true);
+        $lock = get_option(self::LOCK_OPTION, []);
+
+        if (is_array($lock) && !empty($lock['started']) && (time() - absint($lock['started'])) > self::LOCK_TTL) {
+            delete_option(self::LOCK_OPTION);
+        }
+
+        $created = add_option(self::LOCK_OPTION, ['token' => $token, 'started' => time()], '', false);
+        if (!$created) {
+            return new WP_Error('gpo_sync_locked', 'Una sincronizzazione e gia in corso. Attendi il completamento prima di avviarne un altra.');
+        }
+
+        return $token;
+    }
+
+    protected static function release_lock($token) {
+        $lock = get_option(self::LOCK_OPTION, []);
+        if (is_array($lock) && isset($lock['token']) && hash_equals((string) $lock['token'], (string) $token)) {
+            delete_option(self::LOCK_OPTION);
+        }
+    }
+
+    protected static function failed_sync($error, $stats, $started_at, $settings) {
+        $stats['errors'] = max(1, absint($stats['errors']));
+        $result = self::sync_result('error', $stats, $started_at, $settings, $error->get_error_message());
+        update_option('gpo_last_sync_result', $result, false);
+        GPO_Logger::add('Sincronizzazione fallita', [
+            'durata_secondi' => $result['duration'],
+            'errore' => $error->get_error_message(),
+        ]);
+
+        return $error;
+    }
+
+    protected static function complete_sync($stats, $started_at, $settings) {
+        $result = self::sync_result($stats['errors'] > 0 ? 'partial' : 'success', $stats, $started_at, $settings);
+        update_option('gpo_last_sync_result', $result, false);
+        GPO_Logger::add('Sincronizzazione completata', [
+            'durata_secondi' => $result['duration'],
+            'creati' => $stats['created'],
+            'aggiornati' => $stats['updated'],
+            'invariati' => $stats['unchanged'],
+            'eliminati' => $stats['deleted'],
+            'errori' => $stats['errors'],
+        ]);
+
+        return $result;
+    }
+
+    protected static function sync_result($status, $stats, $started_at, $settings, $message = '') {
+        return array_merge($stats, [
+            'success' => $status !== 'error',
+            'status' => $status,
+            'time' => current_time('mysql'),
+            'duration' => round(max(0, microtime(true) - $started_at), 3),
+            'processed' => absint($stats['created']) + absint($stats['updated']) + absint($stats['unchanged']),
+            'source' => self::is_gestpark_sync($settings) ? 'gestpark' : 'manual',
+            'message' => sanitize_text_field((string) $message),
+        ]);
+    }
+
+    protected static function load_imported_vehicle_map() {
+        $query = new WP_Query([
+            'post_type' => 'gpo_vehicle',
+            'post_status' => ['publish', 'draft', 'pending', 'private', 'future', 'trash'],
+            'posts_per_page' => -1,
+            'fields' => 'ids',
+            'no_found_rows' => true,
+            'meta_query' => [[
+                'key' => '_gpo_external_id',
+                'compare' => 'EXISTS',
+            ]],
+        ]);
+        $vehicles = [];
+
+        foreach ((array) $query->posts as $post_id) {
+            $external_id = sanitize_text_field((string) get_post_meta($post_id, '_gpo_external_id', true));
+            if ($external_id !== '') {
+                $vehicles[$external_id] = absint($post_id);
+            }
+        }
+
+        return $vehicles;
+    }
+
+    protected static function sync_post_record($post_id, $item, $mapping) {
+        $post = get_post($post_id);
+        if (!$post) {
+            return new WP_Error('gpo_missing_local_vehicle', 'Il veicolo locale non e piu disponibile.');
+        }
+
+        $desired = [
+            'post_title' => self::build_title($item, $mapping),
+            'post_content' => wp_kses_post((string) self::extract_value($item, isset($mapping['description']) ? $mapping['description'] : '')),
+            'post_status' => 'publish',
+        ];
+        $update = ['ID' => absint($post_id)];
+
+        foreach ($desired as $field => $value) {
+            if ((string) $post->{$field} !== (string) $value) {
+                $update[$field] = $value;
+            }
+        }
+
+        if (count($update) === 1) {
+            return false;
+        }
+
+        $result = wp_update_post(wp_slash($update), true);
+
+        return is_wp_error($result) ? $result : true;
+    }
+
+    protected static function reconcile_removed_vehicles($local_vehicles, $remote_ids, &$stats) {
+        $remote_lookup = array_fill_keys(array_map('strval', (array) $remote_ids), true);
+
+        foreach ((array) $local_vehicles as $external_id => $post_id) {
+            if (isset($remote_lookup[(string) $external_id]) || get_post_status($post_id) === 'trash') {
+                continue;
+            }
+
+            $trashed = wp_trash_post($post_id);
+            if ($trashed) {
+                $stats['deleted']++;
+            } else {
+                $stats['errors']++;
+                GPO_Logger::add('Errore rimozione veicolo', ['idGestionale' => $external_id]);
+            }
+        }
     }
 
     protected static function build_title($item, $mapping) {
@@ -124,16 +305,28 @@ class GPO_Sync_Manager {
     }
 
     protected static function assign_taxonomy($post_id, $taxonomy, $value) {
-        if ($value) {
-            wp_set_object_terms($post_id, $value, $taxonomy, false);
+        $desired = $value !== '' ? [(string) $value] : [];
+        $current = wp_get_object_terms($post_id, $taxonomy, ['fields' => 'names']);
+        if (is_wp_error($current)) {
+            return false;
         }
+
+        sort($desired, SORT_NATURAL | SORT_FLAG_CASE);
+        sort($current, SORT_NATURAL | SORT_FLAG_CASE);
+        if ($current === $desired) {
+            return false;
+        }
+
+        wp_set_object_terms($post_id, $desired, $taxonomy, false);
+
+        return true;
     }
 
     protected static function settings() {
         $defaults = class_exists('GPO_Admin') ? GPO_Admin::default_settings() : [
             'api' => GPO_API_Client::default_api_settings(),
             'mapping' => [],
-            'sync' => ['enabled' => 0],
+            'sync' => ['enabled' => 1, 'interval' => 5],
         ];
 
         $settings = get_option('gpo_settings', []);
@@ -211,6 +404,8 @@ class GPO_Sync_Manager {
     }
 
     protected static function sync_core_fields($post_id, $item, $mapping) {
+        $changed_fields = [];
+
         foreach (GPO_CPT::fields() as $meta_key => $label) {
             if ($meta_key === 'external_id') {
                 continue;
@@ -229,22 +424,39 @@ class GPO_Sync_Manager {
                 $value = implode("\n", array_map('sanitize_text_field', $value));
             }
 
-            update_post_meta($post_id, '_gpo_' . $meta_key, sanitize_textarea_field((string) $value));
+            $value = sanitize_textarea_field((string) $value);
+            if (self::update_meta_if_changed($post_id, '_gpo_' . $meta_key, $value)) {
+                $changed_fields[] = $meta_key;
+            }
         }
+
+        return $changed_fields;
     }
 
-    protected static function sync_taxonomies($post_id) {
-        self::assign_taxonomy($post_id, 'gpo_brand', get_post_meta($post_id, '_gpo_brand', true));
-        self::assign_taxonomy($post_id, 'gpo_fuel', get_post_meta($post_id, '_gpo_fuel', true));
-        self::assign_taxonomy($post_id, 'gpo_body', get_post_meta($post_id, '_gpo_body_type', true));
-        self::assign_taxonomy($post_id, 'gpo_transmission', get_post_meta($post_id, '_gpo_transmission', true));
-        self::assign_taxonomy($post_id, 'gpo_condition', get_post_meta($post_id, '_gpo_condition', true));
+    protected static function sync_taxonomies($post_id, $changed_fields, $force = false) {
+        $targets = [
+            'brand' => ['gpo_brand', '_gpo_brand'],
+            'fuel' => ['gpo_fuel', '_gpo_fuel'],
+            'body_type' => ['gpo_body', '_gpo_body_type'],
+            'transmission' => ['gpo_transmission', '_gpo_transmission'],
+            'condition' => ['gpo_condition', '_gpo_condition'],
+        ];
+        $changed = false;
+
+        foreach ($targets as $field => $target) {
+            if (!$force && !in_array($field, (array) $changed_fields, true)) {
+                continue;
+            }
+            $changed = self::assign_taxonomy($post_id, $target[0], (string) get_post_meta($post_id, $target[1], true)) || $changed;
+        }
+
+        return $changed;
     }
 
     protected static function sync_url_gallery($post_id, $item, $mapping) {
         $image_field = isset($mapping['gallery_urls']) ? $mapping['gallery_urls'] : '';
         if (!$image_field || get_post_meta($post_id, '_gpo_lock_gallery_urls', true) === '1') {
-            return;
+            return false;
         }
 
         $images = self::extract_value($item, $image_field);
@@ -253,32 +465,99 @@ class GPO_Sync_Manager {
         }
 
         if (is_array($images) && !empty($images)) {
+            $urls = implode("\n", array_map('esc_url_raw', $images));
+            if ((string) get_post_meta($post_id, '_gpo_gallery_urls', true) === $urls) {
+                return false;
+            }
             GPO_Image_Manager::sideload_gallery($post_id, $images);
-            update_post_meta($post_id, '_gpo_gallery_urls', implode("\n", array_map('esc_url_raw', $images)));
+            self::update_meta_if_changed($post_id, '_gpo_gallery_urls', $urls);
+            return true;
         }
+
+        return false;
     }
 
-    protected static function sync_gestpark_extras($post_id, $item) {
-        update_post_meta($post_id, '_gpo_public_notes', sanitize_textarea_field((string) ($item['public_notes'] ?? '')));
-        update_post_meta($post_id, '_gpo_internal_notes', sanitize_textarea_field((string) ($item['internal_notes'] ?? '')));
+    protected static function sync_gestpark_extras($post_id, $item, &$error_count) {
+        if (isset($item['gestpark_detail_complete']) && !$item['gestpark_detail_complete']) {
+            return false;
+        }
+
+        $changed = false;
+        $changed = self::update_unlocked_meta($post_id, 'public_notes', sanitize_textarea_field((string) ($item['public_notes'] ?? ''))) || $changed;
+        $changed = self::update_unlocked_meta($post_id, 'internal_notes', sanitize_textarea_field((string) ($item['internal_notes'] ?? ''))) || $changed;
 
         $specs = !empty($item['specs_list']) && is_array($item['specs_list'])
             ? implode("\n", array_map('sanitize_text_field', $item['specs_list']))
             : '';
-        update_post_meta($post_id, '_gpo_specs', sanitize_textarea_field($specs));
+        $changed = self::update_unlocked_meta($post_id, 'specs', sanitize_textarea_field($specs)) || $changed;
 
-        $accessories = !empty($item['accessories_list']) && is_array($item['accessories_list'])
-            ? implode("\n", array_map('sanitize_text_field', $item['accessories_list']))
-            : '';
-        update_post_meta($post_id, '_gpo_accessories', sanitize_textarea_field($accessories));
-        update_post_meta($post_id, '_gpo_optionals', !empty($item['gestpark_optionals']) && is_array($item['gestpark_optionals']) ? wp_json_encode($item['gestpark_optionals']) : '');
+        if (!empty($item['gestpark_optionals_present'])) {
+            $accessories_list = !empty($item['accessories_list']) && is_array($item['accessories_list']) ? $item['accessories_list'] : [];
+            natcasesort($accessories_list);
+            $accessories = implode("\n", array_map('sanitize_text_field', $accessories_list));
+            $changed = self::update_unlocked_meta($post_id, 'accessories', sanitize_textarea_field($accessories)) || $changed;
 
-        update_post_meta($post_id, '_gpo_raw_payload', !empty($item['raw_payload']) && is_array($item['raw_payload']) ? wp_json_encode($item['raw_payload']) : '');
+            $optionals = !empty($item['gestpark_optionals']) && is_array($item['gestpark_optionals']) ? $item['gestpark_optionals'] : [];
+            usort($optionals, function ($a, $b) {
+                $left = sprintf('%010d|%s', absint($a['optional_id'] ?? 0), strtolower((string) ($a['description'] ?? '')));
+                $right = sprintf('%010d|%s', absint($b['optional_id'] ?? 0), strtolower((string) ($b['description'] ?? '')));
+                return strcmp($left, $right);
+            });
+            $changed = self::update_meta_if_changed($post_id, '_gpo_optionals', self::stable_json($optionals)) || $changed;
+        }
+
+        $raw_payload = !empty($item['raw_payload']) && is_array($item['raw_payload']) ? self::stable_json($item['raw_payload']) : '';
+        $changed = self::update_meta_if_changed($post_id, '_gpo_raw_payload', $raw_payload) || $changed;
 
         if (!empty($item['gestpark_images_present']) && get_post_meta($post_id, '_gpo_lock_gallery_urls', true) !== '1') {
-            GPO_Image_Manager::sideload_base64_gallery($post_id, isset($item['gestpark_images']) ? $item['gestpark_images'] : [], isset($item['id']) ? $item['id'] : '');
-            update_post_meta($post_id, '_gpo_gallery_urls', '');
+            $images_changed = false;
+            $image_errors = 0;
+            GPO_Image_Manager::sideload_base64_gallery($post_id, isset($item['gestpark_images']) ? $item['gestpark_images'] : [], isset($item['id']) ? $item['id'] : '', $images_changed, $image_errors);
+            $error_count += absint($image_errors);
+            $changed = $images_changed || $changed;
+            $changed = self::update_meta_if_changed($post_id, '_gpo_gallery_urls', '') || $changed;
         }
+
+        return $changed;
+    }
+
+    protected static function update_unlocked_meta($post_id, $meta_key, $value) {
+        if (get_post_meta($post_id, '_gpo_lock_' . $meta_key, true) === '1') {
+            return false;
+        }
+
+        return self::update_meta_if_changed($post_id, '_gpo_' . $meta_key, $value);
+    }
+
+    protected static function update_meta_if_changed($post_id, $meta_key, $value) {
+        $current = get_post_meta($post_id, $meta_key, true);
+        if ((string) $current === (string) $value) {
+            return false;
+        }
+
+        update_post_meta($post_id, $meta_key, $value);
+
+        return true;
+    }
+
+    protected static function stable_json($value) {
+        $normalize = function ($item) use (&$normalize) {
+            if (!is_array($item)) {
+                return $item;
+            }
+
+            $keys = array_keys($item);
+            $is_list = empty($keys) || $keys === range(0, count($keys) - 1);
+            if (!$is_list) {
+                ksort($item);
+            }
+            foreach ($item as $key => $child) {
+                $item[$key] = $normalize($child);
+            }
+            return $item;
+        };
+
+        return wp_json_encode($normalize($value));
     }
 
 

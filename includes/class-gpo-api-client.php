@@ -271,8 +271,9 @@ class GPO_API_Client {
 
             $detail = [];
             $external_id = isset($item['idGestionale']) ? $item['idGestionale'] : '';
+            $detail_expected = $context === 'sync' && !empty($api['include_details']) && $detail_url && $external_id !== '';
 
-            if ($context === 'sync' && !empty($api['include_details']) && $detail_url && $external_id !== '') {
+            if ($detail_expected) {
                 $response = self::request_json('GET', str_replace('{idGestionale}', rawurlencode((string) $external_id), $detail_url), [
                     'timeout' => $api['timeout'],
                     'headers' => self::build_auth_headers($api, $token),
@@ -288,7 +289,7 @@ class GPO_API_Client {
                 }
             }
 
-            $normalized[] = self::normalize_gestpark_item($item, $detail);
+            $normalized[] = self::normalize_gestpark_item($item, $detail, $detail_expected);
         }
 
         return $normalized;
@@ -452,10 +453,15 @@ class GPO_API_Client {
         return 'non-scalare';
     }
 
-    protected static function normalize_gestpark_item($list_item, $detail_item) {
+    protected static function normalize_gestpark_item($list_item, $detail_item, $detail_expected = false) {
         $vehicle = array_replace((array) $list_item, (array) $detail_item);
         $year = self::extract_year(isset($vehicle['immatricolazione']) ? $vehicle['immatricolazione'] : '');
-        $gallery_payload_present = array_key_exists('listaFoto', (array) $detail_item) || array_key_exists('listaFoto', (array) $list_item);
+        $gallery_payload_present = $detail_expected
+            ? array_key_exists('listaFoto', (array) $detail_item)
+            : (array_key_exists('listaFoto', (array) $detail_item) || array_key_exists('listaFoto', (array) $list_item));
+        $optionals_payload_present = $detail_expected
+            ? array_key_exists('optionals', (array) $detail_item)
+            : (array_key_exists('optionals', (array) $detail_item) || array_key_exists('optionals', (array) $list_item));
         $gallery = array_key_exists('listaFoto', (array) $detail_item)
             ? (is_array($detail_item['listaFoto']) ? $detail_item['listaFoto'] : [])
             : (isset($list_item['listaFoto']) && is_array($list_item['listaFoto']) ? $list_item['listaFoto'] : []);
@@ -505,7 +511,9 @@ class GPO_API_Client {
             'internal_notes' => self::build_internal_notes($vehicle),
             'specs_list' => self::build_specs_list($vehicle),
             'accessories_list' => self::build_accessories_list($vehicle),
+            'gestpark_detail_complete' => !$detail_expected || !empty($detail_item),
             'gestpark_optionals' => self::normalize_gestpark_optionals(isset($vehicle['optionals']) ? $vehicle['optionals'] : []),
+            'gestpark_optionals_present' => $optionals_payload_present,
             'gestpark_images' => self::normalize_gestpark_images($gallery, isset($vehicle['idGestionale']) ? $vehicle['idGestionale'] : ''),
             'gestpark_images_present' => $gallery_payload_present,
             'raw_payload' => self::raw_payload_without_image_data($vehicle),

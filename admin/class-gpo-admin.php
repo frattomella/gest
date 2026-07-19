@@ -59,7 +59,8 @@ class GPO_Admin {
                 'gallery_urls' => 'images',
             ],
             'sync' => [
-                'enabled' => 0,
+                'enabled' => 1,
+                'interval' => 5,
             ],
             'github' => [
                 'enabled' => 1,
@@ -225,10 +226,10 @@ class GPO_Admin {
             }
         }
 
-        if (!empty($input['sync']) && is_array($input['sync'])) {
-            foreach ($input['sync'] as $key => $value) {
-                $output['sync'][$key] = !empty($value) ? 1 : 0;
-            }
+        if (isset($input['sync']) && is_array($input['sync'])) {
+            $output['sync']['enabled'] = !empty($input['sync']['enabled']) ? 1 : 0;
+            $interval = isset($input['sync']['interval']) ? absint($input['sync']['interval']) : 5;
+            $output['sync']['interval'] = in_array($interval, [5, 10, 15, 30, 60], true) ? $interval : 5;
         }
 
         if (!empty($input['github']) && is_array($input['github'])) {
@@ -528,6 +529,10 @@ class GPO_Admin {
                 echo '<a class="' . esc_attr($class) . '" href="' . esc_url($action['url']) . '"';
                 if (!empty($action['target'])) {
                     echo ' target="' . esc_attr($action['target']) . '"';
+                }
+                if (!empty($action['loading_label'])) {
+                    $loading_label = esc_js((string) $action['loading_label']);
+                    echo ' onclick="if(this.getAttribute(\'aria-disabled\')===\'true\'){return false;}this.setAttribute(\'aria-disabled\',\'true\');this.textContent=\'' . $loading_label . '\';"';
                 }
                 echo '>' . esc_html($action['label']) . '</a>';
             }
@@ -1005,6 +1010,14 @@ class GPO_Admin {
         $stats = wp_count_posts('gpo_vehicle');
         $last_sync = get_option('gpo_last_sync_result', []);
         $settings = self::get_settings();
+        $sync_summary = sprintf(
+            'Durata %ss · Nuovi %d · Aggiornati %d · Eliminati %d · Errori %d',
+            isset($last_sync['duration']) ? number_format_i18n((float) $last_sync['duration'], 2) : '0',
+            absint($last_sync['created'] ?? 0),
+            absint($last_sync['updated'] ?? 0),
+            absint($last_sync['deleted'] ?? 0),
+            absint($last_sync['errors'] ?? 0)
+        );
         $parkplatform = self::parkplatform_state($settings['api']);
         $updates = self::plugin_update_state();
         $featured_ids = method_exists('GPO_Frontend', 'active_showcase_vehicle_ids')
@@ -1016,7 +1029,7 @@ class GPO_Admin {
             'GestPark dashboard',
             'Controlla connessione ParkPlatform, stato inventario e aggiornamenti plugin da un unico pannello pulito.',
             [
-                ['label' => 'Sincronizza adesso', 'url' => admin_url('admin-post.php?action=gpo_run_sync&_wpnonce=' . wp_create_nonce('gpo_run_sync'))],
+                ['label' => 'Sincronizza adesso', 'loading_label' => 'Sincronizzazione...', 'url' => admin_url('admin-post.php?action=gpo_run_sync&_wpnonce=' . wp_create_nonce('gpo_run_sync'))],
                 ['label' => 'Configura componenti', 'url' => admin_url('admin.php?page=gpo-components'), 'variant' => 'secondary'],
                 ['label' => 'Apri connessione API', 'url' => admin_url('admin.php?page=gpo-api'), 'variant' => 'secondary'],
             ],
@@ -1028,7 +1041,7 @@ class GPO_Admin {
         echo '<section class="gpo-kpi-grid">';
         self::metric_card('Veicoli pubblicati', (int) ($stats->publish ?? 0), 'Archivio disponibile sul sito');
         self::metric_card('Veicoli in vetrina', count($featured_ids), 'Selezionati per showcase e caroselli');
-        self::metric_card('Ultima sincronizzazione', !empty($last_sync['time']) ? $last_sync['time'] : 'Mai', 'Ultimo import eseguito');
+        self::metric_card('Ultima sincronizzazione', !empty($last_sync['time']) ? $last_sync['time'] : 'Mai', !empty($last_sync) ? $sync_summary : 'Nessuna sincronizzazione eseguita');
         self::metric_card('Aggiornamento plugin', $updates['headline'], $updates['description']);
         echo '</section>';
 
@@ -1078,6 +1091,16 @@ class GPO_Admin {
         echo '<h2>Controlli rapidi</h2>';
         echo '<p>Ultimo sync: <strong>' . esc_html(!empty($last_sync['time']) ? $last_sync['time'] : 'Mai eseguito') . '</strong></p>';
         echo '<p>Sorgente dati: <strong>' . esc_html(!empty($last_sync['source']) ? strtoupper((string) $last_sync['source']) : 'N.D.') . '</strong></p>';
+        if (!empty($last_sync)) {
+            echo '<p>Durata: <strong>' . esc_html(number_format_i18n((float) ($last_sync['duration'] ?? 0), 2)) . ' secondi</strong></p>';
+            echo '<div class="gpo-list-chips">';
+            echo '<span class="gpo-chip">Nuovi ' . absint($last_sync['created'] ?? 0) . '</span>';
+            echo '<span class="gpo-chip">Aggiornati ' . absint($last_sync['updated'] ?? 0) . '</span>';
+            echo '<span class="gpo-chip">Invariati ' . absint($last_sync['unchanged'] ?? 0) . '</span>';
+            echo '<span class="gpo-chip">Eliminati ' . absint($last_sync['deleted'] ?? 0) . '</span>';
+            echo '<span class="gpo-chip">Errori ' . absint($last_sync['errors'] ?? 0) . '</span>';
+            echo '</div>';
+        }
         echo '<div class="gpo-inline-actions">';
         echo '<a class="button button-secondary" href="' . esc_url(admin_url('admin.php?page=gpo-components')) . '">Configurazione componenti</a>';
         echo '<a class="button button-secondary" href="' . esc_url(admin_url('admin.php?page=gpo-engagement')) . '">Apri Engagement</a>';
@@ -1214,7 +1237,7 @@ class GPO_Admin {
             'Collega il plugin al tuo account ParkPlatform API con un flusso semplice: email, password, verifica connessione e sincronizzazione veicoli.',
             [
                 ['label' => 'Test connessione', 'url' => admin_url('admin-post.php?action=gpo_test_connection&_wpnonce=' . wp_create_nonce('gpo_test_connection'))],
-                ['label' => 'Sincronizza adesso', 'url' => admin_url('admin-post.php?action=gpo_run_sync&_wpnonce=' . wp_create_nonce('gpo_run_sync')), 'variant' => 'secondary'],
+                ['label' => 'Sincronizza adesso', 'loading_label' => 'Sincronizzazione...', 'url' => admin_url('admin-post.php?action=gpo_run_sync&_wpnonce=' . wp_create_nonce('gpo_run_sync')), 'variant' => 'secondary'],
             ],
             ['ParkPlatform API', $parkplatform['badge_label']]
         );
@@ -1283,7 +1306,7 @@ class GPO_Admin {
         echo '<p>Da qui puoi testare subito il collegamento, lanciare una sincronizzazione reale oppure scollegare l account se vuoi ripartire da zero.</p>';
         echo '<div class="gpo-inline-actions">';
         echo '<a class="button button-primary" href="' . esc_url(admin_url('admin-post.php?action=gpo_test_connection&_wpnonce=' . wp_create_nonce('gpo_test_connection'))) . '">Verifica connessione</a>';
-        echo '<a class="button button-secondary" href="' . esc_url(admin_url('admin-post.php?action=gpo_run_sync&_wpnonce=' . wp_create_nonce('gpo_run_sync'))) . '">Sincronizza adesso</a>';
+        echo '<a class="button button-secondary" href="' . esc_url(admin_url('admin-post.php?action=gpo_run_sync&_wpnonce=' . wp_create_nonce('gpo_run_sync'))) . '" onclick="if(this.getAttribute(\'aria-disabled\')===\'true\'){return false;}this.setAttribute(\'aria-disabled\',\'true\');this.textContent=\'Sincronizzazione...\';">Sincronizza adesso</a>';
         if ($parkplatform['configured']) {
             echo '<a class="button button-secondary" href="' . esc_url(self::disconnect_parkplatform_url()) . '">Scollega account</a>';
         }
@@ -1293,6 +1316,37 @@ class GPO_Admin {
         echo '<span class="gpo-chip">JWT automatico</span>';
         echo '<span class="gpo-chip">Sync inventario e immagini</span>';
         echo '</div>';
+        echo '</article>';
+        echo '</section>';
+
+        $sync = isset($settings['sync']) && is_array($settings['sync']) ? $settings['sync'] : [];
+        $next_sync = wp_next_scheduled('gpo_cron_sync');
+        echo '<section class="gpo-surface-grid">';
+        echo '<article class="gpo-surface gpo-connection-panel">';
+        echo '<div class="gpo-surface__eyebrow">Aggiornamento inventario</div>';
+        echo '<h2>Sincronizzazione automatica</h2>';
+        echo '<p>Controlla periodicamente ParkPlatform e applica solo le differenze ai veicoli WordPress identificati tramite idGestionale.</p>';
+        echo '<div class="gpo-field-grid">';
+        echo '<input type="hidden" name="gpo_settings[sync][enabled]" value="0" />';
+        self::render_setting_field(['label' => 'Aggiornamento automatico', 'name' => 'gpo_settings[sync][enabled]', 'value' => !empty($sync['enabled']), 'type' => 'checkbox', 'description' => 'Mantieni sincronizzati veicoli, prezzi, chilometri, optional e fotografie.']);
+        self::render_setting_field([
+            'label' => 'Frequenza',
+            'name' => 'gpo_settings[sync][interval]',
+            'value' => absint($sync['interval'] ?? 5),
+            'type' => 'select',
+            'options' => [5 => 'Ogni 5 minuti', 10 => 'Ogni 10 minuti', 15 => 'Ogni 15 minuti', 30 => 'Ogni 30 minuti', 60 => 'Ogni ora'],
+            'description' => 'La nuova frequenza viene applicata subito dopo il salvataggio.',
+        ]);
+        echo '</div>';
+        echo '<p class="gpo-status-note">';
+        if (!empty($sync['enabled']) && $next_sync) {
+            echo 'Prossima esecuzione prevista: <strong>' . esc_html(wp_date('d/m/Y H:i:s', $next_sync)) . '</strong>';
+        } elseif (!empty($sync['enabled'])) {
+            echo 'La pianificazione verra attivata al salvataggio.';
+        } else {
+            echo 'Sincronizzazione automatica disattivata.';
+        }
+        echo '</p>';
         echo '</article>';
         echo '</section>';
 
@@ -2407,10 +2461,21 @@ class GPO_Admin {
             wp_die('Operazione non consentita.');
         }
         $result = GPO_Sync_Manager::sync();
-        $notice = is_wp_error($result) ? 'error' : 'success';
-        $message = is_wp_error($result) ? $result->get_error_message() : 'Sincronizzazione completata. Veicoli processati: ' . $result['processed'];
+        $has_errors = !is_wp_error($result) && !empty($result['errors']);
+        $notice = is_wp_error($result) || $has_errors ? 'error' : 'success';
+        $message = is_wp_error($result)
+            ? $result->get_error_message()
+            : sprintf(
+                'Sincronizzazione completata in %ss. Nuovi: %d, aggiornati: %d, invariati: %d, eliminati: %d, errori: %d.',
+                number_format_i18n((float) ($result['duration'] ?? 0), 2),
+                absint($result['created'] ?? 0),
+                absint($result['updated'] ?? 0),
+                absint($result['unchanged'] ?? 0),
+                absint($result['deleted'] ?? 0),
+                absint($result['errors'] ?? 0)
+            );
         update_option('gpo_last_connection_check', [
-            'status' => is_wp_error($result) ? 'error' : 'success',
+            'status' => is_wp_error($result) || $has_errors ? 'error' : 'success',
             'time' => current_time('mysql'),
             'message' => is_wp_error($result) ? $message : 'Ultima sincronizzazione completata con successo.',
         ]);
