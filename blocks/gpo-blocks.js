@@ -486,7 +486,7 @@
     title: 'GestPark Carosello vetrina',
     icon: 'images-alt2',
     category: 'widgets',
-    attributes: { show:{type:'string',default:'image,badge,brand,title,price,chips,neopatentati,primary_button'}, showDesktop:{type:'string',default:''}, showTablet:{type:'string',default:''}, showMobile:{type:'string',default:''}, cardLayout:{type:'string',default:'default'}, autoplay:{type:'boolean',default:true}, interval:{type:'number',default:5000}, itemsPerPage:{type:'number',default:3}, showTitle:{type:'boolean',default:true}, sectionTitle:{type:'string',default:'Veicoli selezionati'}, outerPaddingX:{type:'number',default:20}, sectionGap:{type:'number',default:24}, primaryColor:{type:'string',default:''}, accentColor:{type:'string',default:''}, bgColor:{type:'string',default:''}, textColor:{type:'string',default:''}, buttonColor:{type:'string',default:''}, buttonTextColor:{type:'string',default:''}, primaryButtonLabel:{type:'string',default:'Scheda veicolo'}, secondaryButtonLabel:{type:'string',default:'Richiedi info'} },
+    attributes: { show:{type:'string',default:'image,badge,brand,title,price,chips,neopatentati,primary_button'}, showDesktop:{type:'string',default:''}, showTablet:{type:'string',default:''}, showMobile:{type:'string',default:''}, cardLayout:{type:'string',default:'default'}, sourceMode:{type:'string',default:'automatic'}, vehicleIds:{type:'array',default:[]}, autoplay:{type:'boolean',default:true}, interval:{type:'number',default:5000}, itemsPerPage:{type:'number',default:3}, showTitle:{type:'boolean',default:true}, sectionTitle:{type:'string',default:'Veicoli selezionati'}, outerPaddingX:{type:'number',default:20}, sectionGap:{type:'number',default:24}, primaryColor:{type:'string',default:''}, accentColor:{type:'string',default:''}, bgColor:{type:'string',default:''}, textColor:{type:'string',default:''}, buttonColor:{type:'string',default:''}, buttonTextColor:{type:'string',default:''}, primaryButtonLabel:{type:'string',default:'Scheda veicolo'}, secondaryButtonLabel:{type:'string',default:'Richiedi info'} },
     edit: function (props) {
       var controls = cardDisplayInspector(props);
       controls.unshift(
@@ -498,7 +498,7 @@
           el(RangeControl, { label:'Intervallo autoplay', value:props.attributes.interval, min:1500, max:10000, step:100, onChange:function(v){ props.setAttributes({ interval:v || 1500 }); } })
         ])
       );
-      return previewEdit(props, 'GestPark Carosello vetrina', 'Anteprima reale del carosello dei veicoli in vetrina.', controls);
+      return previewEdit(props, 'GestPark Carosello vetrina', 'Anteprima reale della Vetrina automatica ParkPlatform e degli eventuali veicoli aggiuntivi.', controls);
     },
     save: function () { return null; }
   });
@@ -507,8 +507,8 @@
     title: 'GestPark Veicolo in evidenza',
     icon: 'star-filled',
     category: 'widgets',
-    attributes: { show:{type:'string',default:'image,badge,brand,title,price,chips,neopatentati,body_type,transmission,engine_size,primary_button'}, showDesktop:{type:'string',default:''}, showTablet:{type:'string',default:''}, showMobile:{type:'string',default:''}, cardLayout:{type:'string',default:'default'}, outerPaddingX:{type:'number',default:20}, sectionGap:{type:'number',default:24}, primaryColor:{type:'string',default:''}, accentColor:{type:'string',default:''}, bgColor:{type:'string',default:''}, textColor:{type:'string',default:''}, buttonColor:{type:'string',default:''}, buttonTextColor:{type:'string',default:''}, primaryButtonLabel:{type:'string',default:'Scheda veicolo'}, secondaryButtonLabel:{type:'string',default:'Richiedi info'} },
-    edit: function (props) { return previewEdit(props, 'GestPark Veicolo in evidenza', 'Anteprima reale del veicolo in evidenza.', cardDisplayInspector(props)); },
+    attributes: { show:{type:'string',default:'image,badge,brand,title,price,chips,neopatentati,body_type,transmission,engine_size,primary_button'}, showDesktop:{type:'string',default:''}, showTablet:{type:'string',default:''}, showMobile:{type:'string',default:''}, cardLayout:{type:'string',default:'default'}, featuredMode:{type:'string',default:'global'}, vehicleIds:{type:'array',default:[]}, outerPaddingX:{type:'number',default:20}, sectionGap:{type:'number',default:24}, primaryColor:{type:'string',default:''}, accentColor:{type:'string',default:''}, bgColor:{type:'string',default:''}, textColor:{type:'string',default:''}, buttonColor:{type:'string',default:''}, buttonTextColor:{type:'string',default:''}, primaryButtonLabel:{type:'string',default:'Scheda veicolo'}, secondaryButtonLabel:{type:'string',default:'Richiedi info'} },
+    edit: function (props) { return previewEdit(props, 'GestPark Veicolo in evidenza', 'Anteprima reale secondo la modalita automatica o manuale configurata nel plugin.', cardDisplayInspector(props)); },
     save: function () { return null; }
   });
 

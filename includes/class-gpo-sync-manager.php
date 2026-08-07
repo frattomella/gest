@@ -100,12 +100,15 @@ class GPO_Sync_Manager {
                 }
 
                 $meta_changed = self::update_meta_if_changed($post_id, '_gpo_external_id', $external_id);
+                $platform_showcase_changed = self::is_gestpark_sync($settings)
+                    ? self::update_meta_if_changed($post_id, '_gpo_in_platform_showcase', '1')
+                    : false;
                 $changed_fields = self::sync_core_fields($post_id, $item, $mapping);
                 $taxonomy_changed = self::sync_taxonomies($post_id, $changed_fields, $is_new);
                 $extra_changed = self::is_gestpark_item($item)
                     ? self::sync_gestpark_extras($post_id, $item, $stats['errors'])
                     : self::sync_url_gallery($post_id, $item, $mapping);
-                $vehicle_changed = $is_new || $post_changed || $meta_changed || !empty($changed_fields) || $taxonomy_changed || $extra_changed;
+                $vehicle_changed = $is_new || $post_changed || $meta_changed || $platform_showcase_changed || !empty($changed_fields) || $taxonomy_changed || $extra_changed;
 
                 if ($vehicle_changed) {
                     self::update_meta_if_changed($post_id, '_gpo_last_sync', current_time('mysql'));
@@ -122,6 +125,7 @@ class GPO_Sync_Manager {
 
             if (self::is_gestpark_sync($settings) && $snapshot_valid) {
                 self::reconcile_removed_vehicles($local_vehicles, array_keys($remote_items), $stats);
+                update_option('gpo_platform_showcase_snapshot_ready', '1', false);
             } elseif (self::is_gestpark_sync($settings) && !$snapshot_valid) {
                 GPO_Logger::add('Riconciliazione veicoli saltata', ['errore' => 'Snapshot ParkPlatform incompleto']);
             }
@@ -258,6 +262,8 @@ class GPO_Sync_Manager {
                 continue;
             }
 
+            self::update_meta_if_changed($post_id, '_gpo_in_platform_showcase', '0');
+
             if (get_post_status($post_id) === 'trash') {
                 $removed_post_ids[] = absint($post_id);
                 continue;
@@ -304,6 +310,12 @@ class GPO_Sync_Manager {
                 (array) ($components['featured_vehicle']['queue'] ?? []),
                 function ($row) use ($removed_lookup) {
                     return is_array($row) && !isset($removed_lookup[absint($row['vehicle_id'] ?? 0)]);
+                }
+            ));
+            $components['featured_vehicle']['vehicle_ids'] = array_values(array_filter(
+                array_map('absint', (array) ($components['featured_vehicle']['vehicle_ids'] ?? [])),
+                function ($post_id) use ($removed_lookup) {
+                    return $post_id > 0 && !isset($removed_lookup[$post_id]);
                 }
             ));
         }

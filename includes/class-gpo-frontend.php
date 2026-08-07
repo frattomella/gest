@@ -38,6 +38,9 @@ if (!function_exists('gpo_get_brand_slug')) {
 
 class GPO_Frontend {
     protected static $template_vehicle_id = 0;
+    protected static $platform_showcase_ids = null;
+    protected static $manual_showcase_ids = null;
+    protected static $effective_showcase_ids = null;
     public static function init() {
         add_action('wp_enqueue_scripts', [__CLASS__, 'assets']);
         add_shortcode('gestpark_vehicle_grid', [__CLASS__, 'vehicle_grid_shortcode']);
@@ -180,6 +183,170 @@ class GPO_Frontend {
         }
 
         return array_values($valid_ids);
+    }
+
+    public static function get_platform_showcase_vehicle_ids($limit = 0) {
+        if (self::$platform_showcase_ids === null) {
+            $snapshot_ready = get_option('gpo_platform_showcase_snapshot_ready', '') === '1';
+            $source_clause = $snapshot_ready
+                ? ['key' => '_gpo_in_platform_showcase', 'value' => '1']
+                : ['key' => '_gpo_external_id', 'compare' => 'EXISTS'];
+            $query = new WP_Query([
+                'post_type' => 'gpo_vehicle',
+                'post_status' => 'publish',
+                'posts_per_page' => -1,
+                'fields' => 'ids',
+                'no_found_rows' => true,
+                'orderby' => 'none',
+                'gpo_catalog_registration_order' => 1,
+                'meta_query' => [
+                    'relation' => 'AND',
+                    self::exclude_demo_vehicle_meta_clause(),
+                    self::publicly_available_vehicle_meta_clause(),
+                    $source_clause,
+                ],
+            ]);
+            self::$platform_showcase_ids = self::filter_valid_vehicle_ids($query->posts);
+        }
+
+        return $limit > 0
+            ? array_slice(self::$platform_showcase_ids, 0, absint($limit))
+            : self::$platform_showcase_ids;
+    }
+
+    public static function get_manual_extra_vehicle_ids($limit = 0) {
+        if (self::$manual_showcase_ids === null) {
+            $component = self::component_settings('showcase_carousel');
+            $queue = isset($component['queue']) && is_array($component['queue']) ? $component['queue'] : [];
+            $selected_ids = [];
+            $base_ids = array_values(array_filter(array_map('absint', (array) ($component['vehicle_ids'] ?? []))));
+            $raw_settings = get_option('gpo_settings', []);
+            $raw_showcase = is_array($raw_settings) && isset($raw_settings['components']['showcase_carousel']) && is_array($raw_settings['components']['showcase_carousel'])
+                ? $raw_settings['components']['showcase_carousel']
+                : [];
+            $platform_auto_mode = sanitize_key((string) ($raw_showcase['mode'] ?? '')) === 'platform_auto';
+
+            if ($platform_auto_mode) {
+                $selected_ids = $base_ids;
+                foreach ($queue as $row) {
+                    $row_ids = array_values(array_filter(array_map('absint', (array) ($row['vehicle_ids'] ?? []))));
+                    $active = !self::schedule_has_window($row) || GPO_Engagement::window_is_active($row['start_date'] ?? '', $row['start_time'] ?? '', $row['end_date'] ?? '', $row['end_time'] ?? '');
+                    if (!empty($row_ids) && $active) {
+                        $selected_ids = array_merge($selected_ids, $row_ids);
+                    }
+                }
+            }
+
+            if (!$platform_auto_mode) {
+                foreach ($queue as $row) {
+                    $row_ids = array_values(array_filter(array_map('absint', (array) ($row['vehicle_ids'] ?? []))));
+                    if (!empty($row_ids) && self::schedule_has_window($row) && GPO_Engagement::window_is_active($row['start_date'] ?? '', $row['start_time'] ?? '', $row['end_date'] ?? '', $row['end_time'] ?? '')) {
+                        $selected_ids = $row_ids;
+                        break;
+                    }
+                }
+
+                if (empty($selected_ids) && !empty($base_ids) && GPO_Engagement::window_is_active($component['start_date'] ?? '', $component['start_time'] ?? '', $component['end_date'] ?? '', $component['end_time'] ?? '')) {
+                    $selected_ids = $base_ids;
+                }
+
+                if (empty($selected_ids)) {
+                    foreach ($queue as $row) {
+                        $row_ids = array_values(array_filter(array_map('absint', (array) ($row['vehicle_ids'] ?? []))));
+                        if (!empty($row_ids) && !self::schedule_has_window($row)) {
+                            $selected_ids = $row_ids;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            $legacy_ids = self::get_current_featured_ids(100);
+            self::$manual_showcase_ids = self::filter_valid_vehicle_ids(array_merge($selected_ids, $legacy_ids));
+        }
+
+        return $limit > 0
+            ? array_slice(self::$manual_showcase_ids, 0, absint($limit))
+            : self::$manual_showcase_ids;
+    }
+
+    public static function get_effective_showcase_vehicle_ids($limit = 0, $additional_ids = []) {
+        $additional_ids = self::filter_valid_vehicle_ids($additional_ids);
+        if (self::$effective_showcase_ids === null) {
+            $effective_ids = array_merge(
+                self::get_platform_showcase_vehicle_ids(),
+                self::get_manual_extra_vehicle_ids()
+            );
+            self::$effective_showcase_ids = self::sort_vehicle_ids_by_recency($effective_ids);
+        }
+
+        $ids = empty($additional_ids)
+            ? self::$effective_showcase_ids
+            : self::sort_vehicle_ids_by_recency(array_merge(self::$effective_showcase_ids, $additional_ids));
+
+        return $limit > 0 ? array_slice($ids, 0, absint($limit)) : $ids;
+    }
+
+    public static function featured_vehicle_mode() {
+        $settings = get_option('gpo_settings', []);
+        $component = is_array($settings) && isset($settings['components']['featured_vehicle']) && is_array($settings['components']['featured_vehicle'])
+            ? $settings['components']['featured_vehicle']
+            : [];
+        $mode = sanitize_key((string) ($component['mode'] ?? ''));
+        if (in_array($mode, ['auto', 'manual'], true)) {
+            return $mode;
+        }
+
+        if (!empty($component['vehicle_ids']) || !empty($component['vehicle_id']) || !empty($component['queue'])) {
+            return 'manual';
+        }
+
+        return !empty(self::get_current_featured_ids(1)) ? 'manual' : 'auto';
+    }
+
+    protected static function sort_vehicle_ids_by_recency($ids) {
+        $ids = self::filter_valid_vehicle_ids($ids);
+        if (!empty($ids) && function_exists('update_meta_cache')) {
+            update_meta_cache('post', $ids);
+        }
+        $sort_values = [];
+        foreach ($ids as $post_id) {
+            $registration = trim((string) get_post_meta($post_id, '_gpo_registration_date', true));
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}/', $registration)) {
+                $year = trim((string) get_post_meta($post_id, '_gpo_year', true));
+                $registration = preg_match('/^\d{4}$/', $year) ? $year . '-01-01' : '';
+            } else {
+                $registration = substr($registration, 0, 10);
+            }
+            $arrival = trim((string) get_post_meta($post_id, '_gpo_arrival_date', true));
+            $arrival = preg_match('/^\d{4}-\d{2}-\d{2}/', $arrival) ? substr($arrival, 0, 10) : '';
+            $sort_values[$post_id] = [
+                $registration,
+                $arrival,
+                (string) get_post_field('post_date', $post_id),
+                $post_id,
+            ];
+        }
+
+        usort($ids, function ($left_id, $right_id) use ($sort_values) {
+            $left = $sort_values[$left_id];
+            $right = $sort_values[$right_id];
+            foreach ([0, 1, 2] as $index) {
+                if ($left[$index] === $right[$index]) {
+                    continue;
+                }
+                if ($left[$index] === '') {
+                    return 1;
+                }
+                if ($right[$index] === '') {
+                    return -1;
+                }
+                return strcmp($right[$index], $left[$index]);
+            }
+            return $right[3] <=> $left[3];
+        });
+
+        return $ids;
     }
 
     public static function brand_library() {
@@ -710,6 +877,8 @@ class GPO_Frontend {
         wp_enqueue_style('gpo-public');
         $atts = shortcode_atts([
             'layout' => 'hero',
+            'mode' => '',
+            'vehicle_ids' => '',
             'show' => '',
             'show_desktop' => '',
             'show_tablet' => '',
@@ -732,7 +901,10 @@ class GPO_Frontend {
         $display = self::resolve_card_display($atts);
         $display['context'] = 'featured-single';
 
-        $featured_id = self::active_featured_vehicle_id();
+        $manual_ids = trim((string) $atts['vehicle_ids']) !== ''
+            ? self::parse_vehicle_ids($atts['vehicle_ids'])
+            : null;
+        $featured_id = self::active_featured_vehicle_id($atts['mode'], $manual_ids);
         if (!$featured_id || !self::is_vehicle_publicly_available($featured_id)) {
             return '';
         }
@@ -756,6 +928,7 @@ class GPO_Frontend {
             'interval' => 5000,
             'source' => 'showcase',
             'vehicle_id' => 0,
+            'vehicle_ids' => '',
             'show' => '',
             'show_desktop' => '',
             'show_tablet' => '',
@@ -791,9 +964,10 @@ class GPO_Frontend {
             $source = 'showcase';
         }
         $vehicle_id = absint($atts['vehicle_id'] ?? 0);
+        $additional_ids = self::parse_vehicle_ids($atts['vehicle_ids'] ?? '');
         $ids = ($source === 'related_brand' && $vehicle_id > 0)
             ? self::related_brand_vehicle_ids($vehicle_id, absint($atts['limit']))
-            : self::active_showcase_vehicle_ids(absint($atts['limit']));
+            : self::active_showcase_vehicle_ids(absint($atts['limit']), $additional_ids);
         $ids = self::filter_valid_vehicle_ids($ids, absint($atts['limit']));
         if (empty($ids)) {
             return '';
@@ -2567,68 +2741,91 @@ class GPO_Frontend {
         return true;
     }
 
-    public static function active_featured_vehicle_id() {
+    protected static function parse_vehicle_ids($value) {
+        if (is_string($value)) {
+            $value = preg_split('/[\s,|]+/', $value);
+        }
+
+        return array_values(array_unique(array_filter(array_map('absint', (array) $value))));
+    }
+
+    protected static function manual_featured_vehicle_ids($override_ids = null) {
+        if (is_array($override_ids)) {
+            return self::filter_valid_vehicle_ids($override_ids);
+        }
+
         $component = self::component_settings('featured_vehicle');
+        $configured_ids = self::parse_vehicle_ids($component['vehicle_ids'] ?? []);
+        if (!empty($configured_ids)) {
+            return self::filter_valid_vehicle_ids($configured_ids);
+        }
+
         $queue = isset($component['queue']) && is_array($component['queue']) ? $component['queue'] : [];
+        $legacy_candidates = [];
 
         foreach ($queue as $row) {
             $vehicle_id = absint($row['vehicle_id'] ?? 0);
             if ($vehicle_id > 0 && self::is_vehicle_publicly_available($vehicle_id) && self::schedule_has_window($row) && GPO_Engagement::window_is_active($row['start_date'] ?? '', $row['start_time'] ?? '', $row['end_date'] ?? '', $row['end_time'] ?? '')) {
-                return $vehicle_id;
+                $legacy_candidates[] = $vehicle_id;
             }
         }
 
         $base_vehicle = absint($component['vehicle_id'] ?? 0);
         if ($base_vehicle > 0 && self::is_vehicle_publicly_available($base_vehicle) && GPO_Engagement::window_is_active($component['start_date'] ?? '', $component['start_time'] ?? '', $component['end_date'] ?? '', $component['end_time'] ?? '')) {
-            return $base_vehicle;
+            $legacy_candidates[] = $base_vehicle;
         }
 
         foreach ($queue as $row) {
             $vehicle_id = absint($row['vehicle_id'] ?? 0);
             if ($vehicle_id > 0 && self::is_vehicle_publicly_available($vehicle_id) && !self::schedule_has_window($row)) {
-                return $vehicle_id;
+                $legacy_candidates[] = $vehicle_id;
             }
         }
 
-        $legacy = self::get_current_featured_ids(1);
-        if (!empty($legacy)) {
-            return absint($legacy[0]);
+        if (!empty($legacy_candidates)) {
+            return self::filter_valid_vehicle_ids($legacy_candidates);
         }
 
-        $latest = self::latest_real_vehicle_ids(1);
-        return !empty($latest) ? absint($latest[0]) : 0;
+        return self::filter_valid_vehicle_ids(self::get_current_featured_ids(100));
     }
 
-    public static function active_showcase_vehicle_ids($limit = 12) {
-        $limit = max(1, absint($limit));
-        $component = self::component_settings('showcase_carousel');
-        $queue = isset($component['queue']) && is_array($component['queue']) ? $component['queue'] : [];
+    protected static function rotating_vehicle_id($ids, $strategy = 'auto') {
+        $ids = self::filter_valid_vehicle_ids($ids);
+        $count = count($ids);
+        if ($count < 1) {
+            return 0;
+        }
+        if ($count === 1) {
+            return absint($ids[0]);
+        }
 
-        foreach ($queue as $row) {
-            $vehicle_ids = array_values(array_filter(array_map('absint', (array) ($row['vehicle_ids'] ?? []))));
-            if (!empty($vehicle_ids) && self::schedule_has_window($row) && GPO_Engagement::window_is_active($row['start_date'] ?? '', $row['start_time'] ?? '', $row['end_date'] ?? '', $row['end_time'] ?? '')) {
-                return self::filter_valid_vehicle_ids($vehicle_ids, $limit);
+        $bucket = (int) floor(time() / (5 * MINUTE_IN_SECONDS));
+        if ($strategy === 'manual') {
+            return absint($ids[$bucket % $count]);
+        }
+
+        $seed = (int) sprintf('%u', crc32(implode('|', $ids) . '|' . $bucket));
+        return absint($ids[$seed % $count]);
+    }
+
+    public static function active_featured_vehicle_id($mode = '', $manual_ids = null) {
+        $mode = sanitize_key((string) $mode);
+        if (!in_array($mode, ['auto', 'manual'], true)) {
+            $mode = self::featured_vehicle_mode();
+        }
+
+        if ($mode === 'manual') {
+            $manual_candidates = self::manual_featured_vehicle_ids($manual_ids);
+            if (!empty($manual_candidates)) {
+                return self::rotating_vehicle_id($manual_candidates, 'manual');
             }
         }
 
-        $base_ids = array_values(array_filter(array_map('absint', (array) ($component['vehicle_ids'] ?? []))));
-        if (!empty($base_ids) && GPO_Engagement::window_is_active($component['start_date'] ?? '', $component['start_time'] ?? '', $component['end_date'] ?? '', $component['end_time'] ?? '')) {
-            return self::filter_valid_vehicle_ids($base_ids, $limit);
-        }
+        return self::rotating_vehicle_id(self::get_effective_showcase_vehicle_ids(), 'auto');
+    }
 
-        foreach ($queue as $row) {
-            $vehicle_ids = array_values(array_filter(array_map('absint', (array) ($row['vehicle_ids'] ?? []))));
-            if (!empty($vehicle_ids) && !self::schedule_has_window($row)) {
-                return self::filter_valid_vehicle_ids($vehicle_ids, $limit);
-            }
-        }
-
-        $legacy = self::filter_valid_vehicle_ids(self::get_current_featured_ids($limit), $limit);
-        if (!empty($legacy)) {
-            return $legacy;
-        }
-
-        return self::filter_valid_vehicle_ids(self::latest_real_vehicle_ids($limit), $limit);
+    public static function active_showcase_vehicle_ids($limit = 12, $additional_ids = []) {
+        return self::get_effective_showcase_vehicle_ids(max(1, absint($limit)), $additional_ids);
     }
 
     protected static function related_brand_vehicle_ids($post_id, $limit = 6) {

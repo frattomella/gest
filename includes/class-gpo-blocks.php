@@ -223,10 +223,11 @@ class GPO_Blocks {
             'render_callback' => function ($attributes) {
                 $show = isset($attributes['show']) ? sanitize_text_field($attributes['show']) : '';
                 $card_layout = isset($attributes['cardLayout']) ? sanitize_key($attributes['cardLayout']) : 'default';
+                $vehicle_ids = array_values(array_filter(array_map('absint', (array) ($attributes['vehicleIds'] ?? []))));
                 $outer_padding_x = isset($attributes['outerPaddingX']) ? absint($attributes['outerPaddingX']) : 20;
                 $section_gap = isset($attributes['sectionGap']) ? absint($attributes['sectionGap']) : 24;
-                return self::safe_dynamic_block('gpo-block-featured-carousel', $attributes, function () use ($show, $attributes, $card_layout, $outer_padding_x, $section_gap) {
-                    return do_shortcode('[gestpark_featured_carousel show="' . esc_attr($show) . '"' . self::responsive_show_shortcode_attributes($attributes) . ' card_layout="' . esc_attr($card_layout) . '" autoplay="' . (!empty($attributes['autoplay']) ? 'yes' : 'no') . '" interval="' . absint($attributes['interval'] ?? 5000) . '" items_per_page="' . absint($attributes['itemsPerPage'] ?? 3) . '" show_title="' . (!empty($attributes['showTitle']) ? 'yes' : 'no') . '" section_title="' . esc_attr($attributes['sectionTitle'] ?? 'Veicoli selezionati') . '" outer_padding_x="' . $outer_padding_x . '" section_gap="' . $section_gap . '" primary_color="' . esc_attr($attributes['primaryColor'] ?? '') . '" accent_color="' . esc_attr($attributes['accentColor'] ?? '') . '" bg_color="' . esc_attr($attributes['bgColor'] ?? '') . '" text_color="' . esc_attr($attributes['textColor'] ?? '') . '" button_color="' . esc_attr($attributes['buttonColor'] ?? '') . '" button_text_color="' . esc_attr($attributes['buttonTextColor'] ?? '') . '" primary_button_label="' . esc_attr($attributes['primaryButtonLabel'] ?? 'Scheda veicolo') . '"]');
+                return self::safe_dynamic_block('gpo-block-featured-carousel', $attributes, function () use ($show, $attributes, $card_layout, $vehicle_ids, $outer_padding_x, $section_gap) {
+                    return do_shortcode('[gestpark_featured_carousel show="' . esc_attr($show) . '" vehicle_ids="' . esc_attr(implode(',', $vehicle_ids)) . '"' . self::responsive_show_shortcode_attributes($attributes) . ' card_layout="' . esc_attr($card_layout) . '" autoplay="' . (!empty($attributes['autoplay']) ? 'yes' : 'no') . '" interval="' . absint($attributes['interval'] ?? 5000) . '" items_per_page="' . absint($attributes['itemsPerPage'] ?? 3) . '" show_title="' . (!empty($attributes['showTitle']) ? 'yes' : 'no') . '" section_title="' . esc_attr($attributes['sectionTitle'] ?? 'Veicoli selezionati') . '" outer_padding_x="' . $outer_padding_x . '" section_gap="' . $section_gap . '" primary_color="' . esc_attr($attributes['primaryColor'] ?? '') . '" accent_color="' . esc_attr($attributes['accentColor'] ?? '') . '" bg_color="' . esc_attr($attributes['bgColor'] ?? '') . '" text_color="' . esc_attr($attributes['textColor'] ?? '') . '" button_color="' . esc_attr($attributes['buttonColor'] ?? '') . '" button_text_color="' . esc_attr($attributes['buttonTextColor'] ?? '') . '" primary_button_label="' . esc_attr($attributes['primaryButtonLabel'] ?? 'Scheda veicolo') . '"]');
                 }, 'Anteprima carosello non disponibile', 'Importa almeno un veicolo reale oppure verifica che la vetrina ParkPlatform sia attiva.');
             },
             'attributes' => self::styled_card_attributes([
@@ -237,6 +238,8 @@ class GPO_Blocks {
                 'itemsPerPage' => ['type' => 'number', 'default' => 3],
                 'showTitle' => ['type' => 'boolean', 'default' => true],
                 'sectionTitle' => ['type' => 'string', 'default' => 'Veicoli selezionati'],
+                'sourceMode' => ['type' => 'string', 'default' => 'automatic'],
+                'vehicleIds' => ['type' => 'array', 'default' => [], 'items' => ['type' => 'number']],
             ]),
             'supports' => self::common_supports(),
         ]);
@@ -246,15 +249,20 @@ class GPO_Blocks {
             'render_callback' => function ($attributes) {
                 $show = isset($attributes['show']) ? sanitize_text_field($attributes['show']) : '';
                 $card_layout = isset($attributes['cardLayout']) ? sanitize_key($attributes['cardLayout']) : 'default';
+                $featured_mode = sanitize_key((string) ($attributes['featuredMode'] ?? 'global'));
+                $featured_mode = in_array($featured_mode, ['auto', 'manual'], true) ? $featured_mode : '';
+                $vehicle_ids = array_values(array_filter(array_map('absint', (array) ($attributes['vehicleIds'] ?? []))));
                 $outer_padding_x = isset($attributes['outerPaddingX']) ? absint($attributes['outerPaddingX']) : 20;
                 $section_gap = isset($attributes['sectionGap']) ? absint($attributes['sectionGap']) : 24;
-                return self::safe_dynamic_block('gpo-block-featured-vehicle', $attributes, function () use ($show, $attributes, $card_layout, $outer_padding_x, $section_gap) {
-                    return do_shortcode('[gestpark_featured_vehicle show="' . esc_attr($show) . '"' . self::responsive_show_shortcode_attributes($attributes) . ' card_layout="' . esc_attr($card_layout) . '" outer_padding_x="' . $outer_padding_x . '" section_gap="' . $section_gap . '" primary_color="' . esc_attr($attributes['primaryColor'] ?? '') . '" accent_color="' . esc_attr($attributes['accentColor'] ?? '') . '" bg_color="' . esc_attr($attributes['bgColor'] ?? '') . '" text_color="' . esc_attr($attributes['textColor'] ?? '') . '" button_color="' . esc_attr($attributes['buttonColor'] ?? '') . '" button_text_color="' . esc_attr($attributes['buttonTextColor'] ?? '') . '" primary_button_label="' . esc_attr($attributes['primaryButtonLabel'] ?? 'Scheda veicolo') . '"]');
+                return self::safe_dynamic_block('gpo-block-featured-vehicle', $attributes, function () use ($show, $attributes, $card_layout, $featured_mode, $vehicle_ids, $outer_padding_x, $section_gap) {
+                    return do_shortcode('[gestpark_featured_vehicle show="' . esc_attr($show) . '" mode="' . esc_attr($featured_mode) . '" vehicle_ids="' . esc_attr(implode(',', $vehicle_ids)) . '"' . self::responsive_show_shortcode_attributes($attributes) . ' card_layout="' . esc_attr($card_layout) . '" outer_padding_x="' . $outer_padding_x . '" section_gap="' . $section_gap . '" primary_color="' . esc_attr($attributes['primaryColor'] ?? '') . '" accent_color="' . esc_attr($attributes['accentColor'] ?? '') . '" bg_color="' . esc_attr($attributes['bgColor'] ?? '') . '" text_color="' . esc_attr($attributes['textColor'] ?? '') . '" button_color="' . esc_attr($attributes['buttonColor'] ?? '') . '" button_text_color="' . esc_attr($attributes['buttonTextColor'] ?? '') . '" primary_button_label="' . esc_attr($attributes['primaryButtonLabel'] ?? 'Scheda veicolo') . '"]');
                 }, 'Anteprima veicolo non disponibile', 'Importa almeno un veicolo reale oppure verifica la connessione ParkPlatform.');
             },
             'attributes' => self::styled_card_attributes([
                 'show' => ['type' => 'string', 'default' => ''],
                 'cardLayout' => ['type' => 'string', 'default' => 'default'],
+                'featuredMode' => ['type' => 'string', 'default' => 'global'],
+                'vehicleIds' => ['type' => 'array', 'default' => [], 'items' => ['type' => 'number']],
             ]),
             'supports' => self::common_supports(),
         ]);

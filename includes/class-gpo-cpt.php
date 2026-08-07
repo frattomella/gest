@@ -213,7 +213,7 @@ class GPO_CPT {
         $featured_to = get_post_meta($post->ID, '_gpo_featured_to', true);
         $featured_order = get_post_meta($post->ID, '_gpo_featured_order', true);
         $badge = get_post_meta($post->ID, '_gpo_badge', true);
-        echo '<p><label><input type="checkbox" name="gpo_featured" value="1" ' . checked($featured, '1', false) . ' /> Veicolo in vetrina</label></p>';
+        echo '<p><label><input type="checkbox" name="gpo_featured" value="1" ' . checked($featured, '1', false) . ' /> Aggiungi manualmente alla Vetrina WordPress</label></p>';
         echo '<p><label>Data inizio vetrina<br><input type="datetime-local" name="gpo_featured_from" value="' . esc_attr($featured_from) . '" /></label></p>';
         echo '<p><label>Data fine vetrina<br><input type="datetime-local" name="gpo_featured_to" value="' . esc_attr($featured_to) . '" /></label></p>';
         echo '<p><label>Ordine vetrina<br><input type="number" name="gpo_featured_order" value="' . esc_attr($featured_order) . '" /></label></p>';
@@ -264,7 +264,7 @@ class GPO_CPT {
         $new['year'] = 'Anno';
         $new['price'] = 'Prezzo';
         $new['condition'] = 'Condizione';
-        $new['featured'] = 'In vetrina';
+        $new['featured'] = 'Vetrina';
         $new['date'] = 'Data';
         return $new;
     }
@@ -287,11 +287,13 @@ class GPO_CPT {
                 $manual_ids = class_exists('GPO_Admin') && method_exists('GPO_Admin', 'manual_showcase_vehicle_ids')
                     ? GPO_Admin::manual_showcase_vehicle_ids()
                     : [];
-                $checked = in_array((int) $post_id, $manual_ids, true) || get_post_meta($post_id, '_gpo_featured', true) === '1';
-                echo '<label class="gpo-list-toggle ' . ($checked ? 'is-active' : '') . '">';
-                echo '<input type="checkbox" class="gpo-showcase-toggle" data-post-id="' . esc_attr((string) $post_id) . '" ' . checked($checked, true, false) . ' />';
+                $manual = in_array((int) $post_id, $manual_ids, true) || get_post_meta($post_id, '_gpo_featured', true) === '1';
+                $platform = get_post_meta($post_id, '_gpo_in_platform_showcase', true) === '1';
+                $label = $platform && $manual ? 'Park + aggiunto' : ($platform ? 'Park Platform' : ($manual ? 'Aggiunto' : 'Non aggiunto'));
+                echo '<label class="gpo-list-toggle ' . ($manual ? 'is-active' : '') . '">';
+                echo '<input type="checkbox" class="gpo-showcase-toggle" data-post-id="' . esc_attr((string) $post_id) . '" ' . checked($manual, true, false) . ' />';
                 echo '<span class="gpo-list-toggle__ui" aria-hidden="true"></span>';
-                echo '<span class="gpo-list-toggle__text">' . esc_html($checked ? 'In vetrina' : 'Fuori vetrina') . '</span>';
+                echo '<span class="gpo-list-toggle__text">' . esc_html($label) . '</span>';
                 echo '</label>';
                 break;
         }
