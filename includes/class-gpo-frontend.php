@@ -52,6 +52,7 @@ class GPO_Frontend {
         add_action('admin_post_gpo_vehicle_lead', [__CLASS__, 'handle_vehicle_lead_submission']);
         add_action('admin_post_nopriv_gpo_vehicle_lead', [__CLASS__, 'handle_vehicle_lead_submission']);
         add_filter('template_include', [__CLASS__, 'single_template']);
+        add_filter('posts_clauses', [__CLASS__, 'catalog_registration_order_clauses'], 10, 2);
     }
 
     protected static function empty_state_markup($title, $message, $class = 'gpo-empty-state') {
@@ -143,6 +144,42 @@ class GPO_Frontend {
         }
 
         return isset($components[$key]) && is_array($components[$key]) ? $components[$key] : [];
+    }
+
+    public static function is_vehicle_publicly_available($post_id) {
+        $post = get_post(absint($post_id));
+        if (!$post || $post->post_type !== 'gpo_vehicle' || $post->post_status !== 'publish') {
+            return false;
+        }
+
+        $status = strtolower(remove_accents(trim((string) get_post_meta($post->ID, '_gpo_status', true))));
+        if ($status === '') {
+            return true;
+        }
+
+        foreach (['non disponibil', 'not available', 'unavailable', 'vendut', 'sold', 'ritirat', 'withdrawn', 'rimoss', 'removed', 'eliminat', 'deleted', 'archiviat', 'archived', 'inattiv'] as $blocked_status) {
+            if (strpos($status, $blocked_status) !== false) {
+                return false;
+            }
+        }
+
+        return !in_array($status, ['0', 'no', 'false'], true);
+    }
+
+    public static function filter_valid_vehicle_ids($ids, $limit = 0) {
+        $valid_ids = [];
+        foreach ((array) $ids as $post_id) {
+            $post_id = absint($post_id);
+            if ($post_id < 1 || isset($valid_ids[$post_id]) || !self::is_vehicle_publicly_available($post_id)) {
+                continue;
+            }
+            $valid_ids[$post_id] = $post_id;
+            if ($limit > 0 && count($valid_ids) >= absint($limit)) {
+                break;
+            }
+        }
+
+        return array_values($valid_ids);
     }
 
     public static function brand_library() {
@@ -242,8 +279,9 @@ class GPO_Frontend {
         }
 
         $post_id = absint($post_id);
-        $title = $post_id ? trim(wp_strip_all_tags(get_the_title($post_id))) : 'questo veicolo';
-        $url = $post_id ? get_permalink($post_id) : '';
+        $valid_vehicle = $post_id && self::is_vehicle_publicly_available($post_id);
+        $title = $valid_vehicle ? trim(wp_strip_all_tags(get_the_title($post_id))) : 'questo veicolo';
+        $url = $valid_vehicle ? get_permalink($post_id) : '';
         $message = trim('Vi contatto in merito al veicolo ' . $title . '. ' . $url);
 
         return 'https://wa.me/' . rawurlencode($digits) . '?text=' . rawurlencode($message);
@@ -447,6 +485,10 @@ class GPO_Frontend {
 
     public static function lead_form_markup($post_id, $args = []) {
         $post_id = absint($post_id);
+        if (!self::is_vehicle_publicly_available($post_id)) {
+            return '';
+        }
+
         $post_title = $post_id ? get_the_title($post_id) : '';
         $can_submit = self::has_configured_lead_email();
         $defaults = [
@@ -493,13 +535,14 @@ class GPO_Frontend {
 
     public static function handle_vehicle_lead_submission() {
         $post_id = absint($_POST['post_id'] ?? 0);
+        $valid_vehicle = self::is_vehicle_publicly_available($post_id);
         $redirect = !empty($_POST['redirect_to']) ? esc_url_raw(wp_unslash((string) $_POST['redirect_to'])) : '';
         if (!$redirect) {
-            $redirect = $post_id ? get_permalink($post_id) : home_url('/');
+            $redirect = $valid_vehicle ? get_permalink($post_id) : home_url('/');
         }
 
         $nonce = isset($_POST['gpo_vehicle_lead_nonce']) ? sanitize_text_field(wp_unslash($_POST['gpo_vehicle_lead_nonce'])) : '';
-        if (!$post_id || !wp_verify_nonce($nonce, 'gpo_vehicle_lead_' . $post_id)) {
+        if (!$valid_vehicle || !wp_verify_nonce($nonce, 'gpo_vehicle_lead_' . $post_id)) {
             wp_safe_redirect(add_query_arg([
                 'gpo_lead' => 'error',
                 'gpo_lead_message' => 'Sessione non valida. Ricarica la pagina e riprova.',
@@ -532,8 +575,8 @@ class GPO_Frontend {
             exit;
         }
 
-        $vehicle_title = $post_id ? get_the_title($post_id) : 'Veicolo';
-        $vehicle_url = $post_id ? get_permalink($post_id) : '';
+        $vehicle_title = get_the_title($post_id);
+        $vehicle_url = get_permalink($post_id);
         $subject = sprintf('Richiesta informazioni - %s', wp_specialchars_decode((string) $vehicle_title, ENT_QUOTES));
         $body = "Nuova richiesta informazioni dal sito web\n\n";
         $body .= "Veicolo\n";
@@ -642,12 +685,16 @@ class GPO_Frontend {
             ]);
         }
         echo '<div class="gpo-grid columns-' . absint($atts['columns']) . '">';
+        $rendered_vehicle = false;
         if ($query->have_posts()) {
             while ($query->have_posts()) {
                 $query->the_post();
-                self::render_card(get_the_ID(), $display);
+                if (self::render_card(get_the_ID(), $display)) {
+                    $rendered_vehicle = true;
+                }
             }
-        } else {
+        }
+        if (!$rendered_vehicle) {
             echo '<div class="gpo-empty-state"><h3>Nessun veicolo disponibile</h3><p>Non sono presenti veicoli che corrispondono ai filtri selezionati. Aggiorna i criteri di ricerca oppure verifica l inventario pubblicato.</p></div>';
         }
         echo '</div>';
@@ -686,20 +733,17 @@ class GPO_Frontend {
         $display['context'] = 'featured-single';
 
         $featured_id = self::active_featured_vehicle_id();
-        ob_start();
-        if (!empty($featured_id)) {
-            echo '<div class="gpo-featured-single" style="' . esc_attr(self::wrapper_style($atts)) . '">';
-            if ($atts['layout'] === 'hero') {
-                $display['hero'] = true;
-            }
-            self::render_card($featured_id, $display);
-            echo '</div>';
-        } else {
-            echo self::empty_state_markup(
-                'Nessun veicolo disponibile',
-                'Non sono presenti veicoli in evidenza al momento. Verifica la connessione dati o aggiorna l inventario pubblicato.'
-            );
+        if (!$featured_id || !self::is_vehicle_publicly_available($featured_id)) {
+            return '';
         }
+
+        ob_start();
+        echo '<div class="gpo-featured-single" style="' . esc_attr(self::wrapper_style($atts)) . '">';
+        if ($atts['layout'] === 'hero') {
+            $display['hero'] = true;
+        }
+        self::render_card($featured_id, $display);
+        echo '</div>';
         return ob_get_clean();
     }
 
@@ -750,6 +794,11 @@ class GPO_Frontend {
         $ids = ($source === 'related_brand' && $vehicle_id > 0)
             ? self::related_brand_vehicle_ids($vehicle_id, absint($atts['limit']))
             : self::active_showcase_vehicle_ids(absint($atts['limit']));
+        $ids = self::filter_valid_vehicle_ids($ids, absint($atts['limit']));
+        if (empty($ids)) {
+            return '';
+        }
+
         $display['context'] = ($source === 'showcase') ? 'showcase' : 'vehicle-carousel';
         ob_start();
         echo '<div class="gpo-carousel-shell gpo-carousel-shell--' . esc_attr($source) . '" style="' . esc_attr(self::wrapper_style($atts) . '--gpo-carousel-items-per-page:' . $items_per_page . ';') . '">';
@@ -759,17 +808,10 @@ class GPO_Frontend {
         }
         echo '<div class="gpo-carousel-nav"><button class="gpo-carousel-prev" type="button" aria-label="Precedente">' . self::icon_markup('chevron-left') . '</button><button class="gpo-carousel-next" type="button" aria-label="Successivo">' . self::icon_markup('chevron-right') . '</button></div></div>';
         echo '<div class="gpo-carousel gpo-carousel--' . esc_attr($source) . '" data-gpo-carousel="1" data-autoplay="' . esc_attr($atts['autoplay']) . '" data-interval="' . absint($atts['interval']) . '" data-loop="yes"><div class="gpo-carousel-track">';
-        if (!empty($ids)) {
-            foreach ($ids as $post_id) {
-                echo '<div class="gpo-carousel-slide">';
-                self::render_card($post_id, $display);
-                echo '</div>';
-            }
-        } else {
-            echo self::empty_state_markup(
-                'Nessun veicolo disponibile',
-                'Non sono presenti veicoli in vetrina al momento. Verifica la connessione dati o aggiorna l inventario pubblicato.'
-            );
+        foreach ($ids as $post_id) {
+            echo '<div class="gpo-carousel-slide">';
+            self::render_card($post_id, $display);
+            echo '</div>';
         }
         echo '</div><div class="gpo-carousel-dots" aria-hidden="true"></div></div></div>';
         return ob_get_clean();
@@ -1379,7 +1421,7 @@ class GPO_Frontend {
 
     public static function share_actions_markup($post_id) {
         $post_id = absint($post_id);
-        $url = $post_id ? get_permalink($post_id) : '';
+        $url = self::is_vehicle_publicly_available($post_id) ? get_permalink($post_id) : '';
         if (!$url) {
             return '';
         }
@@ -1415,7 +1457,7 @@ class GPO_Frontend {
 
     public static function single_share_modal_markup($post_id, $modal_id = '') {
         $post_id = absint($post_id);
-        $url = $post_id ? get_permalink($post_id) : '';
+        $url = self::is_vehicle_publicly_available($post_id) ? get_permalink($post_id) : '';
         if ($url === '') {
             return '';
         }
@@ -1799,6 +1841,7 @@ class GPO_Frontend {
         }
         $meta_query = [
             self::exclude_demo_vehicle_meta_clause(),
+            self::publicly_available_vehicle_meta_clause(),
         ];
 
         if (($atts['featured'] ?? 'no') === 'yes') {
@@ -1875,6 +1918,8 @@ class GPO_Frontend {
             $orderby = 'mileage';
             $order = 'ASC';
         }
+        $use_registration_order = (($atts['filters'] ?? 'no') === 'yes')
+            && (($sort === '' && $orderby === 'date') || in_array($sort, ['date_desc', 'year_desc'], true));
         $args = [
             'post_type' => 'gpo_vehicle',
             'post_status' => 'publish',
@@ -1903,8 +1948,39 @@ class GPO_Frontend {
             $args['orderby'] = 'meta_value_num';
             $args['meta_key'] = '_gpo_mileage';
         }
+        if ($use_registration_order) {
+            unset($args['meta_key']);
+            $args['orderby'] = 'none';
+            $args['gpo_catalog_registration_order'] = 1;
+        }
 
         return new WP_Query($args);
+    }
+
+    public static function catalog_registration_order_clauses($clauses, $query) {
+        if (!$query instanceof WP_Query || !$query->get('gpo_catalog_registration_order')) {
+            return $clauses;
+        }
+
+        global $wpdb;
+        $clauses['join'] .= $wpdb->prepare(
+            " LEFT JOIN {$wpdb->postmeta} AS gpo_registration_date_pm ON ({$wpdb->posts}.ID = gpo_registration_date_pm.post_id AND gpo_registration_date_pm.meta_key = %s)",
+            '_gpo_registration_date'
+        );
+        $clauses['join'] .= $wpdb->prepare(
+            " LEFT JOIN {$wpdb->postmeta} AS gpo_registration_year_pm ON ({$wpdb->posts}.ID = gpo_registration_year_pm.post_id AND gpo_registration_year_pm.meta_key = %s)",
+            '_gpo_year'
+        );
+        $clauses['join'] .= $wpdb->prepare(
+            " LEFT JOIN {$wpdb->postmeta} AS gpo_arrival_date_pm ON ({$wpdb->posts}.ID = gpo_arrival_date_pm.post_id AND gpo_arrival_date_pm.meta_key = %s)",
+            '_gpo_arrival_date'
+        );
+
+        $registration_sort = "CASE WHEN gpo_registration_date_pm.meta_value REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}' THEN LEFT(gpo_registration_date_pm.meta_value, 10) WHEN gpo_registration_year_pm.meta_value REGEXP '^[0-9]{4}$' THEN CONCAT(gpo_registration_year_pm.meta_value, '-01-01') ELSE NULL END";
+        $arrival_sort = "CASE WHEN gpo_arrival_date_pm.meta_value REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}' THEN LEFT(gpo_arrival_date_pm.meta_value, 10) ELSE NULL END";
+        $clauses['orderby'] = "({$registration_sort} IS NULL) ASC, {$registration_sort} DESC, ({$arrival_sort} IS NULL) ASC, {$arrival_sort} DESC, {$wpdb->posts}.post_date DESC, {$wpdb->posts}.ID DESC";
+
+        return $clauses;
     }
 
     protected static function brand_filters_meta_clause($brand_keys = [], $brands = []) {
@@ -2282,6 +2358,46 @@ class GPO_Frontend {
         ];
     }
 
+    protected static function publicly_available_vehicle_meta_clause() {
+        return [
+            'relation' => 'OR',
+            [
+                'key' => '_gpo_status',
+                'compare' => 'NOT EXISTS',
+            ],
+            [
+                'key' => '_gpo_status',
+                'value' => '',
+                'compare' => '=',
+            ],
+            [
+                'key' => '_gpo_status',
+                'value' => [
+                    'Non disponibile',
+                    'Not available',
+                    'Unavailable',
+                    'Venduto',
+                    'Venduta',
+                    'Sold',
+                    'Ritirato',
+                    'Ritirata',
+                    'Rimosso',
+                    'Rimossa',
+                    'Eliminato',
+                    'Eliminata',
+                    'Archiviato',
+                    'Archiviata',
+                    'Inattivo',
+                    'Inattiva',
+                    '0',
+                    'false',
+                    'no',
+                ],
+                'compare' => 'NOT IN',
+            ],
+        ];
+    }
+
     protected static function distinct_meta_values($key, $numeric_sort = false) {
         global $wpdb;
         $values = $wpdb->get_col($wpdb->prepare(
@@ -2307,6 +2423,16 @@ class GPO_Frontend {
     }
 
     public static function render_card($post_id, $display = []) {
+        $post_id = absint($post_id);
+        if (!self::is_vehicle_publicly_available($post_id)) {
+            return false;
+        }
+
+        $permalink = get_permalink($post_id);
+        if (!$permalink) {
+            return false;
+        }
+
         $data = self::vehicle_data($post_id);
         $price = $data['price'] ?? get_post_meta($post_id, '_gpo_price', true);
         $promotion = $data['promotion'] ?? self::promotion_context($post_id);
@@ -2314,7 +2440,6 @@ class GPO_Frontend {
         $current_price = $data['current_price'] ?? ($promo_price ?: $price);
         $badge = $data['badge'] ?? get_post_meta($post_id, '_gpo_badge', true);
         $is_featured = get_post_meta($post_id, '_gpo_featured', true) === '1';
-        $permalink = get_permalink($post_id);
         $specs = array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', (string) get_post_meta($post_id, '_gpo_specs', true))));
         $brand_name = trim((string) ($data['brand'] ?? get_post_meta($post_id, '_gpo_brand', true)));
         $model_name = trim((string) ($data['model'] ?? get_post_meta($post_id, '_gpo_model', true)));
@@ -2439,6 +2564,7 @@ class GPO_Frontend {
             echo '</div>';
         }
         echo '</div></article>';
+        return true;
     }
 
     public static function active_featured_vehicle_id() {
@@ -2447,19 +2573,19 @@ class GPO_Frontend {
 
         foreach ($queue as $row) {
             $vehicle_id = absint($row['vehicle_id'] ?? 0);
-            if ($vehicle_id > 0 && self::schedule_has_window($row) && GPO_Engagement::window_is_active($row['start_date'] ?? '', $row['start_time'] ?? '', $row['end_date'] ?? '', $row['end_time'] ?? '')) {
+            if ($vehicle_id > 0 && self::is_vehicle_publicly_available($vehicle_id) && self::schedule_has_window($row) && GPO_Engagement::window_is_active($row['start_date'] ?? '', $row['start_time'] ?? '', $row['end_date'] ?? '', $row['end_time'] ?? '')) {
                 return $vehicle_id;
             }
         }
 
         $base_vehicle = absint($component['vehicle_id'] ?? 0);
-        if ($base_vehicle > 0 && GPO_Engagement::window_is_active($component['start_date'] ?? '', $component['start_time'] ?? '', $component['end_date'] ?? '', $component['end_time'] ?? '')) {
+        if ($base_vehicle > 0 && self::is_vehicle_publicly_available($base_vehicle) && GPO_Engagement::window_is_active($component['start_date'] ?? '', $component['start_time'] ?? '', $component['end_date'] ?? '', $component['end_time'] ?? '')) {
             return $base_vehicle;
         }
 
         foreach ($queue as $row) {
             $vehicle_id = absint($row['vehicle_id'] ?? 0);
-            if ($vehicle_id > 0 && !self::schedule_has_window($row)) {
+            if ($vehicle_id > 0 && self::is_vehicle_publicly_available($vehicle_id) && !self::schedule_has_window($row)) {
                 return $vehicle_id;
             }
         }
@@ -2481,34 +2607,36 @@ class GPO_Frontend {
         foreach ($queue as $row) {
             $vehicle_ids = array_values(array_filter(array_map('absint', (array) ($row['vehicle_ids'] ?? []))));
             if (!empty($vehicle_ids) && self::schedule_has_window($row) && GPO_Engagement::window_is_active($row['start_date'] ?? '', $row['start_time'] ?? '', $row['end_date'] ?? '', $row['end_time'] ?? '')) {
-                return array_slice($vehicle_ids, 0, $limit);
+                return self::filter_valid_vehicle_ids($vehicle_ids, $limit);
             }
         }
 
         $base_ids = array_values(array_filter(array_map('absint', (array) ($component['vehicle_ids'] ?? []))));
         if (!empty($base_ids) && GPO_Engagement::window_is_active($component['start_date'] ?? '', $component['start_time'] ?? '', $component['end_date'] ?? '', $component['end_time'] ?? '')) {
-            return array_slice($base_ids, 0, $limit);
+            return self::filter_valid_vehicle_ids($base_ids, $limit);
         }
 
         foreach ($queue as $row) {
             $vehicle_ids = array_values(array_filter(array_map('absint', (array) ($row['vehicle_ids'] ?? []))));
             if (!empty($vehicle_ids) && !self::schedule_has_window($row)) {
-                return array_slice($vehicle_ids, 0, $limit);
+                return self::filter_valid_vehicle_ids($vehicle_ids, $limit);
             }
         }
 
-        $legacy = self::get_current_featured_ids($limit);
+        $legacy = self::filter_valid_vehicle_ids(self::get_current_featured_ids($limit), $limit);
         if (!empty($legacy)) {
             return $legacy;
         }
 
-        return self::latest_real_vehicle_ids($limit);
+        return self::filter_valid_vehicle_ids(self::latest_real_vehicle_ids($limit), $limit);
     }
 
     protected static function related_brand_vehicle_ids($post_id, $limit = 6) {
         $post_id = absint($post_id);
         $limit = max(1, absint($limit));
-        $brand = trim((string) get_post_meta($post_id, '_gpo_brand', true));
+        $brand = self::is_vehicle_publicly_available($post_id)
+            ? trim((string) get_post_meta($post_id, '_gpo_brand', true))
+            : '';
 
         if ($post_id < 1 || $brand === '') {
             return array_slice(array_values(array_filter(self::latest_real_vehicle_ids($limit + 1), function ($candidate_id) use ($post_id) {
@@ -2522,16 +2650,17 @@ class GPO_Frontend {
             'posts_per_page' => $limit,
             'fields' => 'ids',
             'post__not_in' => [$post_id],
-            'orderby' => 'date',
-            'order' => 'DESC',
+            'orderby' => 'none',
+            'gpo_catalog_registration_order' => 1,
             'meta_query' => [
                 'relation' => 'AND',
                 self::exclude_demo_vehicle_meta_clause(),
+                self::publicly_available_vehicle_meta_clause(),
                 self::brand_meta_query($brand),
             ],
         ]);
 
-        $ids = array_map('absint', (array) $query->posts);
+        $ids = self::filter_valid_vehicle_ids($query->posts, $limit);
         if (count($ids) >= $limit) {
             return array_slice($ids, 0, $limit);
         }
@@ -2559,12 +2688,13 @@ class GPO_Frontend {
             'order' => 'ASC',
             'meta_query' => [
                 self::exclude_demo_vehicle_meta_clause(),
+                self::publicly_available_vehicle_meta_clause(),
                 ['key' => '_gpo_featured', 'value' => '1'],
             ],
         ]);
         $ids = [];
         foreach ($query->posts as $post_id) {
-            if (self::is_currently_featured($post_id)) {
+            if (self::is_vehicle_publicly_available($post_id) && self::is_currently_featured($post_id)) {
                 $ids[] = $post_id;
             }
             if (count($ids) >= $limit) {
@@ -2580,14 +2710,15 @@ class GPO_Frontend {
             'post_status' => 'publish',
             'posts_per_page' => max(1, absint($limit)),
             'fields' => 'ids',
-            'orderby' => 'date',
-            'order' => 'DESC',
+            'orderby' => 'none',
+            'gpo_catalog_registration_order' => 1,
             'meta_query' => [
                 self::exclude_demo_vehicle_meta_clause(),
+                self::publicly_available_vehicle_meta_clause(),
             ],
         ]);
 
-        return array_map('absint', (array) $query->posts);
+        return self::filter_valid_vehicle_ids($query->posts, $limit);
     }
 
     public static function single_template($template) {
@@ -2615,7 +2746,7 @@ class GPO_Frontend {
 
     public static function template_preview_vehicle_link($template_id = 0) {
         $vehicle_id = self::current_vehicle_id();
-        if (!$vehicle_id) {
+        if (!$vehicle_id || !self::is_vehicle_publicly_available($vehicle_id)) {
             return '';
         }
 
@@ -2644,6 +2775,7 @@ class GPO_Frontend {
             'fields' => 'ids',
             'meta_query' => [
                 self::exclude_demo_vehicle_meta_clause(),
+                self::publicly_available_vehicle_meta_clause(),
             ],
         ]);
 
@@ -3569,12 +3701,16 @@ class GPO_Frontend {
             's' => $term,
             'meta_query' => [
                 self::exclude_demo_vehicle_meta_clause(),
+                self::publicly_available_vehicle_meta_clause(),
             ],
         ]);
         $results = [];
         while ($query->have_posts()) {
             $query->the_post();
             $id = get_the_ID();
+            if (!self::is_vehicle_publicly_available($id)) {
+                continue;
+            }
             $data = self::vehicle_data($id);
             $subtitle = trim(implode(' ', array_filter([
                 $data['brand'] ?? '',

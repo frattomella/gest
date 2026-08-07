@@ -610,6 +610,11 @@ class GPO_Blocks {
         }
 
         if (trim(wp_strip_all_tags($content)) === '') {
+            $is_editor_preview = is_admin() || (defined('REST_REQUEST') && REST_REQUEST);
+            $hide_empty_frontend = in_array($class, ['gpo-block-featured-carousel', 'gpo-block-featured-vehicle'], true);
+            if ($hide_empty_frontend && !$is_editor_preview) {
+                return '';
+            }
             $content = '<div class="gpo-empty-state gpo-empty-state--editor"><h3>' . esc_html($fallback_title) . '</h3><p>' . esc_html($fallback_message) . '</p></div>';
         }
 
@@ -754,6 +759,14 @@ class GPO_Blocks {
         $card_layout = !empty($attributes['cardLayout']) ? sanitize_key($attributes['cardLayout']) : 'default';
         $responsive_show = self::responsive_show_shortcode_attributes($attributes);
         $shortcode = '[gestpark_featured_carousel limit="' . $limit . '" show="' . esc_attr($show) . '"' . $responsive_show . ' source="' . esc_attr($source) . '" vehicle_id="' . absint($post_id) . '" show_title="no" section_title="" items_per_page="3" card_layout="' . esc_attr($card_layout) . '" primary_color="' . esc_attr($attributes['primaryColor'] ?? '') . '" accent_color="' . esc_attr($attributes['accentColor'] ?? '') . '" bg_color="' . esc_attr($attributes['bgColor'] ?? '') . '" text_color="' . esc_attr($attributes['textColor'] ?? '') . '" button_color="' . esc_attr($attributes['buttonColor'] ?? '') . '" button_text_color="' . esc_attr($attributes['buttonTextColor'] ?? '') . '" primary_button_label="' . esc_attr($attributes['primaryButtonLabel'] ?? 'Scheda veicolo') . '"]';
-        return '<section ' . self::wrapper_attrs('gpo-single-block', $attributes) . '><div class="gpo-section-head"><div><span class="gpo-kicker">Approfondisci</span><h2>' . esc_html($title) . '</h2></div></div>' . do_shortcode($shortcode) . '</section>';
+        $carousel = do_shortcode($shortcode);
+        if (trim(wp_strip_all_tags($carousel)) === '') {
+            if (is_admin() || (defined('REST_REQUEST') && REST_REQUEST)) {
+                return '<div ' . self::wrapper_attrs('gpo-editor-empty') . '>Nessun veicolo disponibile per l anteprima del carosello.</div>';
+            }
+            return '';
+        }
+
+        return '<section ' . self::wrapper_attrs('gpo-single-block', $attributes) . '><div class="gpo-section-head"><div><span class="gpo-kicker">Approfondisci</span><h2>' . esc_html($title) . '</h2></div></div>' . $carousel . '</section>';
     }
 }

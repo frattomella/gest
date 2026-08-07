@@ -364,7 +364,12 @@ class GPO_Admin {
     }
 
     protected static function sanitize_vehicle_ids($items) {
-        return array_values(array_filter(array_map('absint', (array) $items)));
+        $vehicle_ids = array_values(array_unique(array_filter(array_map('absint', (array) $items))));
+        if (class_exists('GPO_Frontend')) {
+            return GPO_Frontend::filter_valid_vehicle_ids($vehicle_ids);
+        }
+
+        return $vehicle_ids;
     }
 
     protected static function sanitize_brand_keys($items) {
@@ -386,7 +391,7 @@ class GPO_Admin {
             }
 
             $vehicle_id = absint($row['vehicle_id'] ?? 0);
-            if ($vehicle_id < 1) {
+            if ($vehicle_id < 1 || (class_exists('GPO_Frontend') && !GPO_Frontend::is_vehicle_publicly_available($vehicle_id))) {
                 continue;
             }
 
@@ -445,7 +450,8 @@ class GPO_Admin {
         $output = $defaults;
 
         $featured = isset($input['featured_vehicle']) && is_array($input['featured_vehicle']) ? $input['featured_vehicle'] : [];
-        $output['featured_vehicle']['vehicle_id'] = absint($featured['vehicle_id'] ?? 0);
+        $featured_vehicle_ids = self::sanitize_vehicle_ids([$featured['vehicle_id'] ?? 0]);
+        $output['featured_vehicle']['vehicle_id'] = !empty($featured_vehicle_ids) ? $featured_vehicle_ids[0] : 0;
         $output['featured_vehicle']['start_date'] = self::sanitize_date($featured['start_date'] ?? '');
         $output['featured_vehicle']['start_time'] = self::sanitize_time($featured['start_time'] ?? '');
         $output['featured_vehicle']['end_date'] = self::sanitize_date($featured['end_date'] ?? '');
@@ -695,6 +701,9 @@ class GPO_Admin {
 
         $options = [0 => 'Nessun veicolo selezionato'];
         foreach ($posts as $post) {
+            if (class_exists('GPO_Frontend') && !GPO_Frontend::is_vehicle_publicly_available($post->ID)) {
+                continue;
+            }
             $brand = trim((string) get_post_meta($post->ID, '_gpo_brand', true));
             $label = $brand ? $brand . ' · ' . $post->post_title : $post->post_title;
             $options[(int) $post->ID] = $label;
@@ -727,6 +736,9 @@ class GPO_Admin {
 
         $records = [];
         foreach ($posts as $post) {
+            if (class_exists('GPO_Frontend') && !GPO_Frontend::is_vehicle_publicly_available($post->ID)) {
+                continue;
+            }
             $brand = trim((string) get_post_meta($post->ID, '_gpo_brand', true));
             $year = trim((string) get_post_meta($post->ID, '_gpo_year', true));
             $price = trim((string) get_post_meta($post->ID, '_gpo_price', true));

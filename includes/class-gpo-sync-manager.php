@@ -251,19 +251,104 @@ class GPO_Sync_Manager {
 
     protected static function reconcile_removed_vehicles($local_vehicles, $remote_ids, &$stats) {
         $remote_lookup = array_fill_keys(array_map('strval', (array) $remote_ids), true);
+        $removed_post_ids = [];
 
         foreach ((array) $local_vehicles as $external_id => $post_id) {
-            if (isset($remote_lookup[(string) $external_id]) || get_post_status($post_id) === 'trash') {
+            if (isset($remote_lookup[(string) $external_id])) {
+                continue;
+            }
+
+            if (get_post_status($post_id) === 'trash') {
+                $removed_post_ids[] = absint($post_id);
                 continue;
             }
 
             $trashed = wp_trash_post($post_id);
             if ($trashed) {
                 $stats['deleted']++;
+                $removed_post_ids[] = absint($post_id);
             } else {
                 $stats['errors']++;
                 GPO_Logger::add('Errore rimozione veicolo', ['idGestionale' => $external_id]);
             }
+        }
+
+        self::cleanup_removed_vehicle_references($removed_post_ids);
+    }
+
+    protected static function cleanup_removed_vehicle_references($removed_post_ids) {
+        $removed_lookup = array_fill_keys(array_filter(array_map('absint', (array) $removed_post_ids)), true);
+        if (empty($removed_lookup)) {
+            return;
+        }
+
+        foreach (array_keys($removed_lookup) as $post_id) {
+            update_post_meta($post_id, '_gpo_featured', '0');
+            delete_post_meta($post_id, '_gpo_featured_order');
+        }
+
+        $settings = get_option('gpo_settings', []);
+        if (!is_array($settings)) {
+            return;
+        }
+
+        $original_settings = $settings;
+        $components = isset($settings['components']) && is_array($settings['components']) ? $settings['components'] : [];
+
+        if (isset($components['featured_vehicle']) && is_array($components['featured_vehicle'])) {
+            $featured_id = absint($components['featured_vehicle']['vehicle_id'] ?? 0);
+            if (isset($removed_lookup[$featured_id])) {
+                $components['featured_vehicle']['vehicle_id'] = 0;
+            }
+            $components['featured_vehicle']['queue'] = array_values(array_filter(
+                (array) ($components['featured_vehicle']['queue'] ?? []),
+                function ($row) use ($removed_lookup) {
+                    return is_array($row) && !isset($removed_lookup[absint($row['vehicle_id'] ?? 0)]);
+                }
+            ));
+        }
+
+        if (isset($components['showcase_carousel']) && is_array($components['showcase_carousel'])) {
+            $filter_ids = function ($ids) use ($removed_lookup) {
+                return array_values(array_filter(array_map('absint', (array) $ids), function ($post_id) use ($removed_lookup) {
+                    return $post_id > 0 && !isset($removed_lookup[$post_id]);
+                }));
+            };
+            $components['showcase_carousel']['vehicle_ids'] = $filter_ids($components['showcase_carousel']['vehicle_ids'] ?? []);
+            $queue = [];
+            foreach ((array) ($components['showcase_carousel']['queue'] ?? []) as $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
+                $row['vehicle_ids'] = $filter_ids($row['vehicle_ids'] ?? []);
+                if (!empty($row['vehicle_ids'])) {
+                    $queue[] = $row;
+                }
+            }
+            $components['showcase_carousel']['queue'] = $queue;
+        }
+        $settings['components'] = $components;
+
+        if (!empty($settings['engagement']['rules']) && is_array($settings['engagement']['rules'])) {
+            foreach ($settings['engagement']['rules'] as &$rule) {
+                if (!is_array($rule)) {
+                    continue;
+                }
+                if (isset($removed_lookup[absint($rule['vehicle_id'] ?? 0)])) {
+                    $rule['vehicle_id'] = 0;
+                }
+                $rule['vehicle_ids'] = array_values(array_filter(array_map('absint', (array) ($rule['vehicle_ids'] ?? [])), function ($post_id) use ($removed_lookup) {
+                    return $post_id > 0 && !isset($removed_lookup[$post_id]);
+                }));
+            }
+            unset($rule);
+        }
+
+        if ($settings !== $original_settings) {
+            update_option('gpo_settings', $settings);
+            GPO_Logger::add('Riferimenti veicoli rimossi dalle configurazioni', [
+                'veicoli' => count($removed_lookup),
+            ]);
         }
     }
 
