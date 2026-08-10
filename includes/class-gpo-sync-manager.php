@@ -71,10 +71,17 @@ class GPO_Sync_Manager {
             }
 
             $local_vehicles = self::load_imported_vehicle_map();
+            $platform_showcase_post_ids = [];
+            $platform_showcase_sort_values = [];
             foreach ($remote_items as $external_id => $item) {
+                $platform_showcase_sort_values[$external_id] = self::showcase_sort_values($item, $mapping, $external_id);
                 $post_id = isset($local_vehicles[$external_id]) ? absint($local_vehicles[$external_id]) : 0;
                 $is_new = !$post_id;
                 $post_changed = false;
+
+                if ($post_id > 0) {
+                    $platform_showcase_post_ids[$external_id] = $post_id;
+                }
 
                 if ($is_new) {
                     $post_id = wp_insert_post(wp_slash([
@@ -98,6 +105,10 @@ class GPO_Sync_Manager {
                     GPO_Logger::add('Errore creazione veicolo', ['idGestionale' => $external_id]);
                     continue;
                 }
+
+                $post_id = absint($post_id);
+                $local_vehicles[$external_id] = $post_id;
+                $platform_showcase_post_ids[$external_id] = $post_id;
 
                 $meta_changed = self::update_meta_if_changed($post_id, '_gpo_external_id', $external_id);
                 $platform_showcase_changed = self::is_gestpark_sync($settings)
@@ -126,6 +137,7 @@ class GPO_Sync_Manager {
             if (self::is_gestpark_sync($settings) && $snapshot_valid) {
                 self::reconcile_removed_vehicles($local_vehicles, array_keys($remote_items), $stats);
                 update_option('gpo_platform_showcase_snapshot_ready', '1', false);
+                update_option('gpo_platform_showcase_vehicle_ids', self::sort_platform_showcase_post_ids($platform_showcase_post_ids, $platform_showcase_sort_values), false);
             } elseif (self::is_gestpark_sync($settings) && !$snapshot_valid) {
                 GPO_Logger::add('Riconciliazione veicoli saltata', ['errore' => 'Snapshot ParkPlatform incompleto']);
             }
@@ -528,6 +540,55 @@ class GPO_Sync_Manager {
         }
 
         return $changed_fields;
+    }
+
+    protected static function showcase_sort_values($item, $mapping, $external_id) {
+        $registration = trim((string) self::extract_value($item, $mapping['registration_date'] ?? ''));
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}/', $registration)) {
+            $year = trim((string) self::extract_value($item, $mapping['year'] ?? ''));
+            $registration = preg_match('/^\d{4}$/', $year) ? $year . '-01-01' : '';
+        } else {
+            $registration = substr($registration, 0, 10);
+        }
+
+        $arrival = trim((string) self::extract_value($item, $mapping['arrival_date'] ?? ''));
+        $arrival = preg_match('/^\d{4}-\d{2}-\d{2}/', $arrival) ? substr($arrival, 0, 10) : '';
+
+        return [$registration, $arrival, (string) $external_id];
+    }
+
+    protected static function sort_platform_showcase_post_ids($post_ids, $sort_values) {
+        $external_ids = array_keys((array) $post_ids);
+        usort($external_ids, function ($left_id, $right_id) use ($sort_values) {
+            $left = $sort_values[$left_id] ?? ['', '', (string) $left_id];
+            $right = $sort_values[$right_id] ?? ['', '', (string) $right_id];
+            foreach ([0, 1] as $index) {
+                if ($left[$index] === $right[$index]) {
+                    continue;
+                }
+                if ($left[$index] === '') {
+                    return 1;
+                }
+                if ($right[$index] === '') {
+                    return -1;
+                }
+                return strcmp($right[$index], $left[$index]);
+            }
+
+            return strcmp($left[2], $right[2]);
+        });
+
+        $ordered_ids = [];
+        $seen_ids = [];
+        foreach ($external_ids as $external_id) {
+            $post_id = absint($post_ids[$external_id] ?? 0);
+            if ($post_id > 0 && !isset($seen_ids[$post_id])) {
+                $seen_ids[$post_id] = true;
+                $ordered_ids[] = $post_id;
+            }
+        }
+
+        return $ordered_ids;
     }
 
     protected static function sync_taxonomies($post_id, $changed_fields, $force = false) {

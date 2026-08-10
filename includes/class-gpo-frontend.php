@@ -38,9 +38,12 @@ if (!function_exists('gpo_get_brand_slug')) {
 
 class GPO_Frontend {
     protected static $template_vehicle_id = 0;
+    protected static $display_settings_cache = null;
+    protected static $vehicle_availability = [];
     protected static $platform_showcase_ids = null;
     protected static $manual_showcase_ids = null;
     protected static $effective_showcase_ids = null;
+    protected static $legacy_featured_ids = null;
     public static function init() {
         add_action('wp_enqueue_scripts', [__CLASS__, 'assets']);
         add_shortcode('gestpark_vehicle_grid', [__CLASS__, 'vehicle_grid_shortcode']);
@@ -120,6 +123,10 @@ class GPO_Frontend {
     }
 
     public static function display_settings() {
+        if (self::$display_settings_cache !== null) {
+            return self::$display_settings_cache;
+        }
+
         $defaults = GPO_Admin::default_settings();
         $settings = wp_parse_args(get_option('gpo_settings', []), $defaults);
 
@@ -133,7 +140,8 @@ class GPO_Frontend {
             $settings['style']['filter_fields'] = $defaults['style']['filter_fields'];
         }
 
-        return $settings;
+        self::$display_settings_cache = $settings;
+        return self::$display_settings_cache;
     }
 
     public static function component_settings($key = null) {
@@ -150,30 +158,52 @@ class GPO_Frontend {
     }
 
     public static function is_vehicle_publicly_available($post_id) {
-        $post = get_post(absint($post_id));
+        $post_id = absint($post_id);
+        if ($post_id < 1) {
+            return false;
+        }
+        if (array_key_exists($post_id, self::$vehicle_availability)) {
+            return self::$vehicle_availability[$post_id];
+        }
+
+        $post = get_post($post_id);
         if (!$post || $post->post_type !== 'gpo_vehicle' || $post->post_status !== 'publish') {
+            self::$vehicle_availability[$post_id] = false;
+            return false;
+        }
+
+        if (get_post_meta($post_id, '_gpo_is_template_demo', true) === '1') {
+            self::$vehicle_availability[$post_id] = false;
             return false;
         }
 
         $status = strtolower(remove_accents(trim((string) get_post_meta($post->ID, '_gpo_status', true))));
         if ($status === '') {
+            self::$vehicle_availability[$post_id] = true;
             return true;
         }
 
         foreach (['non disponibil', 'not available', 'unavailable', 'vendut', 'sold', 'ritirat', 'withdrawn', 'rimoss', 'removed', 'eliminat', 'deleted', 'archiviat', 'archived', 'inattiv'] as $blocked_status) {
             if (strpos($status, $blocked_status) !== false) {
+                self::$vehicle_availability[$post_id] = false;
                 return false;
             }
         }
 
-        return !in_array($status, ['0', 'no', 'false'], true);
+        self::$vehicle_availability[$post_id] = !in_array($status, ['0', 'no', 'false'], true);
+        return self::$vehicle_availability[$post_id];
     }
 
     public static function filter_valid_vehicle_ids($ids, $limit = 0) {
+        $ids = array_values(array_unique(array_filter(array_map('absint', (array) $ids))));
+        if (!empty($ids) && function_exists('update_meta_cache')) {
+            $preload_limit = $limit > 0 ? max(12, absint($limit) * 2) : 50;
+            update_meta_cache('post', array_slice($ids, 0, $preload_limit));
+        }
+
         $valid_ids = [];
-        foreach ((array) $ids as $post_id) {
-            $post_id = absint($post_id);
-            if ($post_id < 1 || isset($valid_ids[$post_id]) || !self::is_vehicle_publicly_available($post_id)) {
+        foreach ($ids as $post_id) {
+            if (!self::is_vehicle_publicly_available($post_id)) {
                 continue;
             }
             $valid_ids[$post_id] = $post_id;
@@ -188,25 +218,31 @@ class GPO_Frontend {
     public static function get_platform_showcase_vehicle_ids($limit = 0) {
         if (self::$platform_showcase_ids === null) {
             $snapshot_ready = get_option('gpo_platform_showcase_snapshot_ready', '') === '1';
-            $source_clause = $snapshot_ready
-                ? ['key' => '_gpo_in_platform_showcase', 'value' => '1']
-                : ['key' => '_gpo_external_id', 'compare' => 'EXISTS'];
-            $query = new WP_Query([
-                'post_type' => 'gpo_vehicle',
-                'post_status' => 'publish',
-                'posts_per_page' => -1,
-                'fields' => 'ids',
-                'no_found_rows' => true,
-                'orderby' => 'none',
-                'gpo_catalog_registration_order' => 1,
-                'meta_query' => [
-                    'relation' => 'AND',
-                    self::exclude_demo_vehicle_meta_clause(),
-                    self::publicly_available_vehicle_meta_clause(),
-                    $source_clause,
-                ],
-            ]);
-            self::$platform_showcase_ids = self::filter_valid_vehicle_ids($query->posts);
+            $stored_ids = $snapshot_ready ? get_option('gpo_platform_showcase_vehicle_ids', null) : null;
+
+            if (is_array($stored_ids)) {
+                self::$platform_showcase_ids = self::parse_vehicle_ids($stored_ids);
+            } else {
+                $source_clause = $snapshot_ready
+                    ? ['key' => '_gpo_in_platform_showcase', 'value' => '1']
+                    : ['key' => '_gpo_external_id', 'compare' => 'EXISTS'];
+                $query = new WP_Query([
+                    'post_type' => 'gpo_vehicle',
+                    'post_status' => 'publish',
+                    'posts_per_page' => -1,
+                    'fields' => 'ids',
+                    'no_found_rows' => true,
+                    'orderby' => 'none',
+                    'meta_query' => [$source_clause],
+                ]);
+                self::$platform_showcase_ids = self::sort_vehicle_ids_by_recency(
+                    self::filter_valid_vehicle_ids($query->posts)
+                );
+
+                if ($snapshot_ready) {
+                    update_option('gpo_platform_showcase_vehicle_ids', self::$platform_showcase_ids, false);
+                }
+            }
         }
 
         return $limit > 0
@@ -261,7 +297,7 @@ class GPO_Frontend {
                 }
             }
 
-            $legacy_ids = self::get_current_featured_ids(100);
+            $legacy_ids = $platform_auto_mode ? [] : self::get_current_featured_ids(100);
             self::$manual_showcase_ids = self::filter_valid_vehicle_ids(array_merge($selected_ids, $legacy_ids));
         }
 
@@ -273,16 +309,18 @@ class GPO_Frontend {
     public static function get_effective_showcase_vehicle_ids($limit = 0, $additional_ids = []) {
         $additional_ids = self::filter_valid_vehicle_ids($additional_ids);
         if (self::$effective_showcase_ids === null) {
-            $effective_ids = array_merge(
+            self::$effective_showcase_ids = self::parse_vehicle_ids(array_merge(
                 self::get_platform_showcase_vehicle_ids(),
-                self::get_manual_extra_vehicle_ids()
-            );
-            self::$effective_showcase_ids = self::sort_vehicle_ids_by_recency($effective_ids);
+                self::sort_vehicle_ids_by_recency(self::get_manual_extra_vehicle_ids())
+            ));
         }
 
         $ids = empty($additional_ids)
             ? self::$effective_showcase_ids
-            : self::sort_vehicle_ids_by_recency(array_merge(self::$effective_showcase_ids, $additional_ids));
+            : self::parse_vehicle_ids(array_merge(
+                self::$effective_showcase_ids,
+                self::sort_vehicle_ids_by_recency($additional_ids)
+            ));
 
         return $limit > 0 ? array_slice($ids, 0, absint($limit)) : $ids;
     }
@@ -306,9 +344,6 @@ class GPO_Frontend {
 
     protected static function sort_vehicle_ids_by_recency($ids) {
         $ids = self::filter_valid_vehicle_ids($ids);
-        if (!empty($ids) && function_exists('update_meta_cache')) {
-            update_meta_cache('post', $ids);
-        }
         $sort_values = [];
         foreach ($ids as $post_id) {
             $registration = trim((string) get_post_meta($post_id, '_gpo_registration_date', true));
@@ -2790,22 +2825,25 @@ class GPO_Frontend {
     }
 
     protected static function rotating_vehicle_id($ids, $strategy = 'auto') {
-        $ids = self::filter_valid_vehicle_ids($ids);
+        $ids = self::parse_vehicle_ids($ids);
         $count = count($ids);
         if ($count < 1) {
             return 0;
         }
-        if ($count === 1) {
-            return absint($ids[0]);
-        }
 
         $bucket = (int) floor(time() / (5 * MINUTE_IN_SECONDS));
-        if ($strategy === 'manual') {
-            return absint($ids[$bucket % $count]);
+        $start_index = $strategy === 'manual'
+            ? $bucket % $count
+            : ((int) sprintf('%u', crc32(implode('|', $ids) . '|' . $bucket))) % $count;
+
+        for ($offset = 0; $offset < $count; $offset++) {
+            $candidate_id = absint($ids[($start_index + $offset) % $count]);
+            if (self::is_vehicle_publicly_available($candidate_id)) {
+                return $candidate_id;
+            }
         }
 
-        $seed = (int) sprintf('%u', crc32(implode('|', $ids) . '|' . $bucket));
-        return absint($ids[$seed % $count]);
+        return 0;
     }
 
     public static function active_featured_vehicle_id($mode = '', $manual_ids = null) {
@@ -2875,30 +2913,30 @@ class GPO_Frontend {
     }
 
     protected static function get_current_featured_ids($limit = 12) {
-        $query = new WP_Query([
-            'post_type' => 'gpo_vehicle',
-            'post_status' => 'publish',
-            'posts_per_page' => 100,
-            'fields' => 'ids',
-            'meta_key' => '_gpo_featured_order',
-            'orderby' => 'meta_value_num',
-            'order' => 'ASC',
-            'meta_query' => [
-                self::exclude_demo_vehicle_meta_clause(),
-                self::publicly_available_vehicle_meta_clause(),
-                ['key' => '_gpo_featured', 'value' => '1'],
-            ],
-        ]);
-        $ids = [];
-        foreach ($query->posts as $post_id) {
-            if (self::is_vehicle_publicly_available($post_id) && self::is_currently_featured($post_id)) {
-                $ids[] = $post_id;
-            }
-            if (count($ids) >= $limit) {
-                break;
+        if (self::$legacy_featured_ids === null) {
+            $query = new WP_Query([
+                'post_type' => 'gpo_vehicle',
+                'post_status' => 'publish',
+                'posts_per_page' => 100,
+                'fields' => 'ids',
+                'meta_key' => '_gpo_featured_order',
+                'orderby' => 'meta_value_num',
+                'order' => 'ASC',
+                'meta_query' => [
+                    self::exclude_demo_vehicle_meta_clause(),
+                    self::publicly_available_vehicle_meta_clause(),
+                    ['key' => '_gpo_featured', 'value' => '1'],
+                ],
+            ]);
+            self::$legacy_featured_ids = [];
+            foreach ($query->posts as $post_id) {
+                if (self::is_vehicle_publicly_available($post_id) && self::is_currently_featured($post_id)) {
+                    self::$legacy_featured_ids[] = absint($post_id);
+                }
             }
         }
-        return $ids;
+
+        return array_slice(self::$legacy_featured_ids, 0, max(1, absint($limit)));
     }
 
     protected static function latest_real_vehicle_ids($limit = 12) {
