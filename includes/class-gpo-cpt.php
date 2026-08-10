@@ -254,6 +254,12 @@ class GPO_CPT {
         update_post_meta($post_id, '_gpo_featured_to', isset($_POST['gpo_featured_to']) ? sanitize_text_field(wp_unslash($_POST['gpo_featured_to'])) : '');
         update_post_meta($post_id, '_gpo_featured_order', isset($_POST['gpo_featured_order']) ? absint($_POST['gpo_featured_order']) : 0);
         update_post_meta($post_id, '_gpo_badge', isset($_POST['gpo_badge']) ? sanitize_text_field(wp_unslash($_POST['gpo_badge'])) : '');
+
+        if (class_exists('GPO_Frontend') && method_exists('GPO_Frontend', 'invalidate_catalog_filter_cache')) {
+            GPO_Frontend::invalidate_catalog_filter_cache();
+        } else {
+            delete_transient('gpo_catalog_filter_values_v1');
+        }
     }
 
     public static function columns($columns) {

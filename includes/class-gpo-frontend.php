@@ -37,9 +37,15 @@ if (!function_exists('gpo_get_brand_slug')) {
 }
 
 class GPO_Frontend {
+    const CATALOG_FILTER_VALUES_TRANSIENT = 'gpo_catalog_filter_values_v1';
+
     protected static $template_vehicle_id = 0;
     protected static $display_settings_cache = null;
     protected static $vehicle_availability = [];
+    protected static $vehicle_data_cache = [];
+    protected static $vehicle_card_data_cache = [];
+    protected static $catalog_filter_values_cache = null;
+    protected static $catalog_filter_cache_invalidated = false;
     protected static $platform_showcase_ids = null;
     protected static $manual_showcase_ids = null;
     protected static $effective_showcase_ids = null;
@@ -2136,6 +2142,9 @@ class GPO_Frontend {
             'orderby' => $orderby,
             'order' => $order,
             's' => $search,
+            'update_post_meta_cache' => true,
+            'update_post_term_cache' => false,
+            'lazy_load_term_meta' => false,
         ];
 
         if (!empty($meta_query)) {
@@ -2264,14 +2273,7 @@ class GPO_Frontend {
         $action = get_permalink() ?: home_url('/');
         $layout = sanitize_key($options['layout'] ?? 'standard');
         $omit_sort = !empty($options['omit_sort']);
-        $catalog_values = [
-            'condition' => self::distinct_meta_values('_gpo_condition'),
-            'fuel' => self::distinct_meta_values('_gpo_fuel'),
-            'body_type' => self::distinct_meta_values('_gpo_body_type'),
-            'transmission' => self::distinct_meta_values('_gpo_transmission'),
-            'brand' => self::distinct_meta_values('_gpo_brand'),
-            'year' => self::distinct_meta_values('_gpo_year', true),
-        ];
+        $catalog_values = self::catalog_filter_values();
         $visible_filters = self::resolve_filter_fields($override_fields);
         $device_visibility = [
             'desktop' => self::device_filter_fields($responsive_visibility, 'desktop', $visible_filters),
@@ -2607,28 +2609,76 @@ class GPO_Frontend {
         ];
     }
 
-    protected static function distinct_meta_values($key, $numeric_sort = false) {
+    public static function invalidate_catalog_filter_cache() {
+        self::$catalog_filter_values_cache = null;
+
+        if (!self::$catalog_filter_cache_invalidated) {
+            delete_transient(self::CATALOG_FILTER_VALUES_TRANSIENT);
+            self::$catalog_filter_cache_invalidated = true;
+        }
+    }
+
+    protected static function catalog_filter_values() {
+        if (self::$catalog_filter_values_cache !== null) {
+            return self::$catalog_filter_values_cache;
+        }
+
+        $fields = [
+            'condition' => '_gpo_condition',
+            'fuel' => '_gpo_fuel',
+            'body_type' => '_gpo_body_type',
+            'transmission' => '_gpo_transmission',
+            'brand' => '_gpo_brand',
+            'year' => '_gpo_year',
+        ];
+        $cached = get_transient(self::CATALOG_FILTER_VALUES_TRANSIENT);
+
+        if (is_array($cached) && count(array_intersect_key($fields, $cached)) === count($fields)) {
+            self::$catalog_filter_values_cache = $cached;
+            return self::$catalog_filter_values_cache;
+        }
+
         global $wpdb;
-        $values = $wpdb->get_col($wpdb->prepare(
-            "SELECT DISTINCT pm.meta_value
+        $meta_keys = array_values($fields);
+        $placeholders = implode(', ', array_fill(0, count($meta_keys), '%s'));
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT DISTINCT pm.meta_key, pm.meta_value
             FROM {$wpdb->postmeta} pm
             INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
             LEFT JOIN {$wpdb->postmeta} demo ON demo.post_id = p.ID AND demo.meta_key = '_gpo_is_template_demo'
-            WHERE pm.meta_key = %s
+            WHERE pm.meta_key IN ({$placeholders})
             AND pm.meta_value <> ''
             AND p.post_type = 'gpo_vehicle'
             AND p.post_status = 'publish'
             AND (demo.meta_value IS NULL OR demo.meta_value <> '1')",
-            $key
-        ));
-        $values = array_filter(array_map('trim', array_map('wp_strip_all_tags', $values)));
-        if ($numeric_sort) {
-            sort($values, SORT_NUMERIC);
-            $values = array_reverse($values);
-        } else {
-            natcasesort($values);
+            ...$meta_keys
+        ), ARRAY_A);
+
+        $values_by_meta_key = array_fill_keys($meta_keys, []);
+        foreach ((array) $rows as $row) {
+            $meta_key = isset($row['meta_key']) ? (string) $row['meta_key'] : '';
+            $value = isset($row['meta_value']) ? trim(wp_strip_all_tags((string) $row['meta_value'])) : '';
+            if ($value !== '' && array_key_exists($meta_key, $values_by_meta_key)) {
+                $values_by_meta_key[$meta_key][] = $value;
+            }
         }
-        return array_values(array_unique($values));
+
+        $catalog_values = [];
+        foreach ($fields as $field => $meta_key) {
+            $values = array_values(array_unique($values_by_meta_key[$meta_key]));
+            if ($field === 'year') {
+                sort($values, SORT_NUMERIC);
+                $values = array_reverse($values);
+            } else {
+                natcasesort($values);
+                $values = array_values($values);
+            }
+            $catalog_values[$field] = $values;
+        }
+
+        self::$catalog_filter_values_cache = $catalog_values;
+        set_transient(self::CATALOG_FILTER_VALUES_TRANSIENT, $catalog_values, DAY_IN_SECONDS);
+        return self::$catalog_filter_values_cache;
     }
 
     public static function render_card($post_id, $display = []) {
@@ -2642,7 +2692,7 @@ class GPO_Frontend {
             return false;
         }
 
-        $data = self::vehicle_data($post_id);
+        $data = self::vehicle_card_data($post_id);
         $price = $data['price'] ?? get_post_meta($post_id, '_gpo_price', true);
         $promotion = $data['promotion'] ?? self::promotion_context($post_id);
         $promo_price = $data['promo_price'] ?? ($promotion['discounted_price'] ?? get_post_meta($post_id, '_gpo_price_promo', true));
@@ -2669,13 +2719,18 @@ class GPO_Frontend {
         $layout = $display['layout'] ?? 'default';
         $hero = !empty($display['hero']);
         $context = sanitize_key($display['context'] ?? 'default');
+        $image_size = $hero ? 'large' : 'medium_large';
+        $image_attributes = ['decoding' => 'async'];
+        if (!$hero) {
+            $image_attributes['loading'] = 'lazy';
+        }
 
         echo '<article class="gpo-card gpo-card-layout-' . esc_attr($layout) . ' ' . ($hero ? 'gpo-card-hero' : '') . '" data-gpo-card-url="' . esc_url($permalink) . '">';
 
         if (self::is_visible($display, 'image')) {
             echo '<div class="' . esc_attr('gpo-card-media ' . self::visibility_classes($display, 'image')) . '">';
             if (has_post_thumbnail($post_id)) {
-                echo '<a class="gpo-card-image" href="' . esc_url($permalink) . '">' . get_the_post_thumbnail($post_id, 'large') . '</a>';
+                echo '<a class="gpo-card-image" href="' . esc_url($permalink) . '">' . get_the_post_thumbnail($post_id, $image_size, $image_attributes) . '</a>';
             } else {
                 echo '<a class="gpo-card-image gpo-card-image-placeholder" href="' . esc_url($permalink) . '">' . self::fallback_vehicle_image_markup('gpo-fallback-image') . '</a>';
             }
@@ -3023,6 +3078,10 @@ class GPO_Frontend {
 
     public static function vehicle_data($post_id) {
         $post_id = absint($post_id);
+        if (isset(self::$vehicle_data_cache[$post_id])) {
+            return self::$vehicle_data_cache[$post_id];
+        }
+
         $data = [];
         foreach (GPO_CPT::fields() as $key => $label) {
             $data[$key] = get_post_meta($post_id, '_gpo_' . $key, true);
@@ -3033,7 +3092,29 @@ class GPO_Frontend {
         $data['promotion'] = self::promotion_context($post_id);
         $data['promo_price'] = $data['promotion']['discounted_price'] ?? get_post_meta($post_id, '_gpo_price_promo', true);
         $data['current_price'] = $data['promo_price'] ?: $data['price'];
-        return $data;
+        self::$vehicle_data_cache[$post_id] = $data;
+        return self::$vehicle_data_cache[$post_id];
+    }
+
+    protected static function vehicle_card_data($post_id) {
+        $post_id = absint($post_id);
+        if (isset(self::$vehicle_card_data_cache[$post_id])) {
+            return self::$vehicle_card_data_cache[$post_id];
+        }
+
+        $data = [];
+        foreach (['condition', 'year', 'mileage', 'body_type', 'transmission', 'engine_size', 'brand', 'model', 'version', 'neopatentati'] as $key) {
+            $data[$key] = get_post_meta($post_id, '_gpo_' . $key, true);
+        }
+        $data['neopatentati'] = self::is_neopatentati_vehicle($post_id, $data);
+        $data['badge'] = get_post_meta($post_id, '_gpo_badge', true);
+        $data['price'] = get_post_meta($post_id, '_gpo_price', true);
+        $data['promotion'] = self::promotion_context($post_id);
+        $data['promo_price'] = $data['promotion']['discounted_price'] ?? get_post_meta($post_id, '_gpo_price_promo', true);
+        $data['current_price'] = $data['promo_price'] ?: $data['price'];
+
+        self::$vehicle_card_data_cache[$post_id] = $data;
+        return self::$vehicle_card_data_cache[$post_id];
     }
 
     protected static function gallery_attachment_ids($post_id) {
@@ -3058,8 +3139,16 @@ class GPO_Frontend {
 
     protected static function gallery_items($post_id) {
         $items = [];
+        $attachment_ids = self::gallery_attachment_ids($post_id);
 
-        foreach (self::gallery_attachment_ids($post_id) as $index => $attachment_id) {
+        if (!empty($attachment_ids)) {
+            if (function_exists('_prime_post_caches')) {
+                _prime_post_caches($attachment_ids, false, true);
+            }
+            update_meta_cache('post', $attachment_ids);
+        }
+
+        foreach ($attachment_ids as $index => $attachment_id) {
             $thumb = wp_get_attachment_image_url($attachment_id, 'thumbnail');
             $large = wp_get_attachment_image_url($attachment_id, 'large');
             $full = wp_get_attachment_image_url($attachment_id, 'full');
@@ -3122,7 +3211,7 @@ class GPO_Frontend {
             echo '<div class="gpo-single-stage">';
             echo '<button type="button" class="gpo-single-stage__nav prev" aria-label="Foto precedente">' . self::icon_markup('chevron-left') . '</button>';
             echo '<button type="button" class="gpo-single-main" aria-label="Apri galleria immagini">';
-            echo '<span class="gpo-single-main__media"><img class="gpo-single-main__image" src="' . esc_url($current['large']) . '" alt="' . esc_attr($current['alt']) . '" loading="eager" /></span>';
+            echo '<span class="gpo-single-main__media"><img class="gpo-single-main__image" src="' . esc_url($current['large']) . '" alt="' . esc_attr($current['alt']) . '" loading="eager" decoding="async" /></span>';
             echo '</button>';
             echo '<button type="button" class="gpo-single-stage__nav next" aria-label="Foto successiva">' . self::icon_markup('chevron-right') . '</button>';
             echo '</div>';
@@ -3139,7 +3228,7 @@ class GPO_Frontend {
                     $is_more_tile = $is_desktop_more || $is_mobile_more;
                     $default_label = 'Seleziona foto ' . ($index + 1);
                     echo '<button type="button" class="gpo-single-thumb' . ($index === 0 ? ' is-active' : '') . ($is_more_tile ? ' gpo-single-thumb--more' : '') . '" data-index="' . esc_attr((string) $index) . '" data-large-src="' . esc_url($item['large']) . '" data-full-src="' . esc_url($item['full']) . '" data-alt="' . esc_attr($item['alt']) . '" data-caption="' . esc_attr($item['caption']) . '" data-default-label="' . esc_attr($default_label) . '"' . ($is_desktop_more ? ' data-gpo-more-desktop="' . esc_attr((string) $remaining_desktop) . '"' : '') . ($is_mobile_more ? ' data-gpo-more-mobile="' . esc_attr((string) $remaining_mobile) . '"' : '') . ' aria-label="' . esc_attr($default_label) . '"' . ($index === 0 ? ' aria-current="true"' : '') . '>';
-                    echo '<img src="' . esc_url($item['thumb']) . '" alt="' . esc_attr($item['alt']) . '" loading="lazy" />';
+                    echo '<img src="' . esc_url($item['thumb']) . '" alt="' . esc_attr($item['alt']) . '" loading="lazy" decoding="async" />';
                     if ($is_desktop_more) {
                         echo '<span class="gpo-single-thumb__more gpo-single-thumb__more--desktop" aria-hidden="true">+' . esc_html((string) $remaining_desktop) . '</span>';
                     }
@@ -3157,7 +3246,7 @@ class GPO_Frontend {
             echo '<button type="button" class="gpo-gallery-lightbox__close" data-gpo-gallery-close="1" aria-label="Chiudi">' . self::icon_markup('clear') . '</button>';
             echo '<button type="button" class="gpo-gallery-lightbox__nav prev" aria-label="Foto precedente">' . self::icon_markup('chevron-left') . '</button>';
             echo '<figure class="gpo-gallery-lightbox__figure">';
-            echo '<img class="gpo-gallery-lightbox__image" src="' . esc_url($current['full']) . '" alt="' . esc_attr($current['alt']) . '" />';
+            echo '<img class="gpo-gallery-lightbox__image" src="' . esc_url($current['full']) . '" alt="' . esc_attr($current['alt']) . '" decoding="async" />';
             echo '<figcaption class="gpo-gallery-lightbox__caption"><strong class="gpo-gallery-lightbox__counter">1 / ' . esc_html((string) $count) . '</strong><span>' . esc_html($current['caption']) . '</span></figcaption>';
             echo '</figure>';
             echo '<button type="button" class="gpo-gallery-lightbox__nav next" aria-label="Foto successiva">' . self::icon_markup('chevron-right') . '</button>';

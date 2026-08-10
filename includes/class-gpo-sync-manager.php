@@ -187,6 +187,12 @@ class GPO_Sync_Manager {
     }
 
     protected static function complete_sync($stats, $started_at, $settings) {
+        if (class_exists('GPO_Frontend') && method_exists('GPO_Frontend', 'invalidate_catalog_filter_cache')) {
+            GPO_Frontend::invalidate_catalog_filter_cache();
+        } else {
+            delete_transient('gpo_catalog_filter_values_v1');
+        }
+
         $result = self::sync_result($stats['errors'] > 0 ? 'partial' : 'success', $stats, $started_at, $settings);
         update_option('gpo_last_sync_result', $result, false);
         GPO_Logger::add('Sincronizzazione completata', [
