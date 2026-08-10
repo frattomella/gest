@@ -36,6 +36,8 @@ $public_notes = trim((string) get_post_meta($post_id, '_gpo_public_notes', true)
 $price = $vehicle['price'] ?? get_post_meta($post_id, '_gpo_price', true);
 $promo_price = $vehicle['promo_price'] ?? get_post_meta($post_id, '_gpo_price_promo', true);
 $current_price = $vehicle['current_price'] ?? ($promo_price ?: $price);
+$price_negotiable = GPO_Frontend::is_vehicle_price_negotiable($post_id, $vehicle);
+$current_price_display = GPO_Frontend::vehicle_price_display($post_id, $vehicle, $current_price);
 $price_note = GPO_Frontend::single_price_note($post_id, $vehicle);
 $status_badges = GPO_Frontend::single_status_badges_markup($post_id, $vehicle);
 $share_actions = GPO_Frontend::share_actions_markup($post_id);
@@ -72,7 +74,7 @@ $show = function ($key) use ($visible) {
     return in_array($key, $visible, true);
 };
 $promo_copy = '';
-if (is_array($promotion)) {
+if (!$price_negotiable && is_array($promotion)) {
     $promo_copy = trim((string) ($promotion['promo_text'] ?? ''));
     if ($promo_copy === '' && !empty($promotion['discount_label'])) {
         $promo_copy = trim((string) $promotion['discount_label']);
@@ -129,13 +131,13 @@ if (class_exists('GPO_Blocks') && method_exists('GPO_Blocks', 'render_vehicle_ca
                             <p class="gpo-single-subtitle"><?php echo esc_html(trim((string) get_post_meta($post_id, '_gpo_brand', true) . ' ' . (string) get_post_meta($post_id, '_gpo_model', true) . ' ' . (string) get_post_meta($post_id, '_gpo_version', true))); ?></p>
                         </div>
 
-                        <div class="gpo-single-summary-card__pricing<?php echo $promotion ? ' is-promoted' : ''; ?>">
+                        <div class="gpo-single-summary-card__pricing<?php echo $promotion && !$price_negotiable ? ' is-promoted' : ''; ?>">
                             <div class="gpo-single-summary-card__price-wrap">
-                                <?php if ($promo_price && $price && $promo_price !== $price) : ?>
+                                <?php if (!$price_negotiable && $promo_price && $price && $promo_price !== $price) : ?>
                                     <small class="gpo-single-summary-card__price-original"><?php echo esc_html(GPO_Frontend::format_price_public((float) $price)); ?></small>
                                 <?php endif; ?>
-                                <strong class="gpo-single-summary-card__price-current<?php echo $promotion ? ' gpo-price-current--promo' : ''; ?>">
-                                    <?php echo esc_html($current_price ? GPO_Frontend::format_price_public((float) $current_price) : 'Prezzo su richiesta'); ?>
+                                <strong class="gpo-single-summary-card__price-current<?php echo $promotion && !$price_negotiable ? ' gpo-price-current--promo' : ''; ?><?php echo $price_negotiable ? ' gpo-price-negotiable' : ''; ?>">
+                                    <?php echo esc_html($current_price_display); ?>
                                 </strong>
                             </div>
                             <?php if ($price_note !== '') : ?>

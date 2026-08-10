@@ -635,6 +635,8 @@ class GPO_Blocks {
             return '<div ' . self::wrapper_attrs('gpo-editor-empty') . '>Aggiungi almeno un veicolo o apri questo blocco nella scheda di un veicolo per vedere l’anteprima.</div>';
         }
         $data = GPO_Frontend::vehicle_data($post_id);
+        $price_negotiable = GPO_Frontend::is_vehicle_price_negotiable($post_id, $data);
+        $price_display = GPO_Frontend::vehicle_price_display($post_id, $data, $data['current_price'] ?? null);
         ob_start();
         ?>
         <section <?php echo self::wrapper_attrs('gpo-single-block gpo-single-hero-block', $attributes); ?>>
@@ -653,10 +655,10 @@ class GPO_Blocks {
                     <h1><?php echo esc_html(get_the_title($post_id)); ?></h1>
                     <div class="gpo-single-price-row">
                         <div>
-                            <?php if (!empty($data['promo_price']) && !empty($data['price']) && $data['promo_price'] !== $data['price']) : ?>
+                            <?php if (!$price_negotiable && !empty($data['promo_price']) && !empty($data['price']) && $data['promo_price'] !== $data['price']) : ?>
                                 <small><?php echo esc_html(GPO_Frontend::format_price_public($data['price'])); ?></small>
                             <?php endif; ?>
-                            <strong><?php echo esc_html(GPO_Frontend::format_price_public($data['current_price'])); ?></strong>
+                            <strong class="<?php echo $price_negotiable ? 'gpo-price-negotiable' : ''; ?>"><?php echo esc_html($price_display); ?></strong>
                         </div>
                         <?php if (!empty($attributes['showChips'])) : ?>
                             <?php echo GPO_Frontend::quick_info_panel_markup($post_id, 'gpo-quick-info-panel gpo-quick-info-panel--hero', [], $data); ?>

@@ -8562,3 +8562,29 @@ html.gpo-share-modal-open {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }
+
+/* Negotiable vehicles keep the price hierarchy without exposing numeric amounts. */
+.gpo-price-negotiable {
+  max-width: 100%;
+  white-space: normal !important;
+  overflow-wrap: break-word;
+  word-break: normal;
+  line-height: 1.15;
+}
+
+.gpo-card .gpo-price-current.gpo-price-negotiable {
+  font-size: clamp(1.05rem, 0.95rem + 0.28vw, 1.35rem);
+}
+
+.single-gpo_vehicle .gpo-single-summary-card__price-current.gpo-price-negotiable,
+.single-gpo_vehicle .gpo-single-price-row .gpo-price-negotiable {
+  font-size: clamp(1.45rem, 1.15rem + 0.8vw, 2rem);
+}
+
+@media (max-width: 720px) {
+  .gpo-card .gpo-price-current.gpo-price-negotiable,
+  .single-gpo_vehicle .gpo-single-summary-card__price-current.gpo-price-negotiable,
+  .single-gpo_vehicle .gpo-single-price-row .gpo-price-negotiable {
+    font-size: clamp(1.15rem, 5vw, 1.5rem);
+  }
+}

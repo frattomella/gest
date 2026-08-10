@@ -1179,6 +1179,46 @@ class GPO_Frontend {
         return in_array($normalized, ['1', 'true', 'yes', 'si', 'on'], true);
     }
 
+    public static function is_vehicle_price_negotiable($post_id = 0, $data = []) {
+        $data = is_array($data) ? $data : [];
+        $value = '';
+
+        foreach (['price_negotiable', 'negotiable'] as $key) {
+            if (array_key_exists($key, $data) && $data[$key] !== '' && $data[$key] !== null) {
+                $value = $data[$key];
+                break;
+            }
+        }
+
+        $post_id = absint($post_id);
+        if ($value === '' && $post_id > 0) {
+            $value = get_post_meta($post_id, '_gpo_price_negotiable', true);
+        }
+
+        return self::truthy_value($value);
+    }
+
+    public static function vehicle_price_display($post_id = 0, $data = [], $price = null) {
+        $data = is_array($data) ? $data : [];
+        if (self::is_vehicle_price_negotiable($post_id, $data)) {
+            return 'Trattativa Riservata';
+        }
+
+        if ($price === null) {
+            if (array_key_exists('current_price', $data)) {
+                $price = $data['current_price'];
+            } elseif (!empty($data['promo_price'])) {
+                $price = $data['promo_price'];
+            } elseif (array_key_exists('price', $data)) {
+                $price = $data['price'];
+            } elseif ($post_id > 0) {
+                $price = get_post_meta(absint($post_id), '_gpo_price', true);
+            }
+        }
+
+        return self::format_price($price);
+    }
+
     public static function is_neopatentati_vehicle($post_id = 0, $data = []) {
         $value = '';
 
@@ -1380,6 +1420,7 @@ class GPO_Frontend {
         $condition = trim((string) ($data['condition'] ?? get_post_meta($post_id, '_gpo_condition', true)));
         $status = trim((string) ($data['status'] ?? get_post_meta($post_id, '_gpo_status', true)));
         $promotion = isset($data['promotion']) && is_array($data['promotion']) ? $data['promotion'] : self::promotion_context($post_id);
+        $price_negotiable = self::is_vehicle_price_negotiable($post_id, $data);
         $neo_badge = self::neopatentati_badge_markup($post_id, 'gpo-neo-badge gpo-neo-badge--single-summary', $data);
         $badges = [];
 
@@ -1391,7 +1432,7 @@ class GPO_Frontend {
             $badges[] = '<span class="gpo-badge gpo-badge--soft">' . esc_html($status) . '</span>';
         }
 
-        if (!empty($promotion['badge'])) {
+        if (!$price_negotiable && !empty($promotion['badge'])) {
             $badges[] = '<span class="gpo-badge gpo-badge--promo">' . esc_html($promotion['badge']) . '</span>';
         }
 
@@ -1433,7 +1474,7 @@ class GPO_Frontend {
             ['group' => 'Informazioni veicolo', 'label' => 'Chilometraggio', 'value' => $mileage !== '' ? self::format_number($mileage, ' km') : '', 'icon' => 'road'],
             ['group' => 'Informazioni veicolo', 'label' => 'Sede', 'value' => self::single_meta_candidate_value($post_id, $data, ['location'], ['_gpo_location']), 'icon' => 'pin'],
             ['group' => 'Informazioni veicolo', 'label' => 'Neopatentati', 'value' => self::is_neopatentati_vehicle($post_id, $data) ? 'Si' : '', 'icon' => 'check-circle'],
-            ['group' => 'Informazioni veicolo', 'label' => 'Prezzo trattabile', 'value' => $positive_flag('price_negotiable'), 'icon' => 'check-circle'],
+            ['group' => 'Informazioni veicolo', 'label' => 'Prezzo', 'value' => self::is_vehicle_price_negotiable($post_id, $data) ? 'Trattativa Riservata' : '', 'icon' => 'check-circle'],
             ['group' => 'Informazioni veicolo', 'label' => 'IVA deducibile', 'value' => $positive_flag('vat_deductible'), 'icon' => 'check-circle'],
             ['group' => 'Informazioni veicolo', 'label' => 'Non fumatori', 'value' => $positive_flag('non_smoker'), 'icon' => 'check-circle'],
             ['group' => 'Informazioni veicolo', 'label' => 'Veicolo aziendale', 'value' => $positive_flag('company_vehicle'), 'icon' => 'check-circle'],
@@ -1823,6 +1864,7 @@ class GPO_Frontend {
         $price = $data['price'] ?? get_post_meta($post_id, '_gpo_price', true);
         $current_price = $data['current_price'] ?? $price;
         $promotion = isset($data['promotion']) && is_array($data['promotion']) ? $data['promotion'] : self::promotion_context($post_id);
+        $price_negotiable = self::is_vehicle_price_negotiable($post_id, $data);
         $gallery_items = self::gallery_items($post_id);
         $gallery_count = count($gallery_items);
         $main_photo = $gallery_count > 0 ? $gallery_items[0] : null;
@@ -1855,12 +1897,10 @@ class GPO_Frontend {
             $condition,
             ($status !== '' && strtolower(remove_accents($status)) !== strtolower(remove_accents($condition))) ? $status : '',
             $is_neo ? 'Neopatentati' : '',
-            !empty($promotion['badge']) ? trim((string) $promotion['badge']) : '',
+            !$price_negotiable && !empty($promotion['badge']) ? trim((string) $promotion['badge']) : '',
         ])));
-        $current_price_display = (is_numeric($current_price) && (float) $current_price > 0)
-            ? self::format_price_public((float) $current_price)
-            : 'Prezzo su richiesta';
-        $original_price_display = (!empty($promotion['formatted_original']) && $promotion['formatted_original'] !== $current_price_display)
+        $current_price_display = self::vehicle_price_display($post_id, $data, $current_price);
+        $original_price_display = (!$price_negotiable && !empty($promotion['formatted_original']) && $promotion['formatted_original'] !== $current_price_display)
             ? trim((string) $promotion['formatted_original'])
             : '';
 
@@ -1874,7 +1914,7 @@ class GPO_Frontend {
             'Informazioni commerciali' => $rows([
                 ['Stato', $status],
                 ['Condizione', $condition],
-                ['Prezzo trattabile', $positive_flag(['price_negotiable', 'negotiable'])],
+                ['Prezzo', $price_negotiable ? 'Trattativa Riservata' : ''],
                 ['IVA deducibile', $positive_flag(['vat_deductible', 'deductible_vat'])],
                 ['Data arrivo', $value_for(['arrival_date', 'date_arrival'])],
             ]),
@@ -2697,6 +2737,8 @@ class GPO_Frontend {
         $promotion = $data['promotion'] ?? self::promotion_context($post_id);
         $promo_price = $data['promo_price'] ?? ($promotion['discounted_price'] ?? get_post_meta($post_id, '_gpo_price_promo', true));
         $current_price = $data['current_price'] ?? ($promo_price ?: $price);
+        $price_negotiable = self::is_vehicle_price_negotiable($post_id, $data);
+        $current_price_display = self::vehicle_price_display($post_id, $data, $current_price);
         $badge = $data['badge'] ?? get_post_meta($post_id, '_gpo_badge', true);
         $is_featured = get_post_meta($post_id, '_gpo_featured', true) === '1';
         $specs = array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', (string) get_post_meta($post_id, '_gpo_specs', true))));
@@ -2741,7 +2783,7 @@ class GPO_Frontend {
                 } elseif ($is_featured && !in_array($context, ['showcase', 'catalog', 'featured-single'], true)) {
                     echo '<span class="gpo-badge">In vetrina</span>';
                 }
-                if ($promotion) {
+                if ($promotion && !$price_negotiable) {
                     echo '<span class="gpo-badge gpo-badge--promo">' . esc_html($promotion['badge']) . '</span>';
                 }
                 echo '</div>';
@@ -2763,13 +2805,13 @@ class GPO_Frontend {
         }
         echo '</div>';
         if (self::is_visible($display, 'price')) {
-            echo '<div class="' . esc_attr('gpo-price-box ' . ($promotion ? 'is-promoted ' : '') . self::visibility_classes($display, 'price')) . '">';
-            if ($promo_price && $price && $promo_price !== $price) {
+            echo '<div class="' . esc_attr('gpo-price-box ' . ($promotion && !$price_negotiable ? 'is-promoted ' : '') . self::visibility_classes($display, 'price')) . '">';
+            if (!$price_negotiable && $promo_price && $price && $promo_price !== $price) {
                 echo '<span class="gpo-price-old">' . esc_html(self::format_price($price)) . '</span>';
             }
-            echo '<strong class="gpo-price-current' . ($promotion ? ' gpo-price-current--promo' : '') . '">' . esc_html(self::format_price($current_price)) . '</strong>';
-            $promo_copy = self::promotion_copy_text($promotion);
-            if ($promotion && $promo_copy !== '') {
+            echo '<strong class="gpo-price-current' . ($promotion && !$price_negotiable ? ' gpo-price-current--promo' : '') . ($price_negotiable ? ' gpo-price-negotiable' : '') . '">' . esc_html($current_price_display) . '</strong>';
+            $promo_copy = $price_negotiable ? '' : self::promotion_copy_text($promotion);
+            if ($promotion && !$price_negotiable && $promo_copy !== '') {
                 echo '<span class="gpo-promo-copy">' . esc_html($promo_copy) . '</span>';
             }
             echo '</div>';
@@ -3103,7 +3145,7 @@ class GPO_Frontend {
         }
 
         $data = [];
-        foreach (['condition', 'year', 'mileage', 'body_type', 'transmission', 'engine_size', 'brand', 'model', 'version', 'neopatentati'] as $key) {
+        foreach (['condition', 'year', 'mileage', 'body_type', 'transmission', 'engine_size', 'brand', 'model', 'version', 'neopatentati', 'price_negotiable'] as $key) {
             $data[$key] = get_post_meta($post_id, '_gpo_' . $key, true);
         }
         $data['neopatentati'] = self::is_neopatentati_vehicle($post_id, $data);
@@ -4043,13 +4085,14 @@ class GPO_Frontend {
             if (!empty($data['year'])) {
                 $subtitle .= ($subtitle ? ' · ' : '') . $data['year'];
             }
+            $price_negotiable = self::is_vehicle_price_negotiable($id, $data);
             $results[] = [
                 'title' => get_the_title(),
                 'url' => get_permalink(),
-                'price' => self::format_price_public($data['current_price'] ?? ''),
-                'originalPrice' => !empty($data['promotion']['formatted_original']) ? $data['promotion']['formatted_original'] : '',
-                'promoBadge' => !empty($data['promotion']['badge']) ? $data['promotion']['badge'] : '',
-                'promoText' => self::promotion_copy_text($data['promotion'] ?? []),
+                'price' => self::vehicle_price_display($id, $data, $data['current_price'] ?? ''),
+                'originalPrice' => !$price_negotiable && !empty($data['promotion']['formatted_original']) ? $data['promotion']['formatted_original'] : '',
+                'promoBadge' => !$price_negotiable && !empty($data['promotion']['badge']) ? $data['promotion']['badge'] : '',
+                'promoText' => $price_negotiable ? '' : self::promotion_copy_text($data['promotion'] ?? []),
                 'neopatentati' => !empty($data['neopatentati']),
                 'brand' => $data['brand'] ?? '',
                 'subtitle' => $subtitle,
