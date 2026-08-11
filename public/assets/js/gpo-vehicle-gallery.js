@@ -184,9 +184,9 @@
       }
 
       lastFocused = document.activeElement;
-      update(activeIndex);
       lightbox.hidden = false;
       lightbox.setAttribute('aria-hidden', 'false');
+      update(activeIndex);
       document.documentElement.classList.add('gpo-lightbox-open');
       document.body.classList.add('gpo-lightbox-open');
 
@@ -497,6 +497,36 @@
     return portal;
   }
 
+  function hydratePrintImages(portal) {
+    var images = qsa('img[data-gpo-print-src]', portal);
+    var pending = images.map(function (image) {
+      return new Promise(function (resolve) {
+        var source = image.getAttribute('data-gpo-print-src');
+        if (!source) {
+          resolve();
+          return;
+        }
+
+        image.addEventListener('load', resolve, { once: true });
+        image.addEventListener('error', resolve, { once: true });
+        image.loading = 'eager';
+        image.src = source;
+        image.removeAttribute('data-gpo-print-src');
+
+        if (image.complete) {
+          resolve();
+        }
+      });
+    });
+
+    return Promise.race([
+      Promise.all(pending),
+      new Promise(function (resolve) {
+        window.setTimeout(resolve, 4000);
+      })
+    ]);
+  }
+
   function initPrintButtons() {
     qsa('[data-gpo-print-sheet]').forEach(function (button) {
       if (!button || button.dataset.printBound === '1') {
@@ -530,7 +560,9 @@
           window.setTimeout(cleanup, 0);
         }, { once: true });
 
-        window.print();
+        hydratePrintImages(portal).then(function () {
+          window.print();
+        });
       });
     });
   }

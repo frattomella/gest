@@ -8,6 +8,10 @@ class GPO_Sync_Manager {
     const LOCK_TTL = 7200;
 
     public static function run_scheduled_sync() {
+        if (!defined('DOING_CRON') || !DOING_CRON) {
+            return;
+        }
+
         $settings = self::settings();
         if (empty($settings['sync']['enabled'])) {
             return;
@@ -187,10 +191,14 @@ class GPO_Sync_Manager {
     }
 
     protected static function complete_sync($stats, $started_at, $settings) {
-        if (class_exists('GPO_Frontend') && method_exists('GPO_Frontend', 'invalidate_catalog_filter_cache')) {
+        if (class_exists('GPO_Frontend') && method_exists('GPO_Frontend', 'rebuild_frontend_caches')) {
+            GPO_Frontend::rebuild_frontend_caches();
+        } elseif (class_exists('GPO_Frontend') && method_exists('GPO_Frontend', 'invalidate_catalog_filter_cache')) {
             GPO_Frontend::invalidate_catalog_filter_cache();
         } else {
             delete_transient('gpo_catalog_filter_values_v1');
+            delete_transient('gpo_catalog_filter_values_v2');
+            delete_transient('gpo_public_vehicle_ids_v1');
         }
 
         $result = self::sync_result($stats['errors'] > 0 ? 'partial' : 'success', $stats, $started_at, $settings);

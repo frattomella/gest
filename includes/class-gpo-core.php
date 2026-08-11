@@ -13,8 +13,8 @@ class GPO_Core {
         GPO_GitHub_Updater::init();
 
         add_action('init', [$this, 'load_textdomain']);
-        add_action('init', [__CLASS__, 'ensure_sync_schedule'], 5);
-        add_action('init', [$this, 'maybe_cleanup_legacy_demo_content'], 20);
+        add_action('admin_init', [__CLASS__, 'ensure_sync_schedule'], 5);
+        add_action('admin_init', [$this, 'maybe_cleanup_legacy_demo_content'], 20);
         add_action('gpo_cron_sync', ['GPO_Sync_Manager', 'run_scheduled_sync']);
         add_action('update_option_gpo_settings', [__CLASS__, 'handle_settings_update'], 10, 2);
     }

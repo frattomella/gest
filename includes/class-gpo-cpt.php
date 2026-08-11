@@ -259,6 +259,8 @@ class GPO_CPT {
             GPO_Frontend::invalidate_catalog_filter_cache();
         } else {
             delete_transient('gpo_catalog_filter_values_v1');
+            delete_transient('gpo_catalog_filter_values_v2');
+            delete_transient('gpo_public_vehicle_ids_v1');
         }
     }
 
